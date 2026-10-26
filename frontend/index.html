@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-950 text-slate-100">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hidani AI Job Assistant | Multi-Agent Career Copilot</title>
+  <meta name="description" content="Production-ready multi-agent AI job chat assistant that parses resumes, recommends matched positions, and applies autonomously.">
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              400: '#818cf8',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Marked.js for Markdown Rendering -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+  <style>
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+
+    /* Markdown prose styles inside bubbles */
+    .prose-chat p {
+      margin-bottom: 0.65rem;
+      line-height: 1.6;
+    }
+    .prose-chat p:last-child {
+      margin-bottom: 0;
+    }
+    .prose-chat ul, .prose-chat ol {
+      margin-left: 1.25rem;
+      margin-bottom: 0.75rem;
+      list-style-type: disc;
+    }
+    .prose-chat strong {
+      color: #f1f5f9;
+      font-weight: 600;
+    }
+    .prose-chat a {
+      color: #818cf8;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+    .prose-chat code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85em;
+      background: rgba(15, 23, 42, 0.6);
+      padding: 0.15em 0.35em;
+      border-radius: 0.375rem;
+      color: #38bdf8;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .prose-chat h3, .prose-chat h4 {
+      font-weight: 700;
+      color: #f8fafc;
+      margin-top: 0.75rem;
+      margin-bottom: 0.4rem;
+    }
+
+    /* Pulsing glowing ring animation */
+    @keyframes pulse-ring {
+      0% { transform: scale(0.95); opacity: 0.8; }
+      50% { transform: scale(1.1); opacity: 0.4; }
+      100% { transform: scale(0.95); opacity: 0.8; }
+    }
+    .animate-pulse-ring {
+      animation: pulse-ring 2.5s infinite ease-in-out;
+    }
+
+    /* Message animation */
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .message-appear {
+      animation: fadeInUp 0.28s ease-out forwards;
+    }
+  </style>
+</head>
+<body class="h-full flex flex-col font-sans antialiased overflow-hidden selection:bg-brand-500 selection:text-white">
+
+  <!-- Drag & Drop File Upload Overlay -->
+  <div id="dropOverlay" class="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md hidden flex-col items-center justify-center border-4 border-dashed border-brand-500 transition-all pointer-events-none">
+    <div class="bg-slate-900 border border-slate-700/80 p-8 rounded-2xl shadow-2xl flex flex-col items-center text-center max-w-sm">
+      <div class="w-16 h-16 rounded-2xl bg-brand-500/20 text-brand-400 flex items-center justify-center mb-4">
+        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+        </svg>
+      </div>
+      <h3 class="text-lg font-bold text-white mb-1">Drop Your Resume Here</h3>
+      <p class="text-sm text-slate-400">PDF or DOCX documents up to 10MB</p>
+    </div>
+  </div>
+
+  <!-- Top Navigation Header -->
+  <header class="h-16 flex-shrink-0 bg-slate-900/80 border-b border-slate-800/80 backdrop-blur-xl px-4 sm:px-6 flex items-center justify-between z-30">
+    <div class="flex items-center gap-3">
+      <div class="relative flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 via-indigo-600 to-cyan-500 shadow-lg shadow-brand-500/20">
+        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+        </svg>
+        <span class="absolute -bottom-0.5 -right-0.5 flex h-3 w-3">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+          <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 border-2 border-slate-900"></span>
+        </span>
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <h1 class="text-base font-bold tracking-tight text-white">Hidani AI Job Assistant</h1>
+          <span class="text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded bg-brand-500/20 text-brand-300 border border-brand-500/30">v1.0 Multi-Agent</span>
+        </div>
+        <p class="text-xs text-slate-400 hidden sm:block">Powered by OpenAI Tools • Sub-Agents: Parser • Matcher • Applier</p>
+      </div>
+    </div>
+
+    <!-- Right Header Controls -->
+    <div class="flex items-center gap-2.5">
+      <!-- Database & Status Pill -->
+      <div id="dbStatusBadge" class="hidden md:flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800/80 border border-slate-700/60 text-xs text-slate-300">
+        <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+        <span id="jobsCountLabel">1,600+ Jobs Ready</span>
+      </div>
+
+      <!-- Candidate Profile Pill (Shown after resume uploaded) -->
+      <button id="candidatePillBtn" class="hidden items-center gap-2 px-3 py-1.5 rounded-xl bg-indigo-950/60 hover:bg-indigo-900/60 border border-indigo-700/50 text-xs text-indigo-200 transition-all">
+        <div class="w-5 h-5 rounded-full bg-indigo-500 text-white flex items-center justify-center font-bold text-[10px]" id="candidateInitial">C</div>
+        <span id="candidateNameBadge" class="font-medium max-w-[110px] truncate">Candidate</span>
+        <span id="candidateSkillsCount" class="px-1.5 py-0.2 rounded-full bg-indigo-800/80 text-[10px] font-mono">0 skills</span>
+      </button>
+
+      <!-- New Chat Button -->
+      <button id="resetChatBtn" title="Reset Session" class="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/80 transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Chat Stream Area -->
+  <main class="flex-1 overflow-y-auto relative p-4 sm:p-6" id="chatScrollArea">
+    <div class="max-w-3xl mx-auto space-y-6 pb-6" id="messagesContainer">
+
+      <!-- Welcome Hero / Onboarding Card -->
+      <div id="welcomeHero" class="bg-gradient-to-b from-slate-900/90 to-slate-900/50 border border-slate-800/80 rounded-2xl p-6 sm:p-8 shadow-xl backdrop-blur-md">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-6">
+          <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-brand-600 to-cyan-500 flex items-center justify-center shadow-lg shadow-brand-500/25 flex-shrink-0">
+            <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+          </div>
+          <div>
+            <h2 class="text-xl sm:text-2xl font-extrabold text-white tracking-tight">Your AI Job Application Copilot</h2>
+            <p class="text-sm text-slate-300 mt-1">Autonomous multi-agent assistant designed for Hidani Tech. Parse your resume, explore tailored positions from our 1,600+ job database, and apply with a single click.</p>
+          </div>
+        </div>
+
+        <!-- Multi-Agent Capability Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+          <div class="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800/80 flex items-start gap-3">
+            <div class="w-8 h-8 rounded-lg bg-emerald-500/15 text-emerald-400 flex items-center justify-center flex-shrink-0">
+              <span class="text-xs font-mono font-bold">01</span>
+            </div>
+            <div>
+              <h4 class="text-xs font-semibold text-white">Parser Agent</h4>
+              <p class="text-[11px] text-slate-400 leading-relaxed mt-0.5">Extracts skills, experience, and profile details from PDF/DOCX.</p>
+            </div>
+          </div>
+          <div class="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800/80 flex items-start gap-3">
+            <div class="w-8 h-8 rounded-lg bg-indigo-500/15 text-indigo-400 flex items-center justify-center flex-shrink-0">
+              <span class="text-xs font-mono font-bold">02</span>
+            </div>
+            <div>
+              <h4 class="text-xs font-semibold text-white">Matcher Agent</h4>
+              <p class="text-[11px] text-slate-400 leading-relaxed mt-0.5">Hybrid lexical & LLM scoring with personalized match reasoning.</p>
+            </div>
+          </div>
+          <div class="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800/80 flex items-start gap-3">
+            <div class="w-8 h-8 rounded-lg bg-cyan-500/15 text-cyan-400 flex items-center justify-center flex-shrink-0">
+              <span class="text-xs font-mono font-bold">03</span>
+            </div>
+            <div>
+              <h4 class="text-xs font-semibold text-white">Applier Agent</h4>
+              <p class="text-[11px] text-slate-400 leading-relaxed mt-0.5">Automates applications with deduplication & state tracking.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Suggestion Pills -->
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2.5">Suggested Prompts & Actions</p>
+          <div class="flex flex-wrap gap-2">
+            <button onclick="document.getElementById('fileInput').click()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-brand-600/20 hover:bg-brand-600/30 text-brand-300 border border-brand-500/40 text-xs font-medium transition-all group">
+              <svg class="w-3.5 h-3.5 group-hover:-translate-y-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+              </svg>
+              <span>Upload Resume (PDF / DOCX)</span>
+            </button>
+            <button onclick="window.sendPrompt('Find jobs matching my skills and experience')" class="px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-slate-200 border border-slate-700 text-xs font-medium transition-all">
+              🔍 Recommend matching jobs
+            </button>
+            <button onclick="window.sendPrompt('Show remote Senior Python and AI roles')" class="px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-slate-200 border border-slate-700 text-xs font-medium transition-all">
+              ⚡ Remote Python & AI roles
+            </button>
+            <button onclick="window.sendPrompt('Check my application status')" class="px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-slate-200 border border-slate-700 text-xs font-medium transition-all">
+              📋 Check submitted applications
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Sticky Bottom Conversational Input Bar -->
+  <footer class="flex-shrink-0 bg-slate-950/90 border-t border-slate-800/80 backdrop-blur-xl p-3 sm:p-4 z-20">
+    <div class="max-w-3xl mx-auto">
+      <form id="chatForm" class="relative flex items-center bg-slate-900 border border-slate-700/80 rounded-2xl p-1.5 focus-within:border-brand-500/80 focus-within:ring-2 focus-within:ring-brand-500/20 transition-all shadow-lg">
+        
+        <!-- Natural File Upload Trigger Button -->
+        <input type="file" id="fileInput" accept=".pdf,.docx" class="hidden">
+        <button type="button" id="attachBtn" title="Upload Resume (.pdf or .docx)" class="p-2.5 rounded-xl text-slate-400 hover:text-brand-300 hover:bg-slate-800 transition-colors flex-shrink-0 relative group">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+          </svg>
+          <span class="absolute -top-8 left-0 scale-0 group-hover:scale-100 transition-transform bg-slate-800 text-[10px] text-white px-2 py-0.5 rounded shadow pointer-events-none whitespace-nowrap border border-slate-700">Attach Resume</span>
+        </button>
+
+        <!-- Message Input Field -->
+        <textarea
+          id="messageInput"
+          rows="1"
+          placeholder="Ask for jobs, skills, or say 'apply to job-00001'..."
+          class="flex-1 bg-transparent px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none resize-none max-h-32 leading-relaxed"
+        ></textarea>
+
+        <!-- Send Button -->
+        <button
+          type="submit"
+          id="sendBtn"
+          class="p-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 disabled:opacity-40 disabled:hover:bg-brand-600 text-white font-medium transition-all shadow-md shadow-brand-600/30 flex-shrink-0 flex items-center justify-center"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+          </svg>
+        </button>
+      </form>
+
+      <div class="flex items-center justify-between mt-2 px-1 text-[11px] text-slate-400">
+        <span class="flex items-center gap-1.5">
+          <span class="inline-block w-1.5 h-1.5 rounded-full bg-brand-400"></span>
+          Drag & drop resumes anytime
+        </span>
+        <span class="font-mono text-[10px] text-slate-400">Press Enter to send</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Candidate Profile Slide-Over Drawer -->
+  <div id="profileDrawer" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden flex justify-end">
+    <div class="w-full max-w-md bg-slate-900 border-l border-slate-800 h-full p-6 flex flex-col shadow-2xl overflow-y-auto">
+      <div class="flex items-center justify-between pb-4 border-b border-slate-800 mb-6">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-brand-500 text-white flex items-center justify-center font-bold text-base" id="drawerAvatar">C</div>
+          <div>
+            <h3 class="text-base font-bold text-white" id="drawerName">Candidate Profile</h3>
+            <p class="text-xs text-slate-400" id="drawerEmail">Extracted via Sub-Agent 1</p>
+          </div>
+        </div>
+        <button id="closeDrawerBtn" class="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="space-y-5 flex-1">
+        <div>
+          <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Experience Level</label>
+          <div class="mt-1 flex items-center gap-2">
+            <span id="drawerExpLevel" class="px-2.5 py-1 rounded-lg bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-xs font-semibold">Mid-Level</span>
+            <span id="drawerExpYears" class="text-xs text-slate-300">2-4 years</span>
+          </div>
+        </div>
+
+        <div>
+          <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Parsed Skills</label>
+          <div id="drawerSkillsTags" class="mt-2 flex flex-wrap gap-1.5">
+            <!-- Dynamically populated skills pills -->
+          </div>
+        </div>
+
+        <div>
+          <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Candidate Summary</label>
+          <p id="drawerSummary" class="mt-1 text-xs text-slate-300 leading-relaxed bg-slate-950/60 p-3 rounded-xl border border-slate-800">No summary available.</p>
+        </div>
+
+        <div>
+          <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Target Roles</label>
+          <div id="drawerRoles" class="mt-2 flex flex-wrap gap-1.5">
+            <!-- Dynamically populated roles -->
+          </div>
+        </div>
+      </div>
+
+      <div class="pt-4 border-t border-slate-800 mt-6">
+        <button onclick="window.sendPrompt('Find jobs specifically matching my parsed skills')" class="w-full py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-medium text-xs transition-all shadow-lg shadow-brand-600/30">
+          Find Matching Jobs For This Profile
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="fixed bottom-20 right-6 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- Main Vanilla JS Client Script -->
+  <script src="app.js"></script>
+</body>
+</html>
