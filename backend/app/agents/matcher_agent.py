@@ -10,7 +10,7 @@ import json
 import logging
 from typing import Any, Dict, List, Optional
 
-from app.config import OPENAI_API_KEY, OPENAI_MODEL, is_openai_configured
+from app.config import OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_MODEL, is_openai_configured
 from app.schemas import Job
 from app.services.db_service import load_jobs, search_jobs
 
@@ -138,7 +138,7 @@ def match_jobs_for_candidate(
     # LLM-enhanced match reasons
     try:
         from openai import OpenAI
-        client = OpenAI(api_key=OPENAI_API_KEY)
+        client = OpenAI(api_key=OPENAI_API_KEY, base_url=OPENAI_BASE_URL)
 
         jobs_summary = [
             {

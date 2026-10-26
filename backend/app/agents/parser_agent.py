@@ -10,7 +10,7 @@ import logging
 import re
 from typing import Any, Dict
 
-from app.config import OPENAI_API_KEY, OPENAI_MODEL, is_openai_configured
+from app.config import OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_MODEL, is_openai_configured
 from app.schemas import ResumeData
 
 logger = logging.getLogger("ParserAgent")
@@ -117,7 +117,7 @@ def parse_resume_with_llm(raw_text: str) -> ResumeData:
 
     try:
         from openai import OpenAI
-        client = OpenAI(api_key=OPENAI_API_KEY)
+        client = OpenAI(api_key=OPENAI_API_KEY, base_url=OPENAI_BASE_URL)
 
         # Truncate to first 6500 characters to cover header, experience, and skills
         prompt_text = raw_text[:6500]

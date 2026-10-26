@@ -5,7 +5,7 @@ Loads environment variables and resolves absolute paths for data storage.
 
 import os
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 # Attempt to load .env if python-dotenv is installed
 try:
@@ -34,9 +34,10 @@ if not APPLICATIONS_FILE.exists():
     with open(APPLICATIONS_FILE, "w", encoding="utf-8") as f:
         f.write("[]")
 
-# OpenAI Configuration
+# OpenAI / LLM Configuration (Supports Groq, Gemini, OpenRouter, etc.)
 OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "").strip()
 OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4o-mini").strip()
+OPENAI_BASE_URL: Optional[str] = os.getenv("OPENAI_BASE_URL", "").strip() or None
 
 # Server Configuration
 APP_TITLE: str = "Hidani AI Job Assistant"

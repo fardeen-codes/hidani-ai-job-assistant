@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from app.agents.applier_agent import apply_for_job, get_applications_summary
 from app.agents.matcher_agent import match_jobs_for_candidate
-from app.config import OPENAI_API_KEY, OPENAI_MODEL, is_openai_configured
+from app.config import OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_MODEL, is_openai_configured
 from app.schemas import ChatAction
 from app.services.db_service import get_job_by_id
 
@@ -325,7 +325,7 @@ def run_orchestrator(
     # Full OpenAI Tool Calling Execution
     try:
         from openai import OpenAI
-        client = OpenAI(api_key=OPENAI_API_KEY)
+        client = OpenAI(api_key=OPENAI_API_KEY, base_url=OPENAI_BASE_URL)
 
         # Append incoming user prompt
         _session_histories[session_id].append({"role": "user", "content": message})
