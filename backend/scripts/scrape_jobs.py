@@ -207,8 +207,25 @@ def _fetch_url_urllib(url: str, timeout: float = 12.0) -> Dict[str, Any]:
         return json.loads(resp.read().decode("utf-8"))
 
 
-async def fetch_arbeitnow_jobs(client: Any = None, max_pages: int = 6) -> List[Dict[str, Any]]:
-    """Scrape real jobs from Arbeitnow public board API with pagination."""
+def is_tech_job(title: str, text: str, tags: List[str] = None) -> bool:
+    """Check if the job listing is relevant to software engineering, AI, data, or tech."""
+    combined = f"{title} {' '.join(tags or [])} {text}".lower()
+    tech_indicators = [
+        "developer", "engineer", "software", "frontend", "backend", "fullstack", "full stack",
+        "python", "javascript", "react", "node", "ai", "machine learning", "data", "cloud",
+        "devops", "architect", "programmer", "web", "intern", "sde", "qa", "security",
+        "systems", "ios", "android", "golang", "java", "tech"
+    ]
+    # Filter out obvious non-tech jobs like kindergarten, customer service, nursing
+    non_tech = ["internat", "kindergarten", "pflege", "nurse", "arzt", "kundenberater", "sales manager", "recruiter", "bürokraft"]
+    if any(nt in combined for nt in non_tech) and not any(ti in title.lower() for ti in ["software", "developer", "engineer"]):
+        return False
+        
+    return any(ti in combined for ti in tech_indicators)
+
+
+async def fetch_arbeitnow_jobs(client: Any = None, max_pages: int = 8) -> List[Dict[str, Any]]:
+    """Scrape real software/tech jobs from Arbeitnow public board API with pagination."""
     jobs = []
     base_url = "https://www.arbeitnow.com/api/job-board-api"
     logger.info("Fetching real job postings from Arbeitnow API...")
@@ -234,12 +251,17 @@ async def fetch_arbeitnow_jobs(client: Any = None, max_pages: int = 6) -> List[D
                 raw_desc = item.get("description", "")
                 cleaned_desc = clean_html(raw_desc)[:800]
                 title = item.get("title", "Software Developer").strip()
+                tags = [t.strip() for t in item.get("tags", []) if t.strip()]
+
+                # Only include tech/software engineering roles
+                if not is_tech_job(title, cleaned_desc, tags):
+                    continue
+
                 company = item.get("company_name", "Tech Company").strip()
                 location = item.get("location", "Remote").strip()
                 if item.get("remote", False) and "remote" not in location.lower():
                     location = f"{location} (Remote)" if location else "Remote"
                     
-                tags = [t.strip() for t in item.get("tags", []) if t.strip()]
                 skills = extract_skills_from_text(f"{title} {cleaned_desc}", tags)
                 experience = infer_experience_level(title, cleaned_desc)
                 source_link = item.get("url", "https://www.arbeitnow.com")
@@ -254,12 +276,13 @@ async def fetch_arbeitnow_jobs(client: Any = None, max_pages: int = 6) -> List[D
                     "description": cleaned_desc or "Exciting opportunity to build cutting-edge software solutions.",
                     "source_link": source_link
                 })
-            logger.info(f"Page {page}: Scraped {len(items)} jobs. Running total: {len(jobs)}")
+            logger.info(f"Page {page}: Scraped {len(jobs)} tech jobs so far.")
         except Exception as exc:
             logger.warning(f"Arbeitnow fetch failed on page {page}: {exc}")
             break
             
     return jobs
+
 
 
 async def fetch_remotive_jobs(client: Any = None) -> List[Dict[str, Any]]:

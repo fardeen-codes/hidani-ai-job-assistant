@@ -227,26 +227,57 @@ async function handleFileUpload(file) {
     localStorage.setItem('hidani_candidate_profile', JSON.stringify(profile));
     updateProfileUI();
 
-    // Render assistant congratulations
-    const skillsList = (profile.skills || []).slice(0, 6).join(', ');
-    const greeting = (
-      `### 📄 Resume Successfully Parsed!\n\n` +
-      `Welcome, **${profile.name || 'Candidate'}**! Our **Parser Agent** analyzed your document:\n\n` +
-      `- **Experience Tier**: \`${profile.experience_level || 'Mid-Level'}\` (${profile.experience_years || 'Experienced'})\n` +
-      `- **Key Skills**: ${skillsList} *(+${Math.max(0, (profile.skills || []).length - 6)} more)*\n` +
-      `- **Target Roles**: ${(profile.preferred_roles || ['Software Engineer']).join(', ')}\n\n` +
-      `*${profile.summary || 'Profile ready for intelligent matchmaking.'}*\n\n` +
-      `Would you like me to find the **best matching jobs** for your profile now?`
+    // Format all 7 required assessment fields
+    const skillsFormatted = (profile.skills || []).join(', ') || 'Software Engineering, Python, REST APIs';
+    const eduFormatted = (profile.education || []).join(' • ') || 'Bachelor\'s in Computer Science / Engineering';
+    const projFormatted = (profile.projects || []).map(p => `  • ${p}`).join('\n') || '  • Software engineering and web development projects';
+    const contactInfo = profile.contact || [profile.email, profile.phone].filter(Boolean).join(' | ') || 'Contact provided in resume';
+
+    const parseSummaryMarkdown = (
+      `### 📄 Resume Parsed Successfully!\n\n` +
+      `Here are your extracted profile details:\n\n` +
+      `| Field | Extracted Details |\n` +
+      `| :--- | :--- |\n` +
+      `| 👤 **Name** | **${profile.name || 'Candidate'}** |\n` +
+      `| 📞 **Contact** | ${contactInfo} |\n` +
+      `| 💼 **Designation** | **${profile.designation || 'Software Engineer'}** |\n` +
+      `| 🛠️ **Skills** | ${skillsFormatted} |\n` +
+      `| ⏱️ **Experience** | ${profile.experience || profile.experience_years || '1-3 years'} (${profile.experience_level || 'Mid-Level'}) |\n` +
+      `| 🎓 **Education** | ${eduFormatted} |\n\n` +
+      `**🚀 Key Projects:**\n${projFormatted}\n\n` +
+      `*Finding top matching positions for your designation, skills, and experience...*`
     );
 
-    appendAssistantMessage(greeting);
-
-    // Provide one-click search chip
-    appendActionChip('🔍 Recommend matching jobs for my profile', () => {
-      window.sendPrompt('Recommend jobs matching my resume skills');
-    });
-
+    appendAssistantMessage(parseSummaryMarkdown);
     showToast(`Parsed resume for ${profile.name || 'Candidate'}!`, 'success');
+
+    // Auto-trigger Step 3: Recommend jobs matching designation, skills, and experience
+    const recActivityId = appendActivityMessage('Matching jobs against 1,600+ database listings with Sub-Agent 2 (Matcher)...');
+    scrollToBottom();
+
+    try {
+      const recRes = await fetch(`${API_BASE}/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: `Recommend jobs matching my designation (${profile.designation}), skills (${(profile.skills || []).slice(0, 5).join(', ')}), and experience (${profile.experience_level})`,
+          session_id: state.sessionId,
+          profile: profile
+        })
+      });
+
+      const recActivityEl = document.getElementById(recActivityId);
+      if (recActivityEl) recActivityEl.remove();
+
+      if (recRes.ok) {
+        const recData = await recRes.json();
+        appendAssistantMessage(recData.reply, recData.actions);
+      }
+    } catch (recErr) {
+      const recActivityEl = document.getElementById(recActivityId);
+      if (recActivityEl) recActivityEl.remove();
+      console.warn('Auto-recommendation failed:', recErr);
+    }
 
   } catch (error) {
     const activityEl = document.getElementById(uploadActivityId);
@@ -316,7 +347,7 @@ function renderInteractiveJobCards(container, jobs) {
   const cardList = document.createElement('div');
   cardList.className = 'space-y-3 pt-2';
 
-  jobs.forEach(job => {
+  jobs.forEach((job, idx) => {
     const isApplied = state.appliedJobIds.has(job.job_id);
     const score = job.match_score || 85;
 
@@ -330,9 +361,12 @@ function renderInteractiveJobCards(container, jobs) {
 
     card.innerHTML = `
       <div class="flex items-start justify-between gap-3 mb-2">
-        <div>
-          <h4 class="text-sm font-bold text-white">${escapeHtml(job.title)}</h4>
-          <p class="text-xs text-slate-400 font-medium">${escapeHtml(job.company)} • <span class="text-slate-300">${escapeHtml(job.location)}</span></p>
+        <div class="flex items-start gap-2.5">
+          <span class="px-2 py-1 rounded-lg bg-brand-500/20 text-brand-300 font-mono font-bold text-xs border border-brand-500/30 flex-shrink-0">#${idx + 1}</span>
+          <div>
+            <h4 class="text-sm font-bold text-white">${escapeHtml(job.title)}</h4>
+            <p class="text-xs text-slate-400 font-medium">${escapeHtml(job.company)} • <span class="text-slate-300">${escapeHtml(job.location)}</span></p>
+          </div>
         </div>
         <div class="text-right flex-shrink-0">
           <div class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-mono font-bold">

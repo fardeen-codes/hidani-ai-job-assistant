@@ -58,12 +58,14 @@ def get_job_by_id(job_id: str) -> Optional[Dict[str, Any]]:
 
 def search_jobs(
     skills: Optional[List[str]] = None,
+    designation: Optional[str] = None,
     query: Optional[str] = None,
     experience_level: Optional[str] = None,
+    location: Optional[str] = None,
     limit: int = 10
 ) -> List[Dict[str, Any]]:
     """
-    Search and filter jobs by skills, designation/query keyword, and experience level.
+    Search and filter jobs by designation, skills, query keyword, location, and experience level.
     Returns matched job dictionaries.
     """
     all_jobs = load_jobs()
@@ -72,28 +74,51 @@ def search_jobs(
 
     skills_set = {s.strip().lower() for s in (skills or []) if s.strip()}
     query_clean = (query or "").strip().lower()
+    desig_clean = (designation or "").strip().lower()
     exp_clean = (experience_level or "").strip().lower()
+    loc_clean = (location or "").strip().lower()
 
     scored_jobs = []
 
     for job in all_jobs:
-        score = 0.0
-        job_skills = {s.lower() for s in job.get("skills", [])}
+        job_loc = job.get("location", "").lower()
         title_lower = job.get("title", "").lower()
         desc_lower = job.get("description", "").lower()
         company_lower = job.get("company", "").lower()
         job_exp = job.get("experience", "").lower()
+        job_skills = {s.lower() for s in job.get("skills", [])}
 
-        # Skill matching score (Jaccard-like overlap)
+        # Strict location filter if specified (e.g. "remote")
+        if loc_clean:
+            if loc_clean == "remote" and "remote" not in job_loc:
+                continue
+            elif loc_clean != "remote" and loc_clean not in job_loc:
+                continue
+
+        score = 0.0
+
+        # Designation match (e.g. "Full Stack Developer", "Backend", "AI")
+        if desig_clean:
+            if desig_clean in title_lower:
+                score += 35.0
+            elif any(part in title_lower for part in desig_clean.split() if len(part) > 2):
+                score += 20.0
+
+        # Skill matching score (Jaccard overlap)
         if skills_set:
             overlap = len(skills_set.intersection(job_skills))
             if overlap > 0:
-                score += (overlap / len(skills_set)) * 50.0
+                score += (overlap / len(skills_set)) * 40.0
+            # Also check if any candidate skill appears in description
+            desc_matches = sum(1 for s in skills_set if s in desc_lower)
+            score += min(desc_matches * 3.0, 15.0)
 
-        # Query / title keyword matching
+        # Query / keyword matching (e.g., "React", "Python", "Docker")
         if query_clean:
             if query_clean in title_lower:
-                score += 35.0
+                score += 30.0
+            elif query_clean in job_skills:
+                score += 25.0
             elif query_clean in desc_lower or query_clean in company_lower:
                 score += 15.0
 
@@ -101,9 +126,11 @@ def search_jobs(
         if exp_clean:
             if exp_clean in job_exp or job_exp in exp_clean:
                 score += 15.0
+            elif "mid" in exp_clean and "entry" in job_exp:
+                score += 5.0
 
-        # If no specific filters provided, preserve default ordering
-        if not skills_set and not query_clean and not exp_clean:
+        # Baseline score
+        if not skills_set and not query_clean and not desig_clean and not exp_clean:
             score = 1.0
 
         if score > 0:

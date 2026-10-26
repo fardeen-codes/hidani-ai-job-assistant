@@ -58,49 +58,64 @@ def _calculate_lexical_score(job: Dict[str, Any], candidate_skills: List[str], c
     return min(round(score, 1), 99.0)
 
 
-def _generate_heuristic_reason(job: Dict[str, Any], candidate_skills: List[str], score: float) -> str:
+def _generate_heuristic_reason(job: Dict[str, Any], candidate_skills: List[str], candidate_designation: str = "", score: float = 85.0) -> str:
     """Generate clear, personalized explanation without LLM."""
     cand_skills_lower = {s.strip().lower(): s for s in candidate_skills if s.strip()}
     job_skills_lower = {s.strip().lower() for s in job.get("skills", []) if s.strip()}
     
     overlapping = [cand_skills_lower[k] for k in cand_skills_lower if k in job_skills_lower]
     
+    role_mention = f"Direct alignment with your {candidate_designation} profile: " if candidate_designation else ""
+    
     if overlapping:
         return (
-            f"Strong fit with your stack: overlaps with {len(overlapping)} of your core skills "
-            f"({', '.join(overlapping[:3])}) and aligns with your {job.get('experience', 'tech')} experience."
+            f"{role_mention}Matches {len(overlapping)} of your core skills "
+            f"({', '.join(overlapping[:3])}) and fits your {job.get('experience', 'engineering')} experience tier."
         )
     return (
-        f"Matches your background in software engineering with relevant scope in {job.get('title')} "
+        f"{role_mention}Aligns with your engineering background with impactful responsibilities in {job.get('title')} "
         f"at {job.get('company')} ({job.get('location')})."
     )
 
 
 def match_jobs_for_candidate(
     candidate_skills: Optional[List[str]] = None,
+    candidate_designation: Optional[str] = None,
     candidate_level: Optional[str] = None,
     query: Optional[str] = None,
+    location: Optional[str] = None,
     top_k: int = 5
 ) -> List[Job]:
     """
     Sub-Agent 2 execution:
-    Finds top matching jobs using hybrid text scoring, then enriches them
-    with calibrated scores and personalized match reasons.
+    Finds top matching jobs using hybrid text scoring matching designation, skills, and experience,
+    then enriches them with calibrated scores and personalized match reasons.
     """
     candidate_skills = candidate_skills or []
     candidate_level = candidate_level or "Mid-Level"
+    candidate_designation = candidate_designation or "Software Engineer"
 
-    # Step 1: Query database using db_service candidate retrieval
+    # Step 1: Query database using candidate retrieval
     candidates = search_jobs(
         skills=candidate_skills,
+        designation=candidate_designation,
         query=query,
         experience_level=candidate_level,
-        limit=20
+        location=location,
+        limit=25
     )
 
     if not candidates:
-        # Fallback to load default jobs if filters returned none
-        candidates = load_jobs()[:20]
+        # Fallback to general query if strict filters returned empty
+        candidates = search_jobs(
+            skills=candidate_skills,
+            query=query,
+            experience_level=candidate_level,
+            limit=25
+        )
+
+    if not candidates:
+        candidates = load_jobs()[:25]
 
     if not candidates:
         logger.warning("No jobs available in database for matching.")
@@ -110,6 +125,9 @@ def match_jobs_for_candidate(
     scored_candidates = []
     for j in candidates:
         score = _calculate_lexical_score(j, candidate_skills, candidate_level, query or "")
+        # Boost if designation matches job title
+        if candidate_designation and candidate_designation.lower() in j.get("title", "").lower():
+            score = min(score + 8.0, 99.0)
         scored_candidates.append((score, j))
 
     # Sort descending by score
@@ -120,7 +138,7 @@ def match_jobs_for_candidate(
     if not is_openai_configured():
         results = []
         for score, j in top_candidates:
-            reason = _generate_heuristic_reason(j, candidate_skills, score)
+            reason = _generate_heuristic_reason(j, candidate_skills, candidate_designation, score)
             results.append(Job(
                 job_id=j.get("job_id"),
                 title=j.get("title"),
@@ -134,6 +152,7 @@ def match_jobs_for_candidate(
                 match_reason=reason
             ))
         return results
+
 
     # LLM-enhanced match reasons
     try:

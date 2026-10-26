@@ -8,15 +8,20 @@ from pydantic import BaseModel, Field
 
 
 class ResumeData(BaseModel):
-    """Structured representation of extracted candidate resume data."""
-    name: Optional[str] = Field(default="Candidate", description="Applicant full name")
+    """Structured representation of extracted candidate resume data matching assessment criteria."""
+    name: str = Field(default="Candidate", description="Applicant full name")
+    contact: str = Field(default="", description="Email and phone contact information")
     email: Optional[str] = Field(default=None, description="Contact email address")
     phone: Optional[str] = Field(default=None, description="Contact phone number")
-    skills: List[str] = Field(default_factory=list, description="Technical and soft skills")
+    designation: str = Field(default="Software Engineer", description="Current or target professional designation/title")
+    skills: List[str] = Field(default_factory=list, description="Technical and domain skills")
+    experience: str = Field(default="1-3 years", description="Total experience and background summary")
     experience_years: Optional[str] = Field(default="1-3 years", description="Years of total experience")
     experience_level: Optional[str] = Field(default="Mid-Level", description="Entry-Level, Mid-Level, Senior, or Lead")
+    education: List[str] = Field(default_factory=list, description="Academic degrees, university, graduation year")
+    projects: List[str] = Field(default_factory=list, description="Key projects worked on with brief tech stack")
     preferred_roles: List[str] = Field(default_factory=list, description="Candidate target designations/roles")
-    summary: Optional[str] = Field(default=None, description="Professional background summary")
+    summary: Optional[str] = Field(default=None, description="Executive professional summary")
 
 
 class Job(BaseModel):
