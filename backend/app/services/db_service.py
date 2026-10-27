@@ -21,14 +21,17 @@ _db_lock = threading.RLock()
 
 def _atomic_write_json(file_path: Path, data: Any) -> None:
     """Atomically write JSON data to file using a temporary file to avoid corruption."""
-    file_path.parent.mkdir(parents=True, exist_ok=True)
-    temp_dir = file_path.parent
-    
-    with tempfile.NamedTemporaryFile("w", dir=temp_dir, delete=False, encoding="utf-8") as tf:
-        json.dump(data, tf, indent=2, ensure_ascii=False)
-        temp_name = tf.name
-
-    os.replace(temp_name, file_path)
+    try:
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        temp_dir = file_path.parent
+        with tempfile.NamedTemporaryFile("w", dir=temp_dir, delete=False, encoding="utf-8") as tf:
+            json.dump(data, tf, indent=2, ensure_ascii=False)
+            temp_name = tf.name
+        os.replace(temp_name, file_path)
+    except OSError as exc:
+        logger.warning(f"Atomic file replace failed ({exc}), falling back to direct write")
+        with open(file_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
 
 
 def load_jobs() -> List[Dict[str, Any]]:

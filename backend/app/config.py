@@ -25,17 +25,30 @@ except ImportError:
 
 # Data file paths
 JOBS_FILE = DATA_DIR / "jobs.json"
-APPLICATIONS_FILE = DATA_DIR / "applications.json"
+
+# In serverless environments like Vercel, the local filesystem is read-only except /tmp
+IS_SERVERLESS = os.getenv("VERCEL") == "1" or os.getenv("AWS_LAMBDA_FUNCTION_NAME") is not None
+if IS_SERVERLESS or not os.access(DATA_DIR if DATA_DIR.exists() else BACKEND_DIR, os.W_OK):
+    APPLICATIONS_FILE = Path("/tmp") / "applications.json"
+else:
+    APPLICATIONS_FILE = DATA_DIR / "applications.json"
 
 # Ensure data directory and files exist
-DATA_DIR.mkdir(parents=True, exist_ok=True)
-if not JOBS_FILE.exists():
-    with open(JOBS_FILE, "w", encoding="utf-8") as f:
-        f.write("[]")
+try:
+    if not IS_SERVERLESS:
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
+    if not JOBS_FILE.exists():
+        with open(JOBS_FILE, "w", encoding="utf-8") as f:
+            f.write("[]")
+except OSError:
+    pass
 
-if not APPLICATIONS_FILE.exists():
-    with open(APPLICATIONS_FILE, "w", encoding="utf-8") as f:
-        f.write("[]")
+try:
+    if not APPLICATIONS_FILE.exists():
+        with open(APPLICATIONS_FILE, "w", encoding="utf-8") as f:
+            f.write("[]")
+except OSError:
+    pass
 
 # OpenAI / LLM Configuration (Supports Groq, Gemini, OpenRouter, etc.)
 OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "").strip()
