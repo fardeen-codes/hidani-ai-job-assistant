@@ -5,6 +5,7 @@ and session state inspection.
 """
 
 import logging
+from pathlib import Path
 from typing import Optional
 
 from fastapi import FastAPI, File, HTTPException, Query, UploadFile, status
@@ -204,6 +205,30 @@ async def get_jobs_list(
 async def get_applications_list():
     """List all recorded job applications from applications.json."""
     return load_applications()
+
+
+# Static Frontend Delivery
+FRONTEND_DIR = Path(__file__).resolve().parent.parent.parent / "frontend"
+
+
+@app.get("/", include_in_schema=False)
+async def serve_index():
+    """Serve the conversational UI single-page application."""
+    index_file = FRONTEND_DIR / "index.html"
+    if index_file.exists():
+        from fastapi.responses import FileResponse
+        return FileResponse(index_file)
+    return {"message": "Hidani AI Job Assistant API is running. Visit /docs for Swagger UI."}
+
+
+@app.get("/app.js", include_in_schema=False)
+async def serve_app_js():
+    """Serve the frontend client script."""
+    js_file = FRONTEND_DIR / "app.js"
+    if js_file.exists():
+        from fastapi.responses import FileResponse
+        return FileResponse(js_file, media_type="application/javascript")
+    raise HTTPException(status_code=404, detail="Frontend script not found.")
 
 
 if __name__ == "__main__":
