@@ -7,18 +7,21 @@ import os
 from pathlib import Path
 from typing import List, Optional
 
-# Attempt to load .env if python-dotenv is installed
-try:
-    from dotenv import load_dotenv
-    load_dotenv()
-except ImportError:
-    pass
-
 # Base Directories
 APP_DIR = Path(__file__).resolve().parent
 BACKEND_DIR = APP_DIR.parent
 PROJECT_ROOT = BACKEND_DIR.parent
 DATA_DIR = BACKEND_DIR / "data"
+
+# Attempt to load .env if python-dotenv is installed
+try:
+    from dotenv import load_dotenv
+    for env_path in [BACKEND_DIR / ".env", PROJECT_ROOT / ".env", Path(".env")]:
+        if env_path.exists():
+            load_dotenv(env_path, override=True)
+            break
+except ImportError:
+    pass
 
 # Data file paths
 JOBS_FILE = DATA_DIR / "jobs.json"

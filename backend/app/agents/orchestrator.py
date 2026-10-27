@@ -257,12 +257,66 @@ def _execute_tool_call(name: str, args: Dict[str, Any], profile: Optional[Dict[s
 def _fallback_intent_orchestrator(message: str, profile: Optional[Dict[str, Any]] = None, session_id: str = "default-session") -> Tuple[str, List[ChatAction]]:
     """
     Intelligent heuristic fallback orchestrator when OPENAI_API_KEY is not configured.
-    Detects user intent (search, apply, status, info) and handles natural refinements.
+    Detects conversational intent (chit-chat, greetings, help, apply, status, search)
+    and handles natural dialog instead of unconditionally dumping jobs.
     """
     msg_lower = message.lower().strip()
     actions: List[ChatAction] = []
     
-    # 1. Check for Job Application Intent: "apply to job 3", "apply to job-00001", "apply 2", etc.
+    # 1. Chit-chat & "How are you" Intent
+    how_are_you_patterns = [
+        "how are you", "how are u", "how do you do", "how is it going",
+        "how's it going", "how are you doing", "what's up", "whats up",
+        "how r u", "how have you been"
+    ]
+    if any(k in msg_lower for k in how_are_you_patterns):
+        name_str = f" {profile.get('name')}" if profile and profile.get("name") else ""
+        return (
+            f"I'm doing well, thank you for asking{name_str}! I'm here to help you navigate open engineering roles, "
+            f"evaluate resume match relevance, and submit job applications. How can I help you today?",
+            []
+        )
+
+    # 2. Greetings Intent ("hello", "hi", "hey")
+    greeting_patterns = [r"^(?:hi|hello|hey|greetings|good\s+(?:morning|afternoon|evening|day))\b"]
+    is_pure_greeting = any(re.search(pat, msg_lower) for pat in greeting_patterns)
+    has_job_keywords = any(k in msg_lower for k in ["job", "role", "position", "apply", "search", "work", "find", "recommend", "python", "react", "remote"])
+    if is_pure_greeting and not has_job_keywords:
+        name_str = f" {profile.get('name')}" if profile and profile.get("name") else ""
+        return (
+            f"Hello{name_str}! How can I assist you with your career search today? "
+            f"You can upload your resume to evaluate your fit, ask me to recommend positions (e.g., *'Recommend jobs for me'*), "
+            f"or search for specific technologies (e.g., *'Show remote Python roles'*).",
+            []
+        )
+
+    # 3. Gratitude & Courtesies ("thank you", "thanks")
+    if any(k in msg_lower for k in ["thank you", "thanks", "thx", "appreciate it"]):
+        return (
+            "You're very welcome! Let me know if you would like to explore more positions, refine your search, or apply to any role.",
+            []
+        )
+
+    # 4. Identity & Capabilities Intent ("who are you", "what can you do", "help")
+    if any(k in msg_lower for k in ["who are you", "what can you do", "what do you do", "help", "what is this", "how does this work", "what are your capabilities"]):
+        return (
+            "I am your career assistant for Hidani Tech. Here is how I can help you:\n\n"
+            "- **Resume Analysis**: Upload a PDF or DOCX resume to extract your skills, designation, and experience level.\n"
+            "- **Job Recommendations**: Match your background against 1,600+ database listings with personalized match reasoning.\n"
+            "- **Instant Applications**: Apply directly with deduplication by saying *'apply to job 1'* or clicking Apply on any card.\n"
+            "- **Application Tracking**: Review submitted applications anytime by asking *'What jobs have I applied to?'*.\n\n"
+            "How would you like to get started?",
+            []
+        )
+
+    # 5. Goodbyes Intent ("bye", "goodbye")
+    if any(k in msg_lower for k in ["bye", "goodbye", "see you", "cya"]):
+        return (
+            "Goodbye! Best of luck with your job search, and feel free to return anytime to check new openings or application statuses.",
+            []
+        )
+
+    # 6. Check for Job Application Intent: "apply to job 3", "apply to job-00001", "apply 2", etc.
     if "apply" in msg_lower:
         resolved_job_id = _resolve_job_id_from_input(message, session_id)
         if resolved_job_id:
@@ -270,24 +324,24 @@ def _fallback_intent_orchestrator(message: str, profile: Optional[Dict[str, Any]
             actions.append(ChatAction(type="APPLICATION_SUBMITTED", data=res))
             if res.get("success"):
                 return (
-                    f"### 🎉 Application Successfully Submitted!\n\n"
+                    f"### Application Submitted\n\n"
                     f"{res.get('message')}\n\n"
                     f"- **Job ID**: `{resolved_job_id}`\n"
                     f"- **Status**: `Applied`\n"
                     f"- **Company**: {res.get('job', {}).get('company')}\n"
                     f"- **Role**: {res.get('job', {}).get('title')}\n\n"
-                    f"You can ask me anytime: *'Show my applied jobs'* to track your progress.",
+                    f"You can review active submissions anytime by asking: *'Show my applied jobs'*.",
                     actions
                 )
             else:
-                return f"⚠️ {res.get('message')}", actions
+                return f"Notice: {res.get('message')}", actions
         else:
             return (
-                "Please specify which job you'd like to apply for (e.g., `apply to job 1`, `apply to job 3`, or `apply to job-00001`).",
+                "Please specify which job you would like to apply for (e.g., `apply to job 1` or `apply to job-00001`).",
                 actions
             )
 
-    # 2. Check for Application Status Intent: "status", "applied", "applications", "tracking"
+    # 7. Check for Application Status Intent: "status", "applied", "applications", "tracking"
     if any(k in msg_lower for k in ["status", "applied", "my application", "applications", "track"]):
         target_id = _resolve_job_id_from_input(message, session_id)
         res = get_applications_summary(target_id)
@@ -296,18 +350,39 @@ def _fallback_intent_orchestrator(message: str, profile: Optional[Dict[str, Any]
         apps = res.get("applications", [])
         if not apps:
             return (
-                "📋 **Application Status**: You have not applied to any jobs yet.\n\n"
-                "Ask me *'Recommend jobs for me'* or upload your resume to get started!",
+                "### Application Status\n\n"
+                "No applications have been recorded yet.\n\n"
+                "Upload a resume or ask to recommend positions to begin.",
                 actions
             )
         
-        lines = [f"### 📋 Your Applied Jobs ({len(apps)} Total)\n"]
+        lines = [f"### Applied Positions ({len(apps)} Total)\n"]
         for a in apps:
-            lines.append(f"- **{a.get('job_title', 'Software Role')}** at **{a.get('company', 'Tech')}** (ID: `{a.get('job_id')}`) — Status: `{a.get('status')}` on *{a.get('applied_date')}*")
-        lines.append("\nWould you like me to find more opportunities or check another role?")
+            lines.append(f"- **{a.get('job_title', 'Software Role')}** at **{a.get('company', 'Tech')}** (ID: `{a.get('job_id')}`) — Status: `{a.get('status')}` ({a.get('applied_date')})")
+        lines.append("\nLet me know if you would like to apply to additional openings or review another position.")
         return "\n".join(lines), actions
 
-    # 3. Check for Job Recommendation & Natural Refinement Intent
+    # 8. Check for Job Recommendation & Natural Refinement Intent
+    job_intent_words = [
+        "job", "jobs", "recommend", "recommendation", "search", "find", "role", "roles",
+        "position", "positions", "opening", "openings", "work", "career", "hire", "hiring",
+        "match", "matching"
+    ]
+    tech_keywords = [
+        "react", "python", "javascript", "typescript", "fastapi", "django", "node", "ai",
+        "machine learning", "devops", "go", "golang", "backend", "frontend", "full stack",
+        "intern", "junior", "senior", "entry-level", "lead"
+    ]
+    is_job_query = any(k in msg_lower for k in job_intent_words) or any(k in msg_lower for k in tech_keywords) or (profile is not None)
+
+    # If the message is not related to jobs or skills and no profile is loaded, guide the user
+    if not is_job_query and not any(k in msg_lower for k in ["remote", "berlin", "munich", "germany", "usa"]):
+        return (
+            f"I'm here to help with your job search and applications. You can ask me to *'Recommend jobs for me'*, "
+            f"search for specific roles (e.g., *'Show remote Python positions'*), or upload your resume to get matched.",
+            []
+        )
+
     skills = profile.get("skills", []) if profile else []
     level = profile.get("experience_level", "Mid-Level") if profile else "Mid-Level"
     desig = profile.get("designation", "Software Engineer") if profile else "Software Engineer"
@@ -323,7 +398,7 @@ def _fallback_intent_orchestrator(message: str, profile: Optional[Dict[str, Any]
 
     # Skill or Domain query: e.g. "jobs needing React", "python", "ai", "fastapi"
     query = ""
-    for kw in ["react", "python", "javascript", "typescript", "fastapi", "django", "node", "ai", "machine learning", "devops", "go", "golang", "backend", "frontend", "full stack"]:
+    for kw in tech_keywords:
         if kw in msg_lower:
             query = kw
             break
@@ -341,7 +416,7 @@ def _fallback_intent_orchestrator(message: str, profile: Optional[Dict[str, Any]
     _session_last_recommendations[session_id] = jobs_dicts
     actions.append(ChatAction(type="RECOMMEND_JOBS", data=jobs_dicts))
 
-    greeting = f"Hello {profile.get('name', 'there')}! " if profile else "Hello! "
+    greeting = f"Hello {profile.get('name')}. " if profile and profile.get("name") else ""
     refinement_note = ""
     if location:
         refinement_note += " (filtered for **Remote** roles)"
@@ -349,23 +424,23 @@ def _fallback_intent_orchestrator(message: str, profile: Optional[Dict[str, Any]
         refinement_note += f" (matching **{query.title()}**)"
 
     intro = (
-        f"{greeting}Here are **{len(matched_jobs)} matching job positions** from our database{refinement_note}:\n\n"
+        f"{greeting}Here are **{len(matched_jobs)} matching positions** from the database{refinement_note}:\n\n"
     )
 
     cards = []
     for idx, j in enumerate(matched_jobs, 1):
         cards.append(
-            f"### {idx}. 💼 {j.title} — {j.company}\n"
+            f"### {idx}. {j.title} — {j.company}\n"
             f"- **Location**: {j.location} | **Level**: {j.experience}\n"
             f"- **Job ID**: `{j.job_id}` | **Match Score**: `{j.match_score}%`\n"
             f"- **Skills Required**: {', '.join(j.skills[:5])}\n"
-            f"- **Match Reason**: {j.match_reason}\n"
+            f"- **Match Assessment**: {j.match_reason}\n"
             f"- [View Original Posting]({j.source_link})\n"
         )
 
     closing = (
-        f"\n💡 *You can apply right now by saying **'apply to job 1'**, **'apply to job {len(matched_jobs)}'**, "
-        f"or by clicking the **Quick Apply** button on any card below!*"
+        f"\nYou can apply directly by typing **'apply to job 1'**, **'apply to job {len(matched_jobs)}'**, "
+        f"or by selecting **Apply** on any job card below."
     )
     return intro + "\n---\n".join(cards) + closing, actions
 
