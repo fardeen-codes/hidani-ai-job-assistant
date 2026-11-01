@@ -9,7 +9,12 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from app.schemas import JobApplication
-from app.services.db_service import apply_to_job, get_application_status, get_job_by_id
+from app.services.db_service import (
+    apply_to_job,
+    get_application_status,
+    get_job_by_id,
+    withdraw_application,
+)
 
 logger = logging.getLogger("ApplierAgent")
 
@@ -80,3 +85,25 @@ def get_applications_summary(job_id: Optional[str] = None) -> Dict[str, Any]:
         "applications": apps,
         "message": f"Found {len(apps)} submitted application(s)."
     }
+
+
+def withdraw_job_application(job_id: str) -> Dict[str, Any]:
+    """
+    Sub-Agent 3 execution for withdrawing an application:
+    Validates job ID, removes application record from applications.json,
+    and returns status response.
+    """
+    clean_id = (job_id or "").strip()
+    if not clean_id:
+        return {
+            "success": False,
+            "message": "Please provide a valid Job ID to withdraw application."
+        }
+
+    success, message = withdraw_application(clean_id)
+    return {
+        "success": success,
+        "message": message,
+        "job_id": clean_id
+    }
+

@@ -65,7 +65,7 @@ def search_jobs(
     query: Optional[str] = None,
     experience_level: Optional[str] = None,
     location: Optional[str] = None,
-    limit: int = 10
+    limit: Optional[int] = 10
 ) -> List[Dict[str, Any]]:
     """
     Search and filter jobs by designation, skills, query keyword, location, and experience level.
@@ -143,7 +143,7 @@ def search_jobs(
 
     # Sort descending by calculated score
     scored_jobs.sort(key=lambda x: x.get("internal_score", 0), reverse=True)
-    return scored_jobs[:limit]
+    return scored_jobs[:limit] if limit is not None else scored_jobs
 
 
 def load_applications() -> List[Dict[str, Any]]:
@@ -219,3 +219,31 @@ def get_application_status(job_id: Optional[str] = None) -> List[Dict[str, Any]]
 
     clean_id = job_id.strip().lower()
     return [a for a in apps if a.get("job_id", "").strip().lower() == clean_id]
+
+
+def withdraw_application(job_id: str) -> Tuple[bool, str]:
+    """
+    Withdraw / cancel an existing job application by job_id.
+    Thread-safe and atomically updates applications.json.
+    Returns: (success: bool, message: str)
+    """
+    clean_id = (job_id or "").strip()
+    if not clean_id:
+        return False, "Job ID cannot be empty."
+
+    with _db_lock:
+        applications = load_applications()
+        initial_len = len(applications)
+        remaining = [
+            a for a in applications
+            if a.get("job_id", "").strip().lower() != clean_id.lower()
+        ]
+
+        if len(remaining) == initial_len:
+            return False, f"No existing application found for Job ID '{clean_id}'."
+
+        _atomic_write_json(APPLICATIONS_FILE, remaining)
+
+    logger.info(f"Successfully withdrew application for job {clean_id}")
+    return True, f"Application for Job ID '{clean_id}' has been successfully withdrawn."
+

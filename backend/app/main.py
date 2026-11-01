@@ -28,9 +28,11 @@ from app.schemas import (
     UploadResumeResponse,
 )
 from app.services.db_service import (
+    get_job_by_id,
     load_applications,
     load_jobs,
     search_jobs,
+    withdraw_application,
 )
 from app.services.document_parser import (
     DocumentParsingError,
@@ -187,11 +189,22 @@ async def get_state(session_id: str = "default-session"):
 @app.get("/api/jobs", summary="Browse available jobs", tags=["Jobs"])
 async def get_jobs_list(
     query: Optional[str] = Query(None, description="Optional search keyword"),
+    location: Optional[str] = Query(None, description="Optional location filter (e.g. Remote, Berlin)"),
+    experience_level: Optional[str] = Query(None, description="Optional experience tier filter (Entry-Level, Mid-Level, Senior)"),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0)
 ):
-    """Retrieve paginated jobs from the local 1,600+ job database."""
-    all_jobs = search_jobs(query=query, limit=limit + offset) if query else load_jobs()
+    """Retrieve paginated jobs from the local 1,600+ job database with multi-field filtering."""
+    if query or location or experience_level:
+        all_jobs = search_jobs(
+            query=query,
+            location=location,
+            experience_level=experience_level,
+            limit=None
+        )
+    else:
+        all_jobs = load_jobs()
+
     paged = all_jobs[offset : offset + limit]
     return {
         "total": len(all_jobs),
@@ -201,10 +214,38 @@ async def get_jobs_list(
     }
 
 
+@app.get("/api/jobs/{job_id}", summary="Get job details by ID", tags=["Jobs"])
+async def get_job_details_by_id(job_id: str):
+    """Retrieve full details for a single job posting by ID."""
+    job = get_job_by_id(job_id)
+    if not job:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Job with ID '{job_id}' was not found in the database."
+        )
+    return job
+
+
 @app.get("/api/applications", summary="List all submitted applications", tags=["Applications"])
 async def get_applications_list():
     """List all recorded job applications from applications.json."""
     return load_applications()
+
+
+@app.delete("/api/applications/{job_id}", summary="Withdraw an active job application", tags=["Applications"])
+async def withdraw_application_endpoint(job_id: str):
+    """Withdraw/cancel a previously submitted job application."""
+    success, message = withdraw_application(job_id)
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=message
+        )
+    return {
+        "status": "success",
+        "message": message,
+        "job_id": job_id
+    }
 
 
 # Static Frontend Delivery

@@ -10,7 +10,11 @@ import logging
 import re
 from typing import Any, Dict, List, Optional, Tuple
 
-from app.agents.applier_agent import apply_for_job, get_applications_summary
+from app.agents.applier_agent import (
+    apply_for_job,
+    get_applications_summary,
+    withdraw_job_application,
+)
 from app.agents.matcher_agent import match_jobs_for_candidate
 from app.config import OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_MODEL, is_openai_configured
 from app.schemas import ChatAction
@@ -107,6 +111,23 @@ ORCHESTRATOR_TOOLS = [
                     "job_id": {
                         "type": "string",
                         "description": "The Job ID to inspect"
+                    }
+                },
+                "required": ["job_id"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "withdraw_application",
+            "description": "Withdraw or cancel a previously submitted job application by Job ID or recommendation index.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "job_id": {
+                        "type": "string",
+                        "description": "The exact Job ID (e.g. 'job-00001') or ordinal index (e.g. '1', '2') of the application to cancel."
                     }
                 },
                 "required": ["job_id"]
@@ -251,6 +272,13 @@ def _execute_tool_call(name: str, args: Dict[str, Any], profile: Optional[Dict[s
             return f"Job with ID '{job_id}' not found.", None
         return json.dumps(job), ChatAction(type="JOB_DETAILS", data=job)
 
+    elif name == "withdraw_application":
+        raw_id = args.get("job_id", "")
+        resolved_id = _resolve_job_id_from_input(str(raw_id), session_id) or str(raw_id)
+        res = withdraw_job_application(resolved_id)
+        action = ChatAction(type="APPLICATION_WITHDRAWN", data=res)
+        return json.dumps(res), action
+
     return f"Unknown tool '{name}'", None
 
 
@@ -316,7 +344,30 @@ def _fallback_intent_orchestrator(message: str, profile: Optional[Dict[str, Any]
             []
         )
 
-    # 6. Check for Job Application Intent: "apply to job 3", "apply to job-00001", "apply 2", etc.
+    # 6. Check for Application Withdrawal Intent: "withdraw", "cancel application", "remove application"
+    if any(k in msg_lower for k in ["withdraw", "cancel application", "cancel my application", "remove application", "delete application"]):
+        target_id = _resolve_job_id_from_input(message, session_id)
+        if target_id:
+            res = withdraw_job_application(target_id)
+            actions.append(ChatAction(type="APPLICATION_WITHDRAWN", data=res))
+            if res.get("success"):
+                return (
+                    f"### Application Withdrawn\n\n"
+                    f"{res.get('message')}\n\n"
+                    f"- **Job ID**: `{target_id}`\n"
+                    f"- **Status**: `Withdrawn`\n\n"
+                    f"You can review active submissions anytime by asking: *'Show my applied jobs'*.",
+                    actions
+                )
+            else:
+                return f"Notice: {res.get('message')}", actions
+        else:
+            return (
+                "Please specify which application you would like to withdraw (e.g., `withdraw application for job-00001` or `cancel application 1`).",
+                actions
+            )
+
+    # 7. Check for Job Application Intent: "apply to job 3", "apply to job-00001", "apply 2", etc.
     if "apply" in msg_lower:
         resolved_job_id = _resolve_job_id_from_input(message, session_id)
         if resolved_job_id:
@@ -541,7 +592,7 @@ def run_orchestrator(
 
     except Exception as exc:
         logger.error(f"Orchestrator LLM execution error: {exc}. Using fallback router.")
-        reply, actions = _fallback_intent_orchestrator(message, active_profile)
+        reply, actions = _fallback_intent_orchestrator(message, active_profile, session_id=session_id)
         return reply, actions
 
 
