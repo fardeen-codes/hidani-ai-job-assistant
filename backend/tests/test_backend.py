@@ -134,6 +134,29 @@ class BackendTestCase(unittest.TestCase):
         reply_withdraw, actions_withdraw = _fallback_intent_orchestrator("withdraw application 1", session_id=session_id)
         self.assertTrue(any(a.type == "APPLICATION_WITHDRAWN" for a in actions_withdraw))
 
+    def test_session_reset(self):
+        """Test chat session reset endpoint and natural intent."""
+        session_id = "test-reset-session"
+
+        # Initialize session state with a message
+        self.client.post("/api/chat", json={"message": "hi", "session_id": session_id})
+        state_before = self.client.get(f"/api/state/{session_id}").json()
+        self.assertGreater(state_before["message_count"], 0)
+
+        # Reset session
+        res_reset = self.client.post(f"/api/chat/reset/{session_id}")
+        self.assertEqual(res_reset.status_code, 200)
+        self.assertEqual(res_reset.json()["status"], "success")
+
+        # Verify state is cleared
+        state_after = self.client.get(f"/api/state/{session_id}").json()
+        self.assertEqual(state_after["message_count"], 0)
+
+        # Test reset intent
+        reply, actions = _fallback_intent_orchestrator("reset chat", session_id=session_id)
+        self.assertTrue(any(a.type == "SESSION_RESET" for a in actions))
+
 
 if __name__ == "__main__":
     unittest.main()
+

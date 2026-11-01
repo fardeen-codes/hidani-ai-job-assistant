@@ -12,7 +12,11 @@ from fastapi import FastAPI, File, HTTPException, Query, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.agents.orchestrator import get_session_state, run_orchestrator
+from app.agents.orchestrator import (
+    clear_session_state,
+    get_session_state,
+    run_orchestrator,
+)
 from app.agents.parser_agent import parse_resume_with_llm
 from app.config import (
     APP_TITLE,
@@ -156,6 +160,19 @@ async def chat(request: ChatRequest):
     except Exception as exc:
         logger.error(f"Error in chat processing: {exc}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Chat assistant error: {str(exc)}")
+
+
+@app.post("/api/chat/reset", summary="Reset session conversation history", tags=["Chat"])
+@app.post("/api/chat/reset/{session_id}", include_in_schema=False)
+async def reset_chat_session(session_id: str = "default-session"):
+    """Reset conversational history and recommendation context for a session."""
+    cleared = clear_session_state(session_id)
+    return {
+        "status": "success",
+        "message": f"Session '{session_id}' conversation history has been reset.",
+        "session_id": session_id,
+        "cleared": cleared
+    }
 
 
 @app.get(

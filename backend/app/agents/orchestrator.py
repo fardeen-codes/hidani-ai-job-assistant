@@ -344,6 +344,14 @@ def _fallback_intent_orchestrator(message: str, profile: Optional[Dict[str, Any]
             []
         )
 
+    # 6. Clear / Reset Chat Intent ("clear chat", "reset chat", "start over")
+    if any(k in msg_lower for k in ["clear chat", "reset chat", "reset conversation", "start over", "clear conversation", "restart chat"]):
+        clear_session_state(session_id)
+        return (
+            "I have cleared our conversation history and reset recommendations. How can I assist you with your career search?",
+            [ChatAction(type="SESSION_RESET", data={"session_id": session_id})]
+        )
+
     # 6. Check for Application Withdrawal Intent: "withdraw", "cancel application", "remove application"
     if any(k in msg_lower for k in ["withdraw", "cancel application", "cancel my application", "remove application", "delete application"]):
         target_id = _resolve_job_id_from_input(message, session_id)
@@ -606,3 +614,12 @@ def get_session_state(session_id: str) -> Dict[str, Any]:
         "has_profile": profile is not None,
         "profile": profile
     }
+
+
+def clear_session_state(session_id: str) -> bool:
+    """Clear conversation history and cached recommendations for a given session."""
+    had_state = session_id in _session_histories or session_id in _session_last_recommendations
+    _session_histories.pop(session_id, None)
+    _session_last_recommendations.pop(session_id, None)
+    return had_state
+
