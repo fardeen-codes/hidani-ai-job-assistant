@@ -18,7 +18,7 @@ from app.agents.applier_agent import (
 from app.agents.matcher_agent import match_jobs_for_candidate
 from app.config import OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_MODEL, is_openai_configured
 from app.schemas import ChatAction
-from app.services.db_service import get_job_by_id
+from app.services.db_service import get_job_by_id, load_applications
 
 logger = logging.getLogger("OrchestratorAgent")
 
@@ -153,6 +153,7 @@ def _resolve_job_id_from_input(input_val: str, session_id: str) -> Optional[str]
         return direct_match.group(0)
 
     last_recs = _session_last_recommendations.get(session_id, [])
+    apps = load_applications()
 
     # Numeric match: "apply to job 3", "job 3", "3", "#3"
     num_match = re.search(r"\b(?:job\s*#?|#)?(\d{1,2})\b", clean)
@@ -160,6 +161,8 @@ def _resolve_job_id_from_input(input_val: str, session_id: str) -> Optional[str]
         idx = int(num_match.group(1)) - 1
         if 0 <= idx < len(last_recs):
             return last_recs[idx].get("job_id")
+        elif 0 <= idx < len(apps):
+            return apps[idx].get("job_id")
 
     # Word ordinal matches
     word_map = {
@@ -173,6 +176,8 @@ def _resolve_job_id_from_input(input_val: str, session_id: str) -> Optional[str]
         if re.search(r"\b" + word + r"\b", clean):
             if 0 <= idx < len(last_recs):
                 return last_recs[idx].get("job_id")
+            elif 0 <= idx < len(apps):
+                return apps[idx].get("job_id")
 
     return clean if clean.startswith("job-") else None
 

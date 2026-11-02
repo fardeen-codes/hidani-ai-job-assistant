@@ -207,6 +207,39 @@ class BackendTestCase(unittest.TestCase):
         res_after = self.client.get(f"/api/applications/{self.test_job_id}")
         self.assertEqual(res_after.status_code, 404)
 
+    def test_applications_query_filters(self):
+        """Test GET /api/applications with status and search query parameters."""
+        withdraw_application(self.test_job_id)
+        # Apply to test job
+        self.client.post("/api/applications", json={"job_id": self.test_job_id})
+
+        # 1. Filter by status
+        res_status = self.client.get("/api/applications?status=Applied")
+        self.assertEqual(res_status.status_code, 200)
+        self.assertTrue(any(a["job_id"] == self.test_job_id for a in res_status.json()))
+
+        # Non-matching status
+        res_none = self.client.get("/api/applications?status=Rejected")
+        self.assertEqual(res_none.status_code, 200)
+        self.assertFalse(any(a["job_id"] == self.test_job_id for a in res_none.json()))
+
+        # 2. Filter by search keyword
+        res_search = self.client.get(f"/api/applications?search={self.test_job_id}")
+        self.assertEqual(res_search.status_code, 200)
+        self.assertEqual(len(res_search.json()), 1)
+        self.assertEqual(res_search.json()[0]["job_id"], self.test_job_id)
+
+        # Clean up
+        withdraw_application(self.test_job_id)
+
+    def test_heuristic_reason_clean_designation(self):
+        """Verify heuristic matcher reason produces clean text with designation and skills."""
+        from app.agents.matcher_agent import _generate_heuristic_reason
+        job = {"title": "Backend Engineer", "company": "Hidani", "skills": ["Python", "FastAPI"], "experience": "Mid-Level"}
+        reason = _generate_heuristic_reason(job, candidate_skills=["Python"], candidate_designation="Senior Python Developer", score=90.0)
+        self.assertIn("Senior Python Developer", reason)
+        self.assertNotIn("90.0 profile", reason)
+
 
 if __name__ == "__main__":
     unittest.main()

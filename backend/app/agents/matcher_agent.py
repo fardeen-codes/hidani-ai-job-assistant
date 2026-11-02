@@ -203,7 +203,7 @@ def match_jobs_for_candidate(
             jid = j.get("job_id")
             llm_info = llm_matches.get(jid, {})
             score = float(llm_info.get("match_score", lexical_score))
-            reason = llm_info.get("match_reason") or _generate_heuristic_reason(j, candidate_skills, score)
+            reason = llm_info.get("match_reason") or _generate_heuristic_reason(j, candidate_skills, candidate_designation, score)
 
             results.append(Job(
                 job_id=j.get("job_id"),
@@ -223,7 +223,7 @@ def match_jobs_for_candidate(
         logger.error(f"LLM match reasoning failed: {exc}. Using fallback reasoning.")
         results = []
         for score, j in top_candidates:
-            reason = _generate_heuristic_reason(j, candidate_skills, score)
+            reason = _generate_heuristic_reason(j, candidate_skills, candidate_designation, score)
             results.append(Job(
                 job_id=j.get("job_id"),
                 title=j.get("title"),

@@ -255,9 +255,24 @@ async def get_job_details_by_id(job_id: str):
 
 
 @app.get("/api/applications", summary="List all submitted applications", tags=["Applications"])
-async def get_applications_list():
-    """List all recorded job applications from applications.json."""
-    return load_applications()
+async def get_applications_list(
+    status: Optional[str] = Query(None, description="Optional status filter (e.g. Applied, Under Review)"),
+    search: Optional[str] = Query(None, description="Optional search keyword matching job title or company")
+):
+    """List all recorded job applications from applications.json with optional status and search filters."""
+    apps = load_applications()
+    if status:
+        stat_clean = status.strip().lower()
+        apps = [a for a in apps if (a.get("status") or "").strip().lower() == stat_clean]
+    if search:
+        search_clean = search.strip().lower()
+        apps = [
+            a for a in apps
+            if search_clean in (a.get("job_title") or "").lower()
+            or search_clean in (a.get("company") or "").lower()
+            or search_clean in (a.get("job_id") or "").lower()
+        ]
+    return apps
 
 
 @app.post(
