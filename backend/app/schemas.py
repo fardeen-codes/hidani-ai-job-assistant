@@ -85,3 +85,28 @@ class UploadResumeResponse(BaseModel):
     status: str
     message: str
     profile: ResumeData
+
+
+class ApplicationCreateRequest(BaseModel):
+    """Payload to submit a direct job application."""
+    job_id: str = Field(..., min_length=1, description="Unique identifier of the job to apply for")
+
+
+class SkillCount(BaseModel):
+    skill: str
+    count: int
+
+
+class LocationCount(BaseModel):
+    location: str
+    count: int
+
+
+class JobStatsResponse(BaseModel):
+    """Aggregated market statistics across all database job listings."""
+    total_jobs: int = Field(description="Total number of jobs in database")
+    remote_jobs: int = Field(description="Number of remote job listings")
+    top_locations: List[LocationCount] = Field(description="Top hiring locations")
+    top_skills: List[SkillCount] = Field(description="Top requested skills")
+    experience_breakdown: Dict[str, int] = Field(description="Count of jobs by experience tier")
+    total_applications: int = Field(description="Total submitted applications")

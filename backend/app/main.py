@@ -25,14 +25,19 @@ from app.config import (
     is_openai_configured,
 )
 from app.schemas import (
+    ApplicationCreateRequest,
     ChatRequest,
     ChatResponse,
     ChatStateResponse,
     JobApplication,
+    JobStatsResponse,
     UploadResumeResponse,
 )
 from app.services.db_service import (
+    apply_to_job,
+    get_application_status,
     get_job_by_id,
+    get_job_stats,
     load_applications,
     load_jobs,
     search_jobs,
@@ -231,6 +236,12 @@ async def get_jobs_list(
     }
 
 
+@app.get("/api/jobs/stats", response_model=JobStatsResponse, summary="Get job database statistics and market insights", tags=["Jobs"])
+async def get_jobs_statistics():
+    """Retrieve aggregated job market statistics, top demanded skills, and remote job distribution."""
+    return get_job_stats()
+
+
 @app.get("/api/jobs/{job_id}", summary="Get job details by ID", tags=["Jobs"])
 async def get_job_details_by_id(job_id: str):
     """Retrieve full details for a single job posting by ID."""
@@ -247,6 +258,60 @@ async def get_job_details_by_id(job_id: str):
 async def get_applications_list():
     """List all recorded job applications from applications.json."""
     return load_applications()
+
+
+@app.post(
+    "/api/applications",
+    response_model=dict,
+    status_code=status.HTTP_201_CREATED,
+    summary="Submit a job application",
+    tags=["Applications"]
+)
+async def submit_application(payload: ApplicationCreateRequest):
+    """
+    Submit a direct job application with deduplication and validation.
+    Returns 201 Created on success, 409 Conflict if already applied, or 404 if job ID is not found.
+    """
+    clean_id = (payload.job_id or "").strip()
+    if not clean_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Job ID cannot be empty."
+        )
+
+    success, message, app_data = apply_to_job(clean_id)
+    if not success:
+        if app_data is not None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=message
+            )
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=message
+        )
+
+    return {
+        "status": "success",
+        "message": message,
+        "application": app_data
+    }
+
+
+@app.get(
+    "/api/applications/{job_id}",
+    summary="Get application details by job ID",
+    tags=["Applications"]
+)
+async def get_application_by_id(job_id: str):
+    """Retrieve application status and details for a specific job ID."""
+    apps = get_application_status(job_id)
+    if not apps:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No application found for Job ID '{job_id}'."
+        )
+    return apps[0]
 
 
 @app.delete("/api/applications/{job_id}", summary="Withdraw an active job application", tags=["Applications"])

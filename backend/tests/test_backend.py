@@ -156,6 +156,57 @@ class BackendTestCase(unittest.TestCase):
         reply, actions = _fallback_intent_orchestrator("reset chat", session_id=session_id)
         self.assertTrue(any(a.type == "SESSION_RESET" for a in actions))
 
+    def test_job_stats_endpoint(self):
+        """Test aggregated market stats endpoint /api/jobs/stats."""
+        res = self.client.get("/api/jobs/stats")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertGreaterEqual(data["total_jobs"], 1600)
+        self.assertGreater(data["remote_jobs"], 0)
+        self.assertIsInstance(data["top_locations"], list)
+        self.assertGreater(len(data["top_locations"]), 0)
+        self.assertIsInstance(data["top_skills"], list)
+        self.assertGreater(len(data["top_skills"]), 0)
+        self.assertIn("Mid-Level", data["experience_breakdown"])
+
+    def test_direct_application_endpoints(self):
+        """Test RESTful POST /api/applications and GET /api/applications/{job_id}."""
+        # Clean up any leftover test application
+        withdraw_application(self.test_job_id)
+
+        # 1. Successful direct application
+        res_post = self.client.post("/api/applications", json={"job_id": self.test_job_id})
+        self.assertEqual(res_post.status_code, 201)
+        data_post = res_post.json()
+        self.assertEqual(data_post["status"], "success")
+        self.assertEqual(data_post["application"]["job_id"], self.test_job_id)
+
+        # 2. Retrieve application details by job ID
+        res_get = self.client.get(f"/api/applications/{self.test_job_id}")
+        self.assertEqual(res_get.status_code, 200)
+        data_get = res_get.json()
+        self.assertEqual(data_get["job_id"], self.test_job_id)
+        self.assertEqual(data_get["status"], "Applied")
+
+        # 3. Duplicate application yields 409 Conflict
+        res_dup = self.client.post("/api/applications", json={"job_id": self.test_job_id})
+        self.assertEqual(res_dup.status_code, 409)
+
+        # 4. Non-existent job application yields 404 Not Found
+        res_missing = self.client.get("/api/applications/non-existent-job-xyz")
+        self.assertEqual(res_missing.status_code, 404)
+
+        # 5. Apply to invalid job yields 404 Not Found
+        res_invalid = self.client.post("/api/applications", json={"job_id": "non-existent-job-xyz"})
+        self.assertEqual(res_invalid.status_code, 404)
+
+        # 6. Withdraw application and verify it no longer exists
+        res_del = self.client.delete(f"/api/applications/{self.test_job_id}")
+        self.assertEqual(res_del.status_code, 200)
+
+        res_after = self.client.get(f"/api/applications/{self.test_job_id}")
+        self.assertEqual(res_after.status_code, 404)
+
 
 if __name__ == "__main__":
     unittest.main()

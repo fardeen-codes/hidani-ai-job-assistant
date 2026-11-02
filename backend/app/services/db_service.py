@@ -9,6 +9,7 @@ import logging
 import os
 import tempfile
 import threading
+from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -246,4 +247,54 @@ def withdraw_application(job_id: str) -> Tuple[bool, str]:
 
     logger.info(f"Successfully withdrew application for job {clean_id}")
     return True, f"Application for Job ID '{clean_id}' has been successfully withdrawn."
+
+
+def get_job_stats() -> Dict[str, Any]:
+    """
+    Compute aggregated market statistics across all available jobs,
+    including remote count, top required skills, experience level distribution,
+    and top locations.
+    """
+    jobs = load_jobs()
+    total_jobs = len(jobs)
+    remote_count = 0
+    skills_counter: Counter = Counter()
+    locations_counter: Counter = Counter()
+    exp_counter: Counter = Counter()
+
+    for job in jobs:
+        loc = (job.get("location") or "").strip()
+        if "remote" in loc.lower():
+            remote_count += 1
+        if loc:
+            locations_counter[loc] += 1
+
+        exp = (job.get("experience") or "").strip()
+        if exp:
+            exp_counter[exp] += 1
+
+        for skill in job.get("skills", []):
+            clean_skill = str(skill).strip()
+            if clean_skill:
+                skills_counter[clean_skill] += 1
+
+    top_skills = [
+        {"skill": skill, "count": count}
+        for skill, count in skills_counter.most_common(10)
+    ]
+    top_locations = [
+        {"location": loc, "count": count}
+        for loc, count in locations_counter.most_common(5)
+    ]
+
+    apps_count = len(load_applications())
+
+    return {
+        "total_jobs": total_jobs,
+        "remote_jobs": remote_count,
+        "top_locations": top_locations,
+        "top_skills": top_skills,
+        "experience_breakdown": dict(exp_counter),
+        "total_applications": apps_count,
+    }
 
