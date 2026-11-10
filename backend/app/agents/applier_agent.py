@@ -29,7 +29,8 @@ def apply_for_job(job_id: str) -> Dict[str, Any]:
         return {
             "success": False,
             "message": "Please provide a valid Job ID (e.g., job-00001) to apply.",
-            "application": None
+            "application": None,
+            "job": None
         }
 
     # Verify existence
@@ -38,7 +39,8 @@ def apply_for_job(job_id: str) -> Dict[str, Any]:
         return {
             "success": False,
             "message": f"Job ID '{clean_id}' does not exist in the database. Please verify the ID from the recommended jobs.",
-            "application": None
+            "application": None,
+            "job": None
         }
 
     success, message, app_data = apply_to_job(clean_id)
@@ -62,11 +64,12 @@ def get_applications_summary(job_id: Optional[str] = None) -> Dict[str, Any]:
     Sub-Agent 3 execution for querying application statuses:
     Returns full list of applications or targeted status for a specific job.
     """
-    apps = get_application_status(job_id)
+    clean_id = (job_id or "").strip()
+    apps = get_application_status(clean_id if clean_id else None)
 
-    if job_id and not apps:
-        job = get_job_by_id(job_id)
-        job_name = f"for '{job.get('title')}'" if job else f"for Job ID '{job_id}'"
+    if clean_id and not apps:
+        job = get_job_by_id(clean_id)
+        job_name = f"for '{job.get('title')}'" if job else f"for Job ID '{clean_id}'"
         return {
             "count": 0,
             "applications": [],
@@ -97,7 +100,8 @@ def withdraw_job_application(job_id: str) -> Dict[str, Any]:
     if not clean_id:
         return {
             "success": False,
-            "message": "Please provide a valid Job ID to withdraw application."
+            "message": "Please provide a valid Job ID to withdraw application.",
+            "job_id": None
         }
 
     success, message = withdraw_application(clean_id)

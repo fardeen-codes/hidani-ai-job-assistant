@@ -413,6 +413,13 @@ def _fallback_intent_orchestrator(message: str, profile: Optional[Dict[str, Any]
         
         apps = res.get("applications", [])
         if not apps:
+            if target_id:
+                return (
+                    f"### Application Status\n\n"
+                    f"{res.get('message', f'No application found for Job ID {target_id}.')}\n\n"
+                    "You can ask me to *'Show my applied jobs'* to view all active applications.",
+                    actions
+                )
             return (
                 "### Application Status\n\n"
                 "No applications have been recorded yet.\n\n"

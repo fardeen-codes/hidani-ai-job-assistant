@@ -215,10 +215,10 @@ def apply_to_job(job_id: str) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
 def get_application_status(job_id: Optional[str] = None) -> List[Dict[str, Any]]:
     """Retrieve all applications or filter for a specific job ID."""
     apps = load_applications()
-    if not job_id:
+    clean_id = (job_id or "").strip().lower()
+    if not clean_id:
         return apps
 
-    clean_id = job_id.strip().lower()
     return [a for a in apps if a.get("job_id", "").strip().lower() == clean_id]
 
 

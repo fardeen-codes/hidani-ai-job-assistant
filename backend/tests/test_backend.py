@@ -240,6 +240,41 @@ class BackendTestCase(unittest.TestCase):
         self.assertIn("Senior Python Developer", reason)
         self.assertNotIn("90.0 profile", reason)
 
+    def test_applier_agent_edge_cases_and_status(self):
+        """Test Applier Agent validation and targeted status querying."""
+        from app.agents.applier_agent import apply_for_job, get_applications_summary, withdraw_job_application
+
+        # Empty job ID apply
+        res_empty = apply_for_job("")
+        self.assertFalse(res_empty["success"])
+        self.assertIsNone(res_empty["application"])
+        self.assertIsNone(res_empty["job"])
+
+        # Non-existent job ID apply
+        res_none = apply_for_job("job-does-not-exist-000")
+        self.assertFalse(res_none["success"])
+        self.assertIsNone(res_none["job"])
+
+        # Empty withdraw
+        res_withdraw_empty = withdraw_job_application("")
+        self.assertFalse(res_withdraw_empty["success"])
+        self.assertIsNone(res_withdraw_empty["job_id"])
+
+        # Targeted status for job not applied to
+        summary = get_applications_summary("job-00001")
+        self.assertEqual(summary["count"], 0)
+        self.assertIn("haven't submitted an application", summary["message"])
+
+        # Status intent in orchestrator for targeted non-applied job
+        reply, actions = _fallback_intent_orchestrator("status of job-00001", session_id="test-targeted-status")
+        self.assertIn("haven't submitted an application", reply.lower())
+        self.assertTrue(any(a.type == "APPLICATIONS_LIST" for a in actions))
+
+        # Whitespace handling in get_application_status
+        all_apps = get_application_status()
+        ws_apps = get_application_status("   ")
+        self.assertEqual(len(all_apps), len(ws_apps))
+
 
 if __name__ == "__main__":
     unittest.main()
