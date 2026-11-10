@@ -275,6 +275,32 @@ class BackendTestCase(unittest.TestCase):
         ws_apps = get_application_status("   ")
         self.assertEqual(len(all_apps), len(ws_apps))
 
+    def test_endpoint_input_sanitization_and_empty_id_validation(self):
+        """Test endpoint 400 validation on whitespace or empty job IDs."""
+        # 1. GET /api/jobs with whitespace id
+        res_job_empty = self.client.get("/api/jobs/%20%20")
+        self.assertEqual(res_job_empty.status_code, 400)
+        self.assertIn("cannot be empty", res_job_empty.json()["detail"].lower())
+
+        # 2. GET /api/applications with whitespace id
+        res_app_empty = self.client.get("/api/applications/%20%20")
+        self.assertEqual(res_app_empty.status_code, 400)
+        self.assertIn("cannot be empty", res_app_empty.json()["detail"].lower())
+
+        # 3. DELETE /api/applications with whitespace id
+        res_del_empty = self.client.delete("/api/applications/%20%20")
+        self.assertEqual(res_del_empty.status_code, 400)
+        self.assertIn("cannot be empty", res_del_empty.json()["detail"].lower())
+
+        # 4. get_job_by_id with empty or whitespace returns None immediately
+        self.assertIsNone(get_job_by_id(""))
+        self.assertIsNone(get_job_by_id("   "))
+
+        # 5. GET /api/jobs with whitespace query falls back cleanly
+        res_ws_query = self.client.get("/api/jobs?query=%20%20&limit=5")
+        self.assertEqual(res_ws_query.status_code, 200)
+        self.assertEqual(len(res_ws_query.json()["jobs"]), 5)
+
 
 if __name__ == "__main__":
     unittest.main()

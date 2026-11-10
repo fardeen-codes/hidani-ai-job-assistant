@@ -217,11 +217,14 @@ async def get_jobs_list(
     offset: int = Query(0, ge=0)
 ):
     """Retrieve paginated jobs from the local 1,600+ job database with multi-field filtering."""
-    if query or location or experience_level:
+    clean_query = (query or "").strip()
+    clean_loc = (location or "").strip()
+    clean_exp = (experience_level or "").strip()
+    if clean_query or clean_loc or clean_exp:
         all_jobs = search_jobs(
-            query=query,
-            location=location,
-            experience_level=experience_level,
+            query=clean_query or None,
+            location=clean_loc or None,
+            experience_level=clean_exp or None,
             limit=None
         )
     else:
@@ -245,11 +248,17 @@ async def get_jobs_statistics():
 @app.get("/api/jobs/{job_id}", summary="Get job details by ID", tags=["Jobs"])
 async def get_job_details_by_id(job_id: str):
     """Retrieve full details for a single job posting by ID."""
-    job = get_job_by_id(job_id)
+    clean_id = (job_id or "").strip()
+    if not clean_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Job ID cannot be empty."
+        )
+    job = get_job_by_id(clean_id)
     if not job:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Job with ID '{job_id}' was not found in the database."
+            detail=f"Job with ID '{clean_id}' was not found in the database."
         )
     return job
 
@@ -320,11 +329,17 @@ async def submit_application(payload: ApplicationCreateRequest):
 )
 async def get_application_by_id(job_id: str):
     """Retrieve application status and details for a specific job ID."""
-    apps = get_application_status(job_id)
+    clean_id = (job_id or "").strip()
+    if not clean_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Job ID cannot be empty."
+        )
+    apps = get_application_status(clean_id)
     if not apps:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"No application found for Job ID '{job_id}'."
+            detail=f"No application found for Job ID '{clean_id}'."
         )
     return apps[0]
 
@@ -332,7 +347,13 @@ async def get_application_by_id(job_id: str):
 @app.delete("/api/applications/{job_id}", summary="Withdraw an active job application", tags=["Applications"])
 async def withdraw_application_endpoint(job_id: str):
     """Withdraw/cancel a previously submitted job application."""
-    success, message = withdraw_application(job_id)
+    clean_id = (job_id or "").strip()
+    if not clean_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Job ID cannot be empty."
+        )
+    success, message = withdraw_application(clean_id)
     if not success:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -341,7 +362,7 @@ async def withdraw_application_endpoint(job_id: str):
     return {
         "status": "success",
         "message": message,
-        "job_id": job_id
+        "job_id": clean_id
     }
 
 

@@ -54,6 +54,8 @@ def load_jobs() -> List[Dict[str, Any]]:
 def get_job_by_id(job_id: str) -> Optional[Dict[str, Any]]:
     """Find a specific job by job_id (case-insensitive trim)."""
     clean_id = (job_id or "").strip().lower()
+    if not clean_id:
+        return None
     for job in load_jobs():
         if job.get("job_id", "").strip().lower() == clean_id:
             return job
