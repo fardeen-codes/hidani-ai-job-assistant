@@ -19,6 +19,20 @@ from app.config import APPLICATIONS_FILE, JOBS_FILE
 logger = logging.getLogger("DBService")
 _db_lock = threading.RLock()
 
+# In-memory mtime cache and fast lookup index for static jobs database
+_jobs_cache: Optional[List[Dict[str, Any]]] = None
+_jobs_by_id_cache: Dict[str, Dict[str, Any]] = {}
+_jobs_cache_mtime: Optional[float] = None
+
+
+def invalidate_jobs_cache() -> None:
+    """Clear in-memory jobs cache to force reload on next access."""
+    global _jobs_cache, _jobs_by_id_cache, _jobs_cache_mtime
+    with _db_lock:
+        _jobs_cache = None
+        _jobs_by_id_cache = {}
+        _jobs_cache_mtime = None
+
 
 def _atomic_write_json(file_path: Path, data: Any) -> None:
     """Atomically write JSON data to file using a temporary file to avoid corruption."""
@@ -36,30 +50,49 @@ def _atomic_write_json(file_path: Path, data: Any) -> None:
 
 
 def load_jobs() -> List[Dict[str, Any]]:
-    """Load all jobs from jobs.json with error recovery."""
+    """Load all jobs from jobs.json with error recovery and mtime-based in-memory caching."""
+    global _jobs_cache, _jobs_by_id_cache, _jobs_cache_mtime
     with _db_lock:
         if not JOBS_FILE.exists():
+            _jobs_cache = []
+            _jobs_by_id_cache = {}
+            _jobs_cache_mtime = None
             return []
         try:
+            current_mtime = JOBS_FILE.stat().st_mtime
+            if _jobs_cache is not None and _jobs_cache_mtime == current_mtime:
+                return _jobs_cache
+
             with open(JOBS_FILE, "r", encoding="utf-8") as f:
                 content = f.read().strip()
                 if not content:
+                    _jobs_cache = []
+                    _jobs_by_id_cache = {}
+                    _jobs_cache_mtime = current_mtime
                     return []
-                return json.loads(content)
+                jobs = json.loads(content)
+                _jobs_cache = jobs
+                _jobs_by_id_cache = {
+                    j.get("job_id", "").strip().lower(): j
+                    for j in jobs
+                    if j.get("job_id")
+                }
+                _jobs_cache_mtime = current_mtime
+                return _jobs_cache
         except Exception as exc:
             logger.error(f"Error loading jobs database: {exc}")
-            return []
+            return _jobs_cache if _jobs_cache is not None else []
 
 
 def get_job_by_id(job_id: str) -> Optional[Dict[str, Any]]:
-    """Find a specific job by job_id (case-insensitive trim)."""
+    """Find a specific job by job_id with O(1) indexed lookup."""
     clean_id = (job_id or "").strip().lower()
     if not clean_id:
         return None
-    for job in load_jobs():
-        if job.get("job_id", "").strip().lower() == clean_id:
-            return job
-    return None
+
+    load_jobs()
+    with _db_lock:
+        return _jobs_by_id_cache.get(clean_id)
 
 
 def search_jobs(

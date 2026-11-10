@@ -301,6 +301,29 @@ class BackendTestCase(unittest.TestCase):
         self.assertEqual(res_ws_query.status_code, 200)
         self.assertEqual(len(res_ws_query.json()["jobs"]), 5)
 
+    def test_db_cache_and_invalidation(self):
+        """Test in-memory jobs cache and cache invalidation in db_service."""
+        from app.services.db_service import invalidate_jobs_cache
+
+        # Clear cache and reload
+        invalidate_jobs_cache()
+        jobs1 = load_jobs()
+        self.assertGreater(len(jobs1), 0)
+
+        # Subsequent load returns identical cached reference
+        jobs2 = load_jobs()
+        self.assertIs(jobs1, jobs2)
+
+        # O(1) indexed lookup finds existing job
+        job = get_job_by_id(self.test_job_id)
+        self.assertIsNotNone(job)
+        self.assertEqual(job["job_id"], self.test_job_id)
+
+        # Cache invalidation forces fresh list
+        invalidate_jobs_cache()
+        jobs3 = load_jobs()
+        self.assertEqual(len(jobs3), len(jobs1))
+
 
 if __name__ == "__main__":
     unittest.main()
