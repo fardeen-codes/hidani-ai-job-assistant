@@ -208,6 +208,13 @@ function setupEventListeners() {
   // Reset Session
   elements.resetChatBtn.addEventListener('click', () => resetSession());
 
+  // Close open modals and drawers on Escape key
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeAllModals();
+    }
+  });
+
   // Global helper for quick prompts
   window.sendPrompt = (promptText) => {
     elements.messageInput.value = promptText;
@@ -733,10 +740,17 @@ async function fetchAndRenderApplicationsList() {
           <p class="text-xs text-neutral-400 mt-0.5">${escapeHtml(app.company || 'Tech Company')} • <span class="text-neutral-300">${escapeHtml(app.location || 'Remote')}</span></p>
           <p class="text-[11px] font-mono text-neutral-500 mt-1">Submitted on ${escapeHtml(app.applied_date || 'Recent')}</p>
         </div>
-        <div class="text-right flex-shrink-0">
+        <div class="text-right flex-shrink-0 flex flex-col items-end gap-2">
           <span class="inline-block px-2.5 py-0.5 rounded text-[11px] font-mono font-medium bg-neutral-800 text-neutral-200 border border-neutral-700">
             ${escapeHtml(app.status || 'Applied')}
           </span>
+          <button
+            onclick="withdrawApplicationFromModal('${escapeHtml(app.job_id)}')"
+            title="Withdraw this application"
+            class="px-2 py-0.5 rounded text-[10px] text-neutral-400 hover:text-rose-400 hover:bg-neutral-900 border border-neutral-800 hover:border-neutral-700 transition-colors"
+          >
+            Withdraw
+          </button>
         </div>
       `;
       elements.appsListContainer.appendChild(card);
@@ -841,6 +855,33 @@ function openProfileDrawer() {
 function closeProfileDrawer() {
   elements.profileDrawer.classList.add('hidden');
 }
+
+function closeAllModals() {
+  closeJobsModal();
+  closeApplicationsModal();
+  closeDiagnosticsModal();
+  closeProfileDrawer();
+}
+
+window.withdrawApplicationFromModal = async (jobId) => {
+  if (!confirm(`Are you sure you want to withdraw your application for Job ID ${jobId}?`)) return;
+  try {
+    const res = await fetch(`${API_BASE}/applications/${encodeURIComponent(jobId)}`, {
+      method: 'DELETE'
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `Withdrawal failed (${res.status})`);
+    }
+    state.appliedJobIds.delete(jobId);
+    localStorage.setItem('hidani_applied_jobs', JSON.stringify(Array.from(state.appliedJobIds)));
+    showToast(`Withdrew application for ${jobId}`);
+    fetchAndRenderApplicationsList();
+    updateApplicationsBadge();
+  } catch (err) {
+    showToast(`Error: ${err.message}`, 'error');
+  }
+};
 
 function resetSession() {
   if (confirm('Start a fresh workspace session?')) {

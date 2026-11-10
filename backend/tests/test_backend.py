@@ -324,6 +324,16 @@ class BackendTestCase(unittest.TestCase):
         jobs3 = load_jobs()
         self.assertEqual(len(jobs3), len(jobs1))
 
+    def test_frontend_assets_served(self):
+        """Test serving single-page application index.html and app.js."""
+        res_index = self.client.get("/")
+        self.assertEqual(res_index.status_code, 200)
+
+        res_js = self.client.get("/app.js")
+        self.assertEqual(res_js.status_code, 200)
+        self.assertIn("javascript", res_js.headers.get("content-type", "").lower())
+        self.assertIn("closeAllModals", res_js.text)
+
 
 if __name__ == "__main__":
     unittest.main()
