@@ -56,7 +56,8 @@ def _heuristic_resume_parser(raw_text: str) -> Dict[str, Any]:
     role_titles = [
         "Software Development Engineer", "SDE Intern", "Software Engineer", "Backend Developer",
         "Frontend Developer", "Full Stack Developer", "AI Engineer", "Machine Learning Engineer",
-        "DevOps Engineer", "Cloud Engineer", "Data Engineer", "Python Developer"
+        "ML Engineer", "Data Scientist", "Site Reliability Engineer", "DevOps Engineer",
+        "Cloud Engineer", "Data Engineer", "Python Developer", "Mobile Developer"
     ]
     for role in role_titles:
         if role.lower() in raw_lower:
@@ -66,15 +67,18 @@ def _heuristic_resume_parser(raw_text: str) -> Dict[str, Any]:
     # 4. Skills: Extract tech keywords
     tech_keywords = [
         "Python", "JavaScript", "TypeScript", "React", "Node.js", "FastAPI", "Django",
-        "Flask", "Go", "Golang", "Java", "Spring Boot", "C++", "C#", "Rust", "SQL",
-        "PostgreSQL", "MySQL", "MongoDB", "Redis", "AWS", "Azure", "GCP", "Docker",
-        "Kubernetes", "Git", "REST APIs", "GraphQL", "Machine Learning", "PyTorch",
-        "TensorFlow", "Pandas", "Next.js", "Vue.js", "Tailwind CSS", "Linux", "DevOps"
+        "Flask", "Go", "Golang", "Java", "Spring Boot", "C++", "C#", "Rust", "Swift",
+        "Kotlin", "Ruby", "PHP", "HTML", "CSS", "SQL", "PostgreSQL", "MySQL", "MongoDB",
+        "Redis", "Elasticsearch", "AWS", "Azure", "GCP", "Docker", "Kubernetes", "Terraform",
+        "CI/CD", "Git", "REST APIs", "GraphQL", "Machine Learning", "NLP", "LLM", "OpenAI",
+        "LangChain", "PyTorch", "TensorFlow", "Pandas", "Spark", "Kafka", "Next.js",
+        "Vue.js", "Tailwind CSS", "Linux", "DevOps"
     ]
     found_skills = set()
     raw_text_lower = f" {raw_text.lower()} "
     for kw in tech_keywords:
-        pattern = r"\b" + re.escape(kw.lower()) + r"\b"
+        # Use lookarounds instead of \b so non-alphanumeric skills like C++ and C# match properly
+        pattern = r"(?<!\w)" + re.escape(kw.lower()) + r"(?!\w)"
         if re.search(pattern, raw_text_lower):
             found_skills.add(kw)
 

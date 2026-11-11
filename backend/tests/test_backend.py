@@ -334,6 +334,27 @@ class BackendTestCase(unittest.TestCase):
         self.assertIn("javascript", res_js.headers.get("content-type", "").lower())
         self.assertIn("closeAllModals", res_js.text)
 
+    def test_heuristic_resume_parser_skills_and_fields(self):
+        """Test heuristic resume parser extracts non-alphanumeric skills like C++ and C# cleanly."""
+        from app.agents.parser_agent import _heuristic_resume_parser
+
+        sample_resume = (
+            "Jane Doe\n"
+            "jane.doe@example.com | +1 555-234-5678\n"
+            "Site Reliability Engineer with 6+ years of experience\n"
+            "Skills: C++, C#, Python, Docker, Kubernetes, Terraform, CI/CD\n"
+            "Education: B.S. in Computer Science, State University\n"
+        )
+        parsed = _heuristic_resume_parser(sample_resume)
+        self.assertEqual(parsed["name"], "Jane Doe")
+        self.assertEqual(parsed["email"], "jane.doe@example.com")
+        self.assertEqual(parsed["designation"], "Site Reliability Engineer")
+        self.assertEqual(parsed["experience_level"], "Senior")
+        self.assertIn("C++", parsed["skills"])
+        self.assertIn("C#", parsed["skills"])
+        self.assertIn("Terraform", parsed["skills"])
+        self.assertIn("CI/CD", parsed["skills"])
+
 
 if __name__ == "__main__":
     unittest.main()
