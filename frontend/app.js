@@ -728,9 +728,14 @@ async function fetchAndRenderApplicationsList() {
     }
 
     elements.appsListContainer.innerHTML = '';
+    const statuses = ['Applied', 'Under Review', 'Interview', 'Offer', 'Rejected'];
     apps.forEach((app, idx) => {
       const card = document.createElement('div');
       card.className = 'p-3.5 rounded-lg bg-neutral-950 border border-neutral-800 flex items-start justify-between gap-3';
+      const currentStatus = app.status || 'Applied';
+      const statusOptions = statuses.map(s =>
+        `<option value="${s}" ${s === currentStatus ? 'selected' : ''}>${s}</option>`
+      ).join('');
       card.innerHTML = `
         <div>
           <div class="flex items-center gap-2">
@@ -741,9 +746,13 @@ async function fetchAndRenderApplicationsList() {
           <p class="text-[11px] font-mono text-neutral-500 mt-1">Submitted on ${escapeHtml(app.applied_date || 'Recent')}</p>
         </div>
         <div class="text-right flex-shrink-0 flex flex-col items-end gap-2">
-          <span class="inline-block px-2.5 py-0.5 rounded text-[11px] font-mono font-medium bg-neutral-800 text-neutral-200 border border-neutral-700">
-            ${escapeHtml(app.status || 'Applied')}
-          </span>
+          <select
+            onchange="updateApplicationStatusFromModal('${escapeHtml(app.job_id)}', this.value)"
+            aria-label="Update application status"
+            class="px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-neutral-800 text-neutral-200 border border-neutral-700 focus:outline-none focus:border-neutral-500 cursor-pointer"
+          >
+            ${statusOptions}
+          </select>
           <button
             onclick="withdrawApplicationFromModal('${escapeHtml(app.job_id)}')"
             title="Withdraw this application"
@@ -773,8 +782,8 @@ async function updateApplicationsBadge(knownCount = null) {
       if (res.ok) {
         const apps = await res.json();
         count = apps.length;
-        // Keep state synchronized
-        apps.forEach(a => { if (a.job_id) state.appliedJobIds.add(a.job_id); });
+        // Rebuild applied set so withdrawn/removed jobs are cleared from localStorage
+        state.appliedJobIds = new Set(apps.map(a => a.job_id).filter(Boolean));
         localStorage.setItem('hidani_applied_jobs', JSON.stringify(Array.from(state.appliedJobIds)));
       }
     }
@@ -883,6 +892,24 @@ window.withdrawApplicationFromModal = async (jobId) => {
   }
 };
 
+window.updateApplicationStatusFromModal = async (jobId, newStatus) => {
+  try {
+    const res = await fetch(`${API_BASE}/applications/${encodeURIComponent(jobId)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: newStatus })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `Status update failed (${res.status})`);
+    }
+    showToast(`Updated ${jobId} to ${newStatus}`, 'success');
+  } catch (err) {
+    showToast(`Error: ${err.message}`, 'error');
+    fetchAndRenderApplicationsList();
+  }
+};
+
 function resetSession() {
   if (confirm('Start a fresh workspace session?')) {
     localStorage.removeItem('hidani_session_id');
@@ -911,10 +938,23 @@ async function fetchSystemHealth() {
   }
 }
 
-function showToast(message) {
+function showToast(message, type = 'info') {
   const toast = document.createElement('div');
-  toast.className = 'px-3.5 py-2 rounded border border-neutral-700 bg-neutral-900 text-neutral-200 text-xs shadow-lg transition-all duration-200 transform translate-y-2 opacity-0 pointer-events-auto';
-  toast.innerText = message;
+  const styleByType = {
+    success: 'border-emerald-700/80 text-emerald-200',
+    error: 'border-rose-700/80 text-rose-200',
+    info: 'border-neutral-700 text-neutral-200'
+  };
+  const dotByType = {
+    success: 'bg-emerald-400',
+    error: 'bg-rose-400',
+    info: 'bg-neutral-400'
+  };
+  const borderClass = styleByType[type] || styleByType.info;
+  const dotClass = dotByType[type] || dotByType.info;
+
+  toast.className = `px-3.5 py-2 rounded border ${borderClass} bg-neutral-900 text-xs shadow-lg transition-all duration-200 transform translate-y-2 opacity-0 pointer-events-auto flex items-center gap-2`;
+  toast.innerHTML = `<span class="w-1.5 h-1.5 rounded-full ${dotClass}"></span><span>${escapeHtml(message)}</span>`;
   
   elements.toastContainer.appendChild(toast);
   requestAnimationFrame(() => {

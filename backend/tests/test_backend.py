@@ -333,6 +333,7 @@ class BackendTestCase(unittest.TestCase):
         self.assertEqual(res_js.status_code, 200)
         self.assertIn("javascript", res_js.headers.get("content-type", "").lower())
         self.assertIn("closeAllModals", res_js.text)
+        self.assertIn("updateApplicationStatusFromModal", res_js.text)
 
     def test_heuristic_resume_parser_skills_and_fields(self):
         """Test heuristic resume parser extracts non-alphanumeric skills like C++ and C# cleanly."""
