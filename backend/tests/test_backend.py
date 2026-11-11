@@ -355,6 +355,35 @@ class BackendTestCase(unittest.TestCase):
         self.assertIn("Terraform", parsed["skills"])
         self.assertIn("CI/CD", parsed["skills"])
 
+    def test_document_parser_validations(self):
+        """Test document parser validations for filenames, types, empty content, and size limits."""
+        from app.services.document_parser import (
+            DocumentParsingError,
+            MAX_RESUME_SIZE_BYTES,
+            UnsupportedFileTypeError,
+            parse_resume_document,
+        )
+
+        # Empty or whitespace filename
+        with self.assertRaises(UnsupportedFileTypeError):
+            parse_resume_document("   ", b"data")
+
+        # Unsupported extension
+        with self.assertRaises(UnsupportedFileTypeError):
+            parse_resume_document("resume.txt", b"data")
+
+        # Empty file bytes
+        with self.assertRaises(DocumentParsingError):
+            parse_resume_document("resume.pdf", b"")
+
+        # Oversized payload (> 10MB)
+        with self.assertRaises(DocumentParsingError):
+            parse_resume_document("resume.pdf", b"x" * (MAX_RESUME_SIZE_BYTES + 1))
+
+        # Whitespace-padded extension supported -> hits PDF parser error on invalid bytes
+        with self.assertRaises(DocumentParsingError):
+            parse_resume_document("  resume.PDF  ", b"not-a-real-pdf")
+
 
 if __name__ == "__main__":
     unittest.main()

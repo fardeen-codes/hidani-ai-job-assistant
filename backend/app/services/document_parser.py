@@ -9,6 +9,7 @@ import logging
 from typing import BinaryIO, Union
 
 logger = logging.getLogger("DocumentParser")
+MAX_RESUME_SIZE_BYTES = 10 * 1024 * 1024  # 10 MB upload limit
 
 
 class DocumentParsingError(Exception):
@@ -106,17 +107,24 @@ def extract_text_from_docx(file_source: Union[BinaryIO, bytes]) -> str:
 def parse_resume_document(filename: str, file_bytes: bytes) -> str:
     """
     Main entry point for extracting text from an uploaded resume file.
-    Validates file type and routes to the appropriate parser.
+    Validates file type, non-empty content, and size limits before parsing.
     """
-    if not filename:
+    clean_name = (filename or "").strip()
+    if not clean_name:
         raise UnsupportedFileTypeError("Filename cannot be empty.")
 
-    lower_name = filename.lower()
+    lower_name = clean_name.lower()
+    if not (lower_name.endswith(".pdf") or lower_name.endswith(".docx")):
+        raise UnsupportedFileTypeError(
+            f"Unsupported file format '{clean_name}'. Only .pdf and .docx files are supported."
+        )
+
+    if not file_bytes:
+        raise DocumentParsingError("Uploaded file is empty.")
+
+    if len(file_bytes) > MAX_RESUME_SIZE_BYTES:
+        raise DocumentParsingError("Uploaded file exceeds the 10MB size limit.")
+
     if lower_name.endswith(".pdf"):
         return extract_text_from_pdf(file_bytes)
-    elif lower_name.endswith(".docx"):
-        return extract_text_from_docx(file_bytes)
-    else:
-        raise UnsupportedFileTypeError(
-            f"Unsupported file format '{filename}'. Only .pdf and .docx files are supported."
-        )
+    return extract_text_from_docx(file_bytes)
