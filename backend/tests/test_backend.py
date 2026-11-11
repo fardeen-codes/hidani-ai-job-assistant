@@ -384,6 +384,33 @@ class BackendTestCase(unittest.TestCase):
         with self.assertRaises(DocumentParsingError):
             parse_resume_document("  resume.PDF  ", b"not-a-real-pdf")
 
+    def test_matcher_skill_normalization_and_null_safety(self):
+        """Test matcher skill alias normalization and null-safe lexical scoring."""
+        from app.agents.matcher_agent import _calculate_lexical_score, _generate_heuristic_reason
+
+        job = {
+            "title": "Backend Engineer",
+            "company": "Hidani",
+            "skills": ["React", "Go", "PostgreSQL"],
+            "experience": "Mid-Level",
+            "description": None,
+        }
+        # Alias variations: React.js -> React, Golang -> Go, Postgres -> PostgreSQL
+        score = _calculate_lexical_score(
+            job,
+            candidate_skills=["React.js", "Golang", "Postgres"],
+            candidate_level="Mid-Level",
+        )
+        # Base 40 + 40 (full skill overlap) + 10 (experience) = 90.0
+        self.assertEqual(score, 90.0)
+
+        reason = _generate_heuristic_reason(
+            job,
+            candidate_skills=["React.js", "Golang"],
+            candidate_designation="Full Stack Developer",
+        )
+        self.assertIn("Matches 2 of your core skills", reason)
+
 
 if __name__ == "__main__":
     unittest.main()

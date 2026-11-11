@@ -16,6 +16,27 @@ from app.services.db_service import load_jobs, search_jobs
 
 logger = logging.getLogger("MatcherAgent")
 
+_SKILL_ALIASES = {
+    "reactjs": "react",
+    "react.js": "react",
+    "nodejs": "node.js",
+    "node": "node.js",
+    "nextjs": "next.js",
+    "vuejs": "vue.js",
+    "golang": "go",
+    "postgres": "postgresql",
+    "js": "javascript",
+    "ts": "typescript",
+    "k8s": "kubernetes",
+    "py": "python",
+}
+
+
+def _normalize_skill(skill: str) -> str:
+    """Normalize skill string to canonical lowercase form using alias map."""
+    clean = (skill or "").strip().lower()
+    return _SKILL_ALIASES.get(clean, clean)
+
 
 def _calculate_lexical_score(job: Dict[str, Any], candidate_skills: List[str], candidate_level: str, query: str = "") -> float:
     """
@@ -24,8 +45,8 @@ def _calculate_lexical_score(job: Dict[str, Any], candidate_skills: List[str], c
     """
     score = 40.0 # Base relevance
     
-    cand_skills_lower = {s.strip().lower() for s in candidate_skills if s.strip()}
-    job_skills_lower = {s.strip().lower() for s in job.get("skills", []) if s.strip()}
+    cand_skills_lower = {_normalize_skill(s) for s in (candidate_skills or []) if s and s.strip()}
+    job_skills_lower = {_normalize_skill(s) for s in (job.get("skills") or []) if s and s.strip()}
     
     # 1. Skill Overlap (up to 40 points)
     if cand_skills_lower and job_skills_lower:
@@ -34,12 +55,12 @@ def _calculate_lexical_score(job: Dict[str, Any], candidate_skills: List[str], c
         score += min(overlap_ratio * 40.0, 40.0)
     elif cand_skills_lower:
         # Check if candidate skills appear in job description
-        desc_lower = job.get("description", "").lower()
+        desc_lower = (job.get("description") or "").lower()
         matches = sum(1 for s in cand_skills_lower if s in desc_lower)
         score += min(matches * 6.0, 30.0)
 
     # 2. Experience Level Alignment (up to 10 points)
-    job_exp = job.get("experience", "").lower()
+    job_exp = (job.get("experience") or "").lower()
     cand_exp = (candidate_level or "mid-level").lower()
     if cand_exp in job_exp or job_exp in cand_exp:
         score += 10.0
@@ -48,8 +69,8 @@ def _calculate_lexical_score(job: Dict[str, Any], candidate_skills: List[str], c
 
     # 3. Query / Title relevance (up to 10 points)
     if query:
-        q_clean = query.lower()
-        title_lower = job.get("title", "").lower()
+        q_clean = query.strip().lower()
+        title_lower = (job.get("title") or "").lower()
         if q_clean in title_lower:
             score += 10.0
         elif any(word in title_lower for word in q_clean.split()):
@@ -60,8 +81,8 @@ def _calculate_lexical_score(job: Dict[str, Any], candidate_skills: List[str], c
 
 def _generate_heuristic_reason(job: Dict[str, Any], candidate_skills: List[str], candidate_designation: str = "", score: float = 85.0) -> str:
     """Generate clear, personalized explanation without LLM."""
-    cand_skills_lower = {s.strip().lower(): s for s in candidate_skills if s.strip()}
-    job_skills_lower = {s.strip().lower() for s in job.get("skills", []) if s.strip()}
+    cand_skills_lower = {_normalize_skill(s): s for s in (candidate_skills or []) if s and s.strip()}
+    job_skills_lower = {_normalize_skill(s) for s in (job.get("skills") or []) if s and s.strip()}
     
     overlapping = [cand_skills_lower[k] for k in cand_skills_lower if k in job_skills_lower]
     
@@ -70,11 +91,11 @@ def _generate_heuristic_reason(job: Dict[str, Any], candidate_skills: List[str],
     if overlapping:
         return (
             f"{role_mention}Matches {len(overlapping)} of your core skills "
-            f"({', '.join(overlapping[:3])}) and fits your {job.get('experience', 'engineering')} experience tier."
+            f"({', '.join(overlapping[:3])}) and fits your {job.get('experience') or 'engineering'} experience tier."
         )
     return (
-        f"{role_mention}Aligns with your engineering background with impactful responsibilities in {job.get('title')} "
-        f"at {job.get('company')} ({job.get('location')})."
+        f"{role_mention}Aligns with your engineering background with impactful responsibilities in {job.get('title') or 'Software Engineering'} "
+        f"at {job.get('company') or 'the company'} ({job.get('location') or 'Remote'})."
     )
 
 
