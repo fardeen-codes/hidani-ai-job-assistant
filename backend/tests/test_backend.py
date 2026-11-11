@@ -411,6 +411,32 @@ class BackendTestCase(unittest.TestCase):
         )
         self.assertIn("Matches 2 of your core skills", reason)
 
+    def test_update_application_status_endpoint(self):
+        """Test PATCH /api/applications/{job_id} status transitions and validation."""
+        withdraw_application(self.test_job_id)
+
+        # Updating missing application yields 404
+        res_404 = self.client.patch(f"/api/applications/{self.test_job_id}", json={"status": "Interview"})
+        self.assertEqual(res_404.status_code, 404)
+
+        # Apply to job first
+        self.client.post("/api/applications", json={"job_id": self.test_job_id})
+
+        # Valid status update (case-insensitive normalization)
+        res_patch = self.client.patch(f"/api/applications/{self.test_job_id}", json={"status": "interview"})
+        self.assertEqual(res_patch.status_code, 200)
+        data = res_patch.json()
+        self.assertEqual(data["status"], "success")
+        self.assertEqual(data["application"]["status"], "Interview")
+        self.assertIn("updated_date", data["application"])
+
+        # Invalid status yields 400 Bad Request
+        res_invalid = self.client.patch(f"/api/applications/{self.test_job_id}", json={"status": "UnknownStatus"})
+        self.assertEqual(res_invalid.status_code, 400)
+
+        # Clean up
+        withdraw_application(self.test_job_id)
+
 
 if __name__ == "__main__":
     unittest.main()

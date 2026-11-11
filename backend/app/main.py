@@ -26,6 +26,7 @@ from app.config import (
 )
 from app.schemas import (
     ApplicationCreateRequest,
+    ApplicationStatusUpdateRequest,
     ChatRequest,
     ChatResponse,
     ChatStateResponse,
@@ -41,6 +42,7 @@ from app.services.db_service import (
     load_applications,
     load_jobs,
     search_jobs,
+    update_application_status,
     withdraw_application,
 )
 from app.services.document_parser import (
@@ -342,6 +344,37 @@ async def get_application_by_id(job_id: str):
             detail=f"No application found for Job ID '{clean_id}'."
         )
     return apps[0]
+
+
+@app.patch(
+    "/api/applications/{job_id}",
+    summary="Update application status",
+    tags=["Applications"]
+)
+async def update_application_status_endpoint(job_id: str, payload: ApplicationStatusUpdateRequest):
+    """Update the tracking status of an existing job application."""
+    clean_id = (job_id or "").strip()
+    if not clean_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Job ID cannot be empty."
+        )
+    success, message, updated_app = update_application_status(clean_id, payload.status)
+    if not success:
+        if "Invalid status" in message:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=message
+            )
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=message
+        )
+    return {
+        "status": "success",
+        "message": message,
+        "application": updated_app
+    }
 
 
 @app.delete("/api/applications/{job_id}", summary="Withdraw an active job application", tags=["Applications"])

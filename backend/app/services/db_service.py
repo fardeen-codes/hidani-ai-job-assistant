@@ -284,6 +284,49 @@ def withdraw_application(job_id: str) -> Tuple[bool, str]:
     return True, f"Application for Job ID '{clean_id}' has been successfully withdrawn."
 
 
+VALID_APPLICATION_STATUSES = {
+    "applied": "Applied",
+    "under review": "Under Review",
+    "interview": "Interview",
+    "offer": "Offer",
+    "rejected": "Rejected",
+}
+
+
+def update_application_status(job_id: str, new_status: str) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
+    """
+    Update the status of an existing job application.
+    Returns: (success: bool, message: str, updated_application: Optional[dict])
+    """
+    clean_id = (job_id or "").strip()
+    if not clean_id:
+        return False, "Job ID cannot be empty.", None
+
+    status_key = (new_status or "").strip().lower()
+    canonical_status = VALID_APPLICATION_STATUSES.get(status_key)
+    if not canonical_status:
+        allowed = ", ".join(VALID_APPLICATION_STATUSES.values())
+        return False, f"Invalid status '{new_status}'. Allowed values: {allowed}.", None
+
+    with _db_lock:
+        applications = load_applications()
+        updated_app = None
+        for app in applications:
+            if app.get("job_id", "").strip().lower() == clean_id.lower():
+                app["status"] = canonical_status
+                app["updated_date"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+                updated_app = app
+                break
+
+        if not updated_app:
+            return False, f"No existing application found for Job ID '{clean_id}'.", None
+
+        _atomic_write_json(APPLICATIONS_FILE, applications)
+
+    logger.info(f"Updated application status for job {clean_id} to '{canonical_status}'")
+    return True, f"Application status for Job ID '{clean_id}' updated to '{canonical_status}'.", updated_app
+
+
 def get_job_stats() -> Dict[str, Any]:
     """
     Compute aggregated market statistics across all available jobs,

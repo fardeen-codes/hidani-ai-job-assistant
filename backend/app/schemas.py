@@ -92,6 +92,11 @@ class ApplicationCreateRequest(BaseModel):
     job_id: str = Field(..., min_length=1, description="Unique identifier of the job to apply for")
 
 
+class ApplicationStatusUpdateRequest(BaseModel):
+    """Payload to update an existing job application status."""
+    status: str = Field(..., min_length=1, description="Updated status (Applied, Under Review, Interview, Offer, Rejected)")
+
+
 class SkillCount(BaseModel):
     skill: str
     count: int
