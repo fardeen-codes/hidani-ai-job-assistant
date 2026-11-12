@@ -26,6 +26,7 @@ from app.config import (
 )
 from app.schemas import (
     ApplicationCreateRequest,
+    ApplicationStatsResponse,
     ApplicationStatusUpdateRequest,
     ChatRequest,
     ChatResponse,
@@ -36,6 +37,7 @@ from app.schemas import (
 )
 from app.services.db_service import (
     apply_to_job,
+    get_application_stats,
     get_application_status,
     get_job_by_id,
     get_job_stats,
@@ -322,6 +324,17 @@ async def submit_application(payload: ApplicationCreateRequest):
         "message": message,
         "application": app_data
     }
+
+
+@app.get(
+    "/api/applications/stats",
+    response_model=ApplicationStatsResponse,
+    summary="Get application statistics and status breakdown",
+    tags=["Applications"]
+)
+async def get_applications_statistics():
+    """Retrieve aggregated statistics across submitted applications including status breakdown and top companies."""
+    return get_application_stats()
 
 
 @app.get(

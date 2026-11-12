@@ -417,3 +417,39 @@ def get_job_stats() -> Dict[str, Any]:
         "total_applications": apps_count,
     }
 
+
+def get_application_stats() -> Dict[str, Any]:
+    """
+    Compute summary analytics for submitted job applications,
+    including status distribution, top applied companies, and recent submissions.
+    """
+    apps = load_applications()
+    status_counter: Counter = Counter()
+    company_counter: Counter = Counter()
+
+    for app in apps:
+        status_val = (app.get("status") or "Applied").strip()
+        status_counter[status_val] += 1
+
+        company_val = (app.get("company") or "").strip()
+        if company_val:
+            company_counter[company_val] += 1
+
+    top_companies = [
+        {"company": company, "count": count}
+        for company, count in company_counter.most_common(5)
+    ]
+
+    recent_apps = sorted(
+        apps,
+        key=lambda a: a.get("applied_date") or "",
+        reverse=True
+    )[:5]
+
+    return {
+        "total_applications": len(apps),
+        "status_breakdown": dict(status_counter),
+        "top_companies": top_companies,
+        "recent_applications": recent_apps,
+    }
+

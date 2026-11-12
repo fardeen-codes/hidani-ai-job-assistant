@@ -115,3 +115,16 @@ class JobStatsResponse(BaseModel):
     top_skills: List[SkillCount] = Field(description="Top requested skills")
     experience_breakdown: Dict[str, int] = Field(description="Count of jobs by experience tier")
     total_applications: int = Field(description="Total submitted applications")
+
+
+class CompanyCount(BaseModel):
+    company: str
+    count: int
+
+
+class ApplicationStatsResponse(BaseModel):
+    """Aggregated summary statistics across all submitted job applications."""
+    total_applications: int = Field(description="Total number of submitted applications")
+    status_breakdown: Dict[str, int] = Field(description="Count of applications by status")
+    top_companies: List[CompanyCount] = Field(description="Top companies applied to")
+    recent_applications: List[JobApplication] = Field(description="Most recently submitted applications")

@@ -499,6 +499,23 @@ class BackendTestCase(unittest.TestCase):
             self.assertEqual(len(results), 1)
             self.assertEqual(results[0]["job_id"], "job-null-1")
 
+    def test_application_stats_endpoint(self):
+        """Test GET /api/applications/stats summary breakdown."""
+        withdraw_application(self.test_job_id)
+        self.client.post("/api/applications", json={"job_id": self.test_job_id})
+        self.client.patch(f"/api/applications/{self.test_job_id}", json={"status": "Offer"})
+
+        res = self.client.get("/api/applications/stats")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertGreaterEqual(data["total_applications"], 1)
+        self.assertIn("Offer", data["status_breakdown"])
+        self.assertIsInstance(data["top_companies"], list)
+        self.assertIsInstance(data["recent_applications"], list)
+        self.assertTrue(any(a["job_id"] == self.test_job_id for a in data["recent_applications"]))
+
+        withdraw_application(self.test_job_id)
+
 
 if __name__ == "__main__":
     unittest.main()
