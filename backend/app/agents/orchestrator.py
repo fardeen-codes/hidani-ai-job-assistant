@@ -8,21 +8,24 @@ Includes an intent-routing fallback for seamless offline or local evaluation.
 import json
 import logging
 import re
+import threading
 from typing import Any, Dict, List, Optional, Tuple
 
 from app.agents.applier_agent import (
     apply_for_job,
     get_applications_summary,
+    update_job_application_status,
     withdraw_job_application,
 )
 from app.agents.matcher_agent import match_jobs_for_candidate
 from app.config import OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_MODEL, is_openai_configured
 from app.schemas import ChatAction
-from app.services.db_service import get_job_by_id, load_applications
+from app.services.db_service import VALID_APPLICATION_STATUSES, get_job_by_id, load_applications
 
 logger = logging.getLogger("OrchestratorAgent")
 
-# In-memory session store
+# In-memory session store protected by a re-entrant lock
+_session_lock = threading.RLock()
 _session_histories: Dict[str, List[Dict[str, Any]]] = {}
 _session_profiles: Dict[str, Dict[str, Any]] = {}
 _session_last_recommendations: Dict[str, List[Dict[str, Any]]] = {}
@@ -133,6 +136,28 @@ ORCHESTRATOR_TOOLS = [
                 "required": ["job_id"]
             }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "update_application_status",
+            "description": "Update the tracking status of an existing submitted job application (e.g. 'Under Review', 'Interview', 'Offer', 'Rejected').",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "job_id": {
+                        "type": "string",
+                        "description": "The exact Job ID (e.g. 'job-00001') or ordinal index of the application."
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": ["Applied", "Under Review", "Interview", "Offer", "Rejected"],
+                        "description": "The updated tracking status."
+                    }
+                },
+                "required": ["job_id", "status"]
+            }
+        }
     }
 ]
 
@@ -152,7 +177,8 @@ def _resolve_job_id_from_input(input_val: str, session_id: str) -> Optional[str]
     if direct_match:
         return direct_match.group(0)
 
-    last_recs = _session_last_recommendations.get(session_id, [])
+    with _session_lock:
+        last_recs = list(_session_last_recommendations.get(session_id, []))
     apps = load_applications()
 
     # Numeric match: "apply to job 3", "job 3", "3", "#3"
@@ -244,7 +270,8 @@ def _execute_tool_call(name: str, args: Dict[str, Any], profile: Optional[Dict[s
         )
 
         jobs_dicts = [j.model_dump() for j in matched_jobs]
-        _session_last_recommendations[session_id] = jobs_dicts
+        with _session_lock:
+            _session_last_recommendations[session_id] = jobs_dicts
         action = ChatAction(type="RECOMMEND_JOBS", data=jobs_dicts)
 
         summary_lines = [f"Found {len(matched_jobs)} matching job positions:"]
@@ -282,6 +309,14 @@ def _execute_tool_call(name: str, args: Dict[str, Any], profile: Optional[Dict[s
         resolved_id = _resolve_job_id_from_input(str(raw_id), session_id) or str(raw_id)
         res = withdraw_job_application(resolved_id)
         action = ChatAction(type="APPLICATION_WITHDRAWN", data=res)
+        return json.dumps(res), action
+
+    elif name == "update_application_status":
+        raw_id = args.get("job_id", "")
+        new_status = args.get("status", "")
+        resolved_id = _resolve_job_id_from_input(str(raw_id), session_id) or str(raw_id)
+        res = update_job_application_status(resolved_id, str(new_status))
+        action = ChatAction(type="APPLICATION_UPDATED", data=res)
         return json.dumps(res), action
 
     return f"Unknown tool '{name}'", None
@@ -405,7 +440,31 @@ def _fallback_intent_orchestrator(message: str, profile: Optional[Dict[str, Any]
                 actions
             )
 
-    # 7. Check for Application Status Intent: "status", "applied", "applications", "tracking"
+    # 7a. Check for Application Status Update Intent: e.g. "mark job-00001 as interview", "update status of job-00001 to offer"
+    update_triggers = ["mark ", "update status", "change status", "set status", "move application", "update application"]
+    if any(t in msg_lower for t in update_triggers):
+        detected_status = None
+        for status_key, canonical in VALID_APPLICATION_STATUSES.items():
+            if re.search(r"\b" + re.escape(status_key) + r"\b", msg_lower):
+                detected_status = canonical
+                break
+        target_id = _resolve_job_id_from_input(message, session_id)
+        if target_id and detected_status:
+            res = update_job_application_status(target_id, detected_status)
+            actions.append(ChatAction(type="APPLICATION_UPDATED", data=res))
+            if res.get("success"):
+                return (
+                    f"### Application Status Updated\n\n"
+                    f"{res.get('message')}\n\n"
+                    f"- **Job ID**: `{target_id}`\n"
+                    f"- **Status**: `{detected_status}`\n\n"
+                    f"You can ask *'Show my applied jobs'* anytime to review all updates.",
+                    actions
+                )
+            else:
+                return f"Notice: {res.get('message')}", actions
+
+    # 7b. Check for Application Status Intent: "status", "applied", "applications", "tracking"
     if any(k in msg_lower for k in ["status", "applied", "my application", "applications", "track"]):
         target_id = _resolve_job_id_from_input(message, session_id)
         res = get_applications_summary(target_id)
@@ -484,7 +543,8 @@ def _fallback_intent_orchestrator(message: str, profile: Optional[Dict[str, Any]
     )
 
     jobs_dicts = [j.model_dump() for j in matched_jobs]
-    _session_last_recommendations[session_id] = jobs_dicts
+    with _session_lock:
+        _session_last_recommendations[session_id] = jobs_dicts
     actions.append(ChatAction(type="RECOMMEND_JOBS", data=jobs_dicts))
 
     greeting = f"Hello {profile.get('name')}. " if profile and profile.get("name") else ""
@@ -525,28 +585,31 @@ def run_orchestrator(
     Main entry point for the Multi-Agent Orchestrator.
     Manages session context, tool-calling loop with OpenAI, and delegates to sub-agents.
     """
-    if profile:
-        _session_profiles[session_id] = profile
-    active_profile = _session_profiles.get(session_id) or profile
+    with _session_lock:
+        if profile:
+            _session_profiles[session_id] = profile
+        active_profile = _session_profiles.get(session_id) or profile
 
-    # Initialize session conversation if new
-    if session_id not in _session_histories:
-        _session_histories[session_id] = [
-            {"role": "system", "content": _build_system_prompt(active_profile)}
-        ]
-    else:
-        # Keep system prompt updated with profile changes
-        _session_histories[session_id][0] = {
-            "role": "system",
-            "content": _build_system_prompt(active_profile)
-        }
+        # Initialize session conversation if new
+        if session_id not in _session_histories:
+            _session_histories[session_id] = [
+                {"role": "system", "content": _build_system_prompt(active_profile)}
+            ]
+        else:
+            # Keep system prompt updated with profile changes
+            _session_histories[session_id][0] = {
+                "role": "system",
+                "content": _build_system_prompt(active_profile)
+            }
 
     # If OpenAI API is not configured, run deterministic intent orchestrator
     if not is_openai_configured():
         logger.info("OPENAI_API_KEY is not configured. Running fallback intent orchestrator.")
         reply, actions = _fallback_intent_orchestrator(message, active_profile, session_id=session_id)
-        _session_histories[session_id].append({"role": "user", "content": message})
-        _session_histories[session_id].append({"role": "assistant", "content": reply})
+        with _session_lock:
+            if session_id in _session_histories:
+                _session_histories[session_id].append({"role": "user", "content": message})
+                _session_histories[session_id].append({"role": "assistant", "content": reply})
         return reply, actions
 
     # Full OpenAI Tool Calling Execution
@@ -554,11 +617,10 @@ def run_orchestrator(
         from openai import OpenAI
         client = OpenAI(api_key=OPENAI_API_KEY, base_url=OPENAI_BASE_URL)
 
-        # Append incoming user prompt
-        _session_histories[session_id].append({"role": "user", "content": message})
-
-        # Limit history to last 12 messages to prevent excessive token growth
-        recent_messages = [_session_histories[session_id][0]] + _session_histories[session_id][-11:]
+        with _session_lock:
+            _session_histories[session_id].append({"role": "user", "content": message})
+            # Limit history to last 12 messages to prevent excessive token growth
+            recent_messages = [_session_histories[session_id][0]] + _session_histories[session_id][-11:]
 
         response = client.chat.completions.create(
             model=OPENAI_MODEL,
@@ -573,8 +635,8 @@ def run_orchestrator(
 
         # If model decided to invoke one or more tools
         if response_msg.tool_calls:
-            # Append assistant's call message
-            _session_histories[session_id].append(response_msg)
+            with _session_lock:
+                _session_histories[session_id].append(response_msg)
 
             for tool_call in response_msg.tool_calls:
                 func_name = tool_call.function.name
@@ -588,26 +650,32 @@ def run_orchestrator(
                 if action_obj:
                     collected_actions.append(action_obj)
 
-                _session_histories[session_id].append({
-                    "role": "tool",
-                    "tool_call_id": tool_call.id,
-                    "name": func_name,
-                    "content": tool_result_str
-                })
+                with _session_lock:
+                    _session_histories[session_id].append({
+                        "role": "tool",
+                        "tool_call_id": tool_call.id,
+                        "name": func_name,
+                        "content": tool_result_str
+                    })
+
+            with _session_lock:
+                synthesis_messages = list(_session_histories[session_id][-14:])
 
             # Get final synthesized response from model after tools returned
             second_response = client.chat.completions.create(
                 model=OPENAI_MODEL,
-                messages=_session_histories[session_id][-14:],
+                messages=synthesis_messages,
                 temperature=0.4
             )
             final_reply = second_response.choices[0].message.content or "I have processed your request."
-            _session_histories[session_id].append({"role": "assistant", "content": final_reply})
+            with _session_lock:
+                _session_histories[session_id].append({"role": "assistant", "content": final_reply})
             return final_reply, collected_actions
 
         else:
             final_reply = response_msg.content or "How can I assist you with your job search today?"
-            _session_histories[session_id].append({"role": "assistant", "content": final_reply})
+            with _session_lock:
+                _session_histories[session_id].append({"role": "assistant", "content": final_reply})
             return final_reply, collected_actions
 
     except Exception as exc:
@@ -618,8 +686,9 @@ def run_orchestrator(
 
 def get_session_state(session_id: str) -> Dict[str, Any]:
     """Inspect the internal state and stats of an active chat session."""
-    history = _session_histories.get(session_id, [])
-    profile = _session_profiles.get(session_id)
+    with _session_lock:
+        history = list(_session_histories.get(session_id, []))
+        profile = _session_profiles.get(session_id)
     return {
         "session_id": session_id,
         "message_count": len(history),
@@ -630,8 +699,9 @@ def get_session_state(session_id: str) -> Dict[str, Any]:
 
 def clear_session_state(session_id: str) -> bool:
     """Clear conversation history and cached recommendations for a given session."""
-    had_state = session_id in _session_histories or session_id in _session_last_recommendations
-    _session_histories.pop(session_id, None)
-    _session_last_recommendations.pop(session_id, None)
-    return had_state
+    with _session_lock:
+        had_state = session_id in _session_histories or session_id in _session_last_recommendations
+        _session_histories.pop(session_id, None)
+        _session_last_recommendations.pop(session_id, None)
+        return had_state
 

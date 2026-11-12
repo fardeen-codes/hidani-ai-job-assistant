@@ -13,6 +13,7 @@ from app.services.db_service import (
     apply_to_job,
     get_application_status,
     get_job_by_id,
+    update_application_status,
     withdraw_application,
 )
 
@@ -109,5 +110,26 @@ def withdraw_job_application(job_id: str) -> Dict[str, Any]:
         "success": success,
         "message": message,
         "job_id": clean_id
+    }
+
+
+def update_job_application_status(job_id: str, new_status: str) -> Dict[str, Any]:
+    """
+    Sub-Agent 3 execution for updating an application's tracking status:
+    Validates job ID and status, updates applications.json, and returns confirmation.
+    """
+    clean_id = (job_id or "").strip()
+    if not clean_id:
+        return {
+            "success": False,
+            "message": "Please provide a valid Job ID to update application status.",
+            "application": None
+        }
+
+    success, message, updated_app = update_application_status(clean_id, new_status)
+    return {
+        "success": success,
+        "message": message,
+        "application": updated_app
     }
 

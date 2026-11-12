@@ -535,6 +535,41 @@ class BackendTestCase(unittest.TestCase):
         self.assertEqual(res_empty.status_code, 200)
         self.assertEqual(res_empty.json()["total"], 0)
 
+    def test_orchestrator_status_update_intent_and_applier(self):
+        """Test Applier Agent status update helper and Orchestrator natural status-update intent."""
+        from app.agents.applier_agent import update_job_application_status
+        from app.agents.orchestrator import _execute_tool_call
+
+        withdraw_application(self.test_job_id)
+
+        # Empty job_id validation
+        res_empty = update_job_application_status("", "Interview")
+        self.assertFalse(res_empty["success"])
+        self.assertIsNone(res_empty["application"])
+
+        # Apply then update via natural intent
+        apply_to_job(self.test_job_id)
+        reply, actions = _fallback_intent_orchestrator(
+            f"mark {self.test_job_id} as interview",
+            session_id="test-status-update-session",
+        )
+        self.assertIn("Application Status Updated", reply)
+        self.assertTrue(any(a.type == "APPLICATION_UPDATED" for a in actions))
+        self.assertEqual(get_application_status(self.test_job_id)[0]["status"], "Interview")
+
+        # Update via tool call executor
+        import json
+        tool_out, tool_action = _execute_tool_call(
+            "update_application_status",
+            {"job_id": self.test_job_id, "status": "Offer"},
+            profile=None,
+            session_id="test-status-update-session",
+        )
+        self.assertEqual(tool_action.type, "APPLICATION_UPDATED")
+        self.assertEqual(json.loads(tool_out)["application"]["status"], "Offer")
+
+        withdraw_application(self.test_job_id)
+
 
 if __name__ == "__main__":
     unittest.main()
