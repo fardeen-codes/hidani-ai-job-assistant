@@ -24,6 +24,10 @@ _jobs_cache: Optional[List[Dict[str, Any]]] = None
 _jobs_by_id_cache: Dict[str, Dict[str, Any]] = {}
 _jobs_cache_mtime: Optional[float] = None
 
+# In-memory mtime cache for applications database
+_applications_cache: Optional[List[Dict[str, Any]]] = None
+_applications_cache_mtime: Optional[float] = None
+
 
 def invalidate_jobs_cache() -> None:
     """Clear in-memory jobs cache to force reload on next access."""
@@ -32,6 +36,14 @@ def invalidate_jobs_cache() -> None:
         _jobs_cache = None
         _jobs_by_id_cache = {}
         _jobs_cache_mtime = None
+
+
+def invalidate_applications_cache() -> None:
+    """Clear in-memory applications cache to force reload on next access."""
+    global _applications_cache, _applications_cache_mtime
+    with _db_lock:
+        _applications_cache = None
+        _applications_cache_mtime = None
 
 
 def _atomic_write_json(file_path: Path, data: Any) -> None:
@@ -182,20 +194,43 @@ def search_jobs(
     return scored_jobs[:limit] if limit is not None else scored_jobs
 
 
+def _save_applications(applications: List[Dict[str, Any]]) -> None:
+    """Persist applications atomically and synchronize the in-memory cache."""
+    global _applications_cache, _applications_cache_mtime
+    _atomic_write_json(APPLICATIONS_FILE, applications)
+    _applications_cache = [dict(a) for a in applications]
+    try:
+        _applications_cache_mtime = APPLICATIONS_FILE.stat().st_mtime if APPLICATIONS_FILE.exists() else None
+    except OSError:
+        _applications_cache_mtime = None
+
+
 def load_applications() -> List[Dict[str, Any]]:
-    """Read all submitted applications from applications.json."""
+    """Read all submitted applications from applications.json with mtime-based caching."""
+    global _applications_cache, _applications_cache_mtime
     with _db_lock:
         if not APPLICATIONS_FILE.exists():
+            _applications_cache = []
+            _applications_cache_mtime = None
             return []
         try:
+            current_mtime = APPLICATIONS_FILE.stat().st_mtime
+            if _applications_cache is not None and _applications_cache_mtime == current_mtime:
+                return [dict(a) for a in _applications_cache]
+
             with open(APPLICATIONS_FILE, "r", encoding="utf-8") as f:
                 content = f.read().strip()
                 if not content:
+                    _applications_cache = []
+                    _applications_cache_mtime = current_mtime
                     return []
-                return json.loads(content)
+                apps = json.loads(content)
+                _applications_cache = [dict(a) for a in apps]
+                _applications_cache_mtime = current_mtime
+                return [dict(a) for a in _applications_cache]
         except Exception as exc:
             logger.error(f"Error loading applications: {exc}")
-            return []
+            return [dict(a) for a in _applications_cache] if _applications_cache is not None else []
 
 
 def apply_to_job(job_id: str) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
@@ -237,7 +272,7 @@ def apply_to_job(job_id: str) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
         }
 
         applications.append(new_application)
-        _atomic_write_json(APPLICATIONS_FILE, applications)
+        _save_applications(applications)
 
     logger.info(f"Successfully recorded application for job {clean_id} ({job.get('title')})")
     return (
@@ -278,7 +313,7 @@ def withdraw_application(job_id: str) -> Tuple[bool, str]:
         if len(remaining) == initial_len:
             return False, f"No existing application found for Job ID '{clean_id}'."
 
-        _atomic_write_json(APPLICATIONS_FILE, remaining)
+        _save_applications(remaining)
 
     logger.info(f"Successfully withdrew application for job {clean_id}")
     return True, f"Application for Job ID '{clean_id}' has been successfully withdrawn."
@@ -321,7 +356,7 @@ def update_application_status(job_id: str, new_status: str) -> Tuple[bool, str, 
         if not updated_app:
             return False, f"No existing application found for Job ID '{clean_id}'.", None
 
-        _atomic_write_json(APPLICATIONS_FILE, applications)
+        _save_applications(applications)
 
     logger.info(f"Updated application status for job {clean_id} to '{canonical_status}'")
     return True, f"Application status for Job ID '{clean_id}' updated to '{canonical_status}'.", updated_app

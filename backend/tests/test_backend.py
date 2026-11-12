@@ -438,6 +438,33 @@ class BackendTestCase(unittest.TestCase):
         # Clean up
         withdraw_application(self.test_job_id)
 
+    def test_applications_cache_consistency(self):
+        """Test mtime cache synchronization and shallow-copy isolation for applications."""
+        from app.services.db_service import invalidate_applications_cache, load_applications
+
+        withdraw_application(self.test_job_id)
+        invalidate_applications_cache()
+
+        apps_initial = load_applications()
+        self.assertFalse(any(a["job_id"] == self.test_job_id for a in apps_initial))
+
+        # Apply updates cache immediately
+        apply_to_job(self.test_job_id)
+        apps_after_apply = load_applications()
+        self.assertTrue(any(a["job_id"] == self.test_job_id for a in apps_after_apply))
+
+        # Mutating returned dict does not pollute internal cache
+        for a in apps_after_apply:
+            if a["job_id"] == self.test_job_id:
+                a["status"] = "MUTATED_LOCALLY"
+        reloaded = get_application_status(self.test_job_id)
+        self.assertEqual(reloaded[0]["status"], "Applied")
+
+        # Withdraw updates cache immediately
+        withdraw_application(self.test_job_id)
+        apps_after_withdraw = load_applications()
+        self.assertFalse(any(a["job_id"] == self.test_job_id for a in apps_after_withdraw))
+
 
 if __name__ == "__main__":
     unittest.main()
