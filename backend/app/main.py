@@ -217,6 +217,7 @@ async def get_jobs_list(
     query: Optional[str] = Query(None, description="Optional search keyword"),
     location: Optional[str] = Query(None, description="Optional location filter (e.g. Remote, Berlin)"),
     experience_level: Optional[str] = Query(None, description="Optional experience tier filter (Entry-Level, Mid-Level, Senior)"),
+    company: Optional[str] = Query(None, description="Optional company name filter"),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0)
 ):
@@ -224,11 +225,13 @@ async def get_jobs_list(
     clean_query = (query or "").strip()
     clean_loc = (location or "").strip()
     clean_exp = (experience_level or "").strip()
-    if clean_query or clean_loc or clean_exp:
+    clean_company = (company or "").strip()
+    if clean_query or clean_loc or clean_exp or clean_company:
         all_jobs = search_jobs(
             query=clean_query or None,
             location=clean_loc or None,
             experience_level=clean_exp or None,
+            company=clean_company or None,
             limit=None
         )
     else:

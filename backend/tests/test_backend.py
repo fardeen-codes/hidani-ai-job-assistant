@@ -516,6 +516,25 @@ class BackendTestCase(unittest.TestCase):
 
         withdraw_application(self.test_job_id)
 
+    def test_jobs_company_filtering(self):
+        """Test GET /api/jobs and search_jobs filtering by company name."""
+        from urllib.parse import quote
+
+        sample_job = get_job_by_id(self.test_job_id)
+        company_name = sample_job["company"]
+
+        res = self.client.get(f"/api/jobs?company={quote(company_name)}&limit=10")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertGreaterEqual(data["total"], 1)
+        for job in data["jobs"]:
+            self.assertIn(company_name.lower(), job["company"].lower())
+
+        # Non-matching company returns 0
+        res_empty = self.client.get("/api/jobs?company=CompanyThatDoesNotExistXYZ999")
+        self.assertEqual(res_empty.status_code, 200)
+        self.assertEqual(res_empty.json()["total"], 0)
+
 
 if __name__ == "__main__":
     unittest.main()

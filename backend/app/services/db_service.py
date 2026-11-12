@@ -119,10 +119,11 @@ def search_jobs(
     query: Optional[str] = None,
     experience_level: Optional[str] = None,
     location: Optional[str] = None,
+    company: Optional[str] = None,
     limit: Optional[int] = 10
 ) -> List[Dict[str, Any]]:
     """
-    Search and filter jobs by designation, skills, query keyword, location, and experience level.
+    Search and filter jobs by designation, skills, query keyword, location, company, and experience level.
     Returns matched job dictionaries.
     """
     all_jobs = load_jobs()
@@ -134,6 +135,7 @@ def search_jobs(
     desig_clean = (designation or "").strip().lower()
     exp_clean = (experience_level or "").strip().lower()
     loc_clean = (location or "").strip().lower()
+    company_clean = (company or "").strip().lower()
 
     scored_jobs = []
 
@@ -151,6 +153,10 @@ def search_jobs(
                 continue
             elif loc_clean != "remote" and loc_clean not in job_loc:
                 continue
+
+        # Strict company filter if specified
+        if company_clean and company_clean not in company_lower:
+            continue
 
         score = 0.0
 
