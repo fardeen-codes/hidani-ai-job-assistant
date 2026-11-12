@@ -48,15 +48,21 @@ def invalidate_applications_cache() -> None:
 
 def _atomic_write_json(file_path: Path, data: Any) -> None:
     """Atomically write JSON data to file using a temporary file to avoid corruption."""
+    temp_name: Optional[str] = None
     try:
         file_path.parent.mkdir(parents=True, exist_ok=True)
         temp_dir = file_path.parent
         with tempfile.NamedTemporaryFile("w", dir=temp_dir, delete=False, encoding="utf-8") as tf:
-            json.dump(data, tf, indent=2, ensure_ascii=False)
             temp_name = tf.name
+            json.dump(data, tf, indent=2, ensure_ascii=False)
         os.replace(temp_name, file_path)
     except OSError as exc:
         logger.warning(f"Atomic file replace failed ({exc}), falling back to direct write")
+        if temp_name and os.path.exists(temp_name):
+            try:
+                os.unlink(temp_name)
+            except OSError:
+                pass
         with open(file_path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
 
@@ -123,7 +129,7 @@ def search_jobs(
     if not all_jobs:
         return []
 
-    skills_set = {s.strip().lower() for s in (skills or []) if s.strip()}
+    skills_set = {str(s).strip().lower() for s in (skills or []) if s and str(s).strip()}
     query_clean = (query or "").strip().lower()
     desig_clean = (designation or "").strip().lower()
     exp_clean = (experience_level or "").strip().lower()
@@ -132,12 +138,12 @@ def search_jobs(
     scored_jobs = []
 
     for job in all_jobs:
-        job_loc = job.get("location", "").lower()
-        title_lower = job.get("title", "").lower()
-        desc_lower = job.get("description", "").lower()
-        company_lower = job.get("company", "").lower()
-        job_exp = job.get("experience", "").lower()
-        job_skills = {s.lower() for s in job.get("skills", [])}
+        job_loc = (job.get("location") or "").lower()
+        title_lower = (job.get("title") or "").lower()
+        desc_lower = (job.get("description") or "").lower()
+        company_lower = (job.get("company") or "").lower()
+        job_exp = (job.get("experience") or "").lower()
+        job_skills = {str(s).strip().lower() for s in (job.get("skills") or []) if s and str(s).strip()}
 
         # Strict location filter if specified (e.g. "remote")
         if loc_clean:

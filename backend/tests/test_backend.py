@@ -465,6 +465,40 @@ class BackendTestCase(unittest.TestCase):
         apps_after_withdraw = load_applications()
         self.assertFalse(any(a["job_id"] == self.test_job_id for a in apps_after_withdraw))
 
+    def test_db_atomic_write_and_null_safe_search(self):
+        """Test atomic JSON writer fallback cleanup and null-safe search_jobs handling."""
+        import tempfile
+        from pathlib import Path
+        from unittest.mock import patch
+        from app.services.db_service import _atomic_write_json
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            target = Path(tmpdir) / "out.json"
+            with patch("app.services.db_service.os.replace", side_effect=OSError("replace failed")):
+                _atomic_write_json(target, [{"ok": True}])
+
+            # Fallback direct write succeeded and no leftover temp files remain
+            files = list(Path(tmpdir).iterdir())
+            self.assertEqual(len(files), 1)
+            self.assertEqual(files[0].name, "out.json")
+
+        # Null-safe search_jobs with None fields in mocked job records
+        mock_jobs = [
+            {
+                "job_id": "job-null-1",
+                "title": "Python Engineer",
+                "company": None,
+                "location": None,
+                "description": None,
+                "experience": None,
+                "skills": [None, "Python", " "],
+            }
+        ]
+        with patch("app.services.db_service.load_jobs", return_value=mock_jobs):
+            results = search_jobs(skills=[None, "Python", ""], query="Python", limit=5)
+            self.assertEqual(len(results), 1)
+            self.assertEqual(results[0]["job_id"], "job-null-1")
+
 
 if __name__ == "__main__":
     unittest.main()
