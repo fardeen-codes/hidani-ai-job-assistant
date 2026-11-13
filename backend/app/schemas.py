@@ -154,3 +154,15 @@ class ApplicationStatsResponse(BaseModel):
     status_breakdown: Dict[str, int] = Field(description="Count of applications by status")
     top_companies: List[CompanyCount] = Field(description="Top companies applied to")
     recent_applications: List[JobApplication] = Field(description="Most recently submitted applications")
+
+
+class SkillGapAnalysisResponse(BaseModel):
+    """Detailed skill comparison and readiness assessment between candidate and job posting."""
+    job_id: str = Field(description="Unique identifier of evaluated job")
+    job_title: str = Field(description="Job title")
+    company: str = Field(description="Company name")
+    match_score: float = Field(description="Match relevance score 0-100")
+    matching_skills: List[str] = Field(default_factory=list, description="Skills candidate satisfies")
+    missing_skills: List[str] = Field(default_factory=list, description="Required skills candidate lacks")
+    readiness: str = Field(description="Assessment category: High Readiness, Moderate Readiness, or Needs Preparation")
+    recommendation: str = Field(description="Actionable career advice or study recommendations")

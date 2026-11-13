@@ -769,6 +769,35 @@ class BackendTestCase(unittest.TestCase):
         # 5. Clean up
         clear_search_history()
 
+    def test_job_skill_gap_analysis(self):
+        """Test skill gap analysis agent helper and GET /api/jobs/{job_id}/match endpoint."""
+        from app.agents.matcher_agent import analyze_skill_gap
+
+        # 1. Non-existent job endpoint -> 404
+        res_404 = self.client.get("/api/jobs/job-does-not-exist-xyz/match")
+        self.assertEqual(res_404.status_code, 404)
+
+        # 2. Existing job match endpoint with matching skills
+        # self.test_job_id (job-00001) has skill "Finance"
+        res_match = self.client.get(f"/api/jobs/{self.test_job_id}/match?skills=Finance,Excel,Python")
+        self.assertEqual(res_match.status_code, 200)
+        data = res_match.json()
+        self.assertEqual(data["job_id"], self.test_job_id)
+        self.assertIn("Finance", data["matching_skills"])
+        self.assertGreater(data["match_score"], 0)
+        self.assertIn(data["readiness"], ["High Readiness", "Moderate Readiness", "Needs Preparation"])
+        self.assertIn("recommendation", data)
+
+        # 3. Direct agent call
+        analysis = analyze_skill_gap(self.test_job_id, candidate_skills=["Finance"])
+        self.assertIsNotNone(analysis)
+        self.assertEqual(analysis["job_id"], self.test_job_id)
+        self.assertEqual(analysis["readiness"], "High Readiness")
+
+        # 4. Direct agent call with empty or invalid id
+        self.assertIsNone(analyze_skill_gap(""))
+        self.assertIsNone(analyze_skill_gap("invalid-job-id-9999"))
+
 
 if __name__ == "__main__":
     unittest.main()

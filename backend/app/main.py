@@ -14,6 +14,7 @@ from fastapi import FastAPI, File, HTTPException, Query, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 
+from app.agents.matcher_agent import analyze_skill_gap
 from app.agents.orchestrator import (
     clear_session_state,
     get_session_state,
@@ -38,6 +39,7 @@ from app.schemas import (
     JobBookmark,
     JobStatsResponse,
     SearchHistoryEntry,
+    SkillGapAnalysisResponse,
     UploadResumeResponse,
 )
 from app.services.db_service import (
@@ -307,6 +309,39 @@ async def get_job_details_by_id(job_id: str):
             detail=f"Job with ID '{clean_id}' was not found in the database."
         )
     return job
+
+
+@app.get(
+    "/api/jobs/{job_id}/match",
+    response_model=SkillGapAnalysisResponse,
+    summary="Evaluate candidate skill gap for a specific job",
+    tags=["Jobs"]
+)
+async def evaluate_job_skill_gap(
+    job_id: str,
+    skills: Optional[str] = Query(None, description="Comma-separated candidate skills (e.g. 'Python,FastAPI')"),
+    session_id: Optional[str] = Query(None, description="Optional session ID to pull candidate profile skills")
+):
+    """Assess skill readiness, matching skills, missing skills, and career recommendations for a job."""
+    clean_id = (job_id or "").strip()
+    if not clean_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Job ID cannot be empty.")
+
+    candidate_skills: List[str] = []
+    if skills:
+        candidate_skills = [s.strip() for s in skills.split(",") if s.strip()]
+    elif session_id:
+        sess_state = get_session_state(session_id)
+        if sess_state.get("profile"):
+            candidate_skills = sess_state["profile"].get("skills", [])
+
+    analysis = analyze_skill_gap(clean_id, candidate_skills=candidate_skills)
+    if not analysis:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Job with ID '{clean_id}' was not found in the database."
+        )
+    return analysis
 
 
 @app.get("/api/applications", summary="List all submitted applications", tags=["Applications"])

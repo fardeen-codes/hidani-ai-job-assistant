@@ -258,3 +258,63 @@ def match_jobs_for_candidate(
                 match_reason=reason
             ))
         return results
+
+
+def analyze_skill_gap(
+    job_id: str,
+    candidate_skills: Optional[List[str]] = None,
+    candidate_level: Optional[str] = None
+) -> Optional[Dict[str, Any]]:
+    """
+    Sub-Agent 2 execution: Analyze skill gap and readiness for a specific job posting.
+    Computes matching skills, missing skills, match score, readiness category, and advice.
+    """
+    from app.services.db_service import get_job_by_id
+
+    clean_id = (job_id or "").strip()
+    if not clean_id:
+        return None
+
+    job = get_job_by_id(clean_id)
+    if not job:
+        return None
+
+    candidate_skills = candidate_skills or []
+    cand_norm_map = {_normalize_skill(s): s for s in candidate_skills if s and s.strip()}
+
+    job_skills = job.get("skills") or []
+    matching_skills: List[str] = []
+    missing_skills: List[str] = []
+
+    for s in job_skills:
+        clean_s = s.strip()
+        norm_s = _normalize_skill(clean_s)
+        if norm_s in cand_norm_map:
+            matching_skills.append(clean_s)
+        else:
+            missing_skills.append(clean_s)
+
+    score = _calculate_lexical_score(job, candidate_skills, candidate_level or "Mid-Level")
+
+    if score >= 80 or (job_skills and len(missing_skills) == 0):
+        readiness = "High Readiness"
+        rec = f"Strong fit! You meet {len(matching_skills)} of {len(job_skills)} required skills. You are well-positioned to apply."
+    elif score >= 55 or len(matching_skills) > 0:
+        readiness = "Moderate Readiness"
+        missing_preview = ", ".join(missing_skills[:3]) if missing_skills else "advanced concepts"
+        rec = f"Promising match. Consider highlighting your {', '.join(matching_skills[:2]) if matching_skills else 'experience'} and brushing up on {missing_preview}."
+    else:
+        readiness = "Needs Preparation"
+        missing_preview = ", ".join(missing_skills[:3]) if missing_skills else "core technologies"
+        rec = f"This position requires skills not currently in your primary profile ({missing_preview}). Additional coursework or projects are recommended."
+
+    return {
+        "job_id": job.get("job_id"),
+        "job_title": job.get("title"),
+        "company": job.get("company"),
+        "match_score": score,
+        "matching_skills": matching_skills,
+        "missing_skills": missing_skills,
+        "readiness": readiness,
+        "recommendation": rec
+    }
