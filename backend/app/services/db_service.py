@@ -120,10 +120,13 @@ def search_jobs(
     experience_level: Optional[str] = None,
     location: Optional[str] = None,
     company: Optional[str] = None,
+    sort_by: Optional[str] = None,
+    order: Optional[str] = "asc",
     limit: Optional[int] = 10
 ) -> List[Dict[str, Any]]:
     """
     Search and filter jobs by designation, skills, query keyword, location, company, and experience level.
+    Supports sorting by title, company, experience, or relevance score.
     Returns matched job dictionaries.
     """
     all_jobs = load_jobs()
@@ -201,8 +204,15 @@ def search_jobs(
             job_copy["internal_score"] = score
             scored_jobs.append(job_copy)
 
-    # Sort descending by calculated score
-    scored_jobs.sort(key=lambda x: x.get("internal_score", 0), reverse=True)
+    # Ordering / Sorting
+    sort_clean = (sort_by or "").strip().lower()
+    is_desc = (order or "asc").strip().lower() == "desc"
+    if sort_clean in {"title", "company", "experience", "location"}:
+        scored_jobs.sort(key=lambda x: (x.get(sort_clean) or "").lower(), reverse=is_desc)
+    else:
+        # Default: descending by calculated score
+        scored_jobs.sort(key=lambda x: x.get("internal_score", 0), reverse=True)
+
     return scored_jobs[:limit] if limit is not None else scored_jobs
 
 

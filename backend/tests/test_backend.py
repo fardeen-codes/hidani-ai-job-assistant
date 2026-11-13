@@ -570,6 +570,20 @@ class BackendTestCase(unittest.TestCase):
 
         withdraw_application(self.test_job_id)
 
+    def test_jobs_sorting_and_ordering(self):
+        """Test GET /api/jobs sort_by and order parameters."""
+        res_asc = self.client.get("/api/jobs?sort_by=title&order=asc&limit=10")
+        self.assertEqual(res_asc.status_code, 200)
+        jobs_asc = res_asc.json()["jobs"]
+        titles_asc = [j["title"].lower() for j in jobs_asc]
+        self.assertEqual(titles_asc, sorted(titles_asc))
+
+        res_desc = self.client.get("/api/jobs?sort_by=title&order=desc&limit=10")
+        self.assertEqual(res_desc.status_code, 200)
+        jobs_desc = res_desc.json()["jobs"]
+        titles_desc = [j["title"].lower() for j in jobs_desc]
+        self.assertEqual(titles_desc, sorted(titles_desc, reverse=True))
+
 
 if __name__ == "__main__":
     unittest.main()

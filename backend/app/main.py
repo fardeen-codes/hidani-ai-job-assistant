@@ -218,20 +218,27 @@ async def get_jobs_list(
     location: Optional[str] = Query(None, description="Optional location filter (e.g. Remote, Berlin)"),
     experience_level: Optional[str] = Query(None, description="Optional experience tier filter (Entry-Level, Mid-Level, Senior)"),
     company: Optional[str] = Query(None, description="Optional company name filter"),
+    sort_by: Optional[str] = Query(None, description="Optional field to sort by (title, company, experience, location)"),
+    order: Optional[str] = Query("asc", description="Sort direction (asc, desc)"),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0)
 ):
-    """Retrieve paginated jobs from the local 1,600+ job database with multi-field filtering."""
+    """Retrieve paginated jobs from the local 1,600+ job database with multi-field filtering and sorting."""
     clean_query = (query or "").strip()
     clean_loc = (location or "").strip()
     clean_exp = (experience_level or "").strip()
     clean_company = (company or "").strip()
-    if clean_query or clean_loc or clean_exp or clean_company:
+    clean_sort = (sort_by or "").strip().lower()
+    is_desc = (order or "asc").strip().lower() == "desc"
+
+    if clean_query or clean_loc or clean_exp or clean_company or clean_sort:
         all_jobs = search_jobs(
             query=clean_query or None,
             location=clean_loc or None,
             experience_level=clean_exp or None,
             company=clean_company or None,
+            sort_by=clean_sort or None,
+            order="desc" if is_desc else "asc",
             limit=None
         )
     else:
