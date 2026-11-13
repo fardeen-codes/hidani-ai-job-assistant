@@ -20,10 +20,11 @@ from app.services.db_service import (
 logger = logging.getLogger("ApplierAgent")
 
 
-def apply_for_job(job_id: str) -> Dict[str, Any]:
+def apply_for_job(job_id: str, notes: Optional[str] = None) -> Dict[str, Any]:
     """
     Sub-Agent 3 execution for submitting an application:
-    Validates job ID, checks deduplication, records application in applications.json.
+    Validates job ID, checks deduplication, records application in applications.json,
+    and supports optional cover notes.
     """
     clean_id = (job_id or "").strip()
     if not clean_id:
@@ -44,7 +45,7 @@ def apply_for_job(job_id: str) -> Dict[str, Any]:
             "job": None
         }
 
-    success, message, app_data = apply_to_job(clean_id)
+    success, message, app_data = apply_to_job(clean_id, notes=notes)
 
     return {
         "success": success,

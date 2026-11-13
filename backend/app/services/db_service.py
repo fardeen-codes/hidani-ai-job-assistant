@@ -255,12 +255,14 @@ def load_applications() -> List[Dict[str, Any]]:
             return [dict(a) for a in _applications_cache] if _applications_cache is not None else []
 
 
-def apply_to_job(job_id: str) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
+def apply_to_job(job_id: str, notes: Optional[str] = None) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
     """
     Apply to a job ID with deduplication and validation.
+    Accepts an optional applicant note / cover letter remark.
     Returns: (success: bool, message: str, application_data: Optional[dict])
     """
     clean_id = (job_id or "").strip()
+    clean_notes = (notes or "").strip() or None
     if not clean_id:
         return False, "Job ID cannot be empty.", None
 
@@ -290,7 +292,8 @@ def apply_to_job(job_id: str) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
             "company": job.get("company"),
             "location": job.get("location"),
             "applied_date": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
-            "status": "Applied"
+            "status": "Applied",
+            "notes": clean_notes
         }
 
         applications.append(new_application)

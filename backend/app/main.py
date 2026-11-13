@@ -317,7 +317,7 @@ async def submit_application(payload: ApplicationCreateRequest):
             detail="Job ID cannot be empty."
         )
 
-    success, message, app_data = apply_to_job(clean_id)
+    success, message, app_data = apply_to_job(clean_id, notes=payload.notes)
     if not success:
         if app_data is not None:
             raise HTTPException(

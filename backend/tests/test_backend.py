@@ -584,6 +584,24 @@ class BackendTestCase(unittest.TestCase):
         titles_desc = [j["title"].lower() for j in jobs_desc]
         self.assertEqual(titles_desc, sorted(titles_desc, reverse=True))
 
+    def test_application_with_notes(self):
+        """Test submitting an application with custom candidate notes/cover remarks."""
+        withdraw_application(self.test_job_id)
+
+        res = self.client.post("/api/applications", json={
+            "job_id": self.test_job_id,
+            "notes": "Excited about this opportunity; 4 years Python experience."
+        })
+        self.assertEqual(res.status_code, 201)
+        data = res.json()
+        self.assertEqual(data["application"]["notes"], "Excited about this opportunity; 4 years Python experience.")
+
+        # Verify retrieval retains notes
+        app_details = self.client.get(f"/api/applications/{self.test_job_id}").json()
+        self.assertEqual(app_details["notes"], "Excited about this opportunity; 4 years Python experience.")
+
+        withdraw_application(self.test_job_id)
+
 
 if __name__ == "__main__":
     unittest.main()

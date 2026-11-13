@@ -46,6 +46,7 @@ class JobApplication(BaseModel):
     job_title: Optional[str] = Field(default=None, description="Title of the job")
     company: Optional[str] = Field(default=None, description="Company name")
     location: Optional[str] = Field(default=None, description="Job location")
+    notes: Optional[str] = Field(default=None, description="Optional applicant cover note or remarks")
 
 
 class ChatRequest(BaseModel):
@@ -90,6 +91,7 @@ class UploadResumeResponse(BaseModel):
 class ApplicationCreateRequest(BaseModel):
     """Payload to submit a direct job application."""
     job_id: str = Field(..., min_length=1, description="Unique identifier of the job to apply for")
+    notes: Optional[str] = Field(None, max_length=1000, description="Optional applicant notes or cover note")
 
 
 class ApplicationStatusUpdateRequest(BaseModel):
