@@ -28,6 +28,7 @@ from app.config import (
 )
 from app.schemas import (
     ApplicationCreateRequest,
+    ApplicationNotesUpdateRequest,
     ApplicationStatsResponse,
     ApplicationStatusUpdateRequest,
     ChatRequest,
@@ -50,6 +51,7 @@ from app.services.db_service import (
     remove_job_bookmark,
     save_job_bookmark,
     search_jobs,
+    update_application_notes,
     update_application_status,
     withdraw_application,
 )
@@ -438,6 +440,32 @@ async def update_application_status_endpoint(job_id: str, payload: ApplicationSt
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=message
             )
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=message
+        )
+    return {
+        "status": "success",
+        "message": message,
+        "application": updated_app
+    }
+
+
+@app.patch(
+    "/api/applications/{job_id}/notes",
+    summary="Update candidate notes for an application",
+    tags=["Applications"]
+)
+async def update_application_notes_endpoint(job_id: str, payload: ApplicationNotesUpdateRequest):
+    """Update personal applicant notes or interview comments for a submitted job application."""
+    clean_id = (job_id or "").strip()
+    if not clean_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Job ID cannot be empty."
+        )
+    success, message, updated_app = update_application_notes(clean_id, payload.notes)
+    if not success:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=message

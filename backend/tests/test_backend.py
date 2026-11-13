@@ -706,6 +706,38 @@ class BackendTestCase(unittest.TestCase):
         # Clean up
         remove_job_bookmark(self.test_job_id)
 
+    def test_application_candidate_notes_lifecycle(self):
+        """Test candidate notes update endpoint and helper."""
+        from app.agents.applier_agent import update_job_application_notes
+        withdraw_application(self.test_job_id)
+
+        # 1. Update notes on non-existent application -> 404
+        res_404 = self.client.patch(
+            f"/api/applications/{self.test_job_id}/notes",
+            json={"notes": "Interview scheduled"}
+        )
+        self.assertEqual(res_404.status_code, 404)
+
+        # 2. Apply first, then update notes -> 200 OK
+        apply_to_job(self.test_job_id, notes="Initial cover note")
+        res_patch = self.client.patch(
+            f"/api/applications/{self.test_job_id}/notes",
+            json={"notes": "First round with lead recruiter on Thursday at 2 PM"}
+        )
+        self.assertEqual(res_patch.status_code, 200)
+        data = res_patch.json()
+        self.assertEqual(data["status"], "success")
+        self.assertEqual(data["application"]["notes"], "First round with lead recruiter on Thursday at 2 PM")
+        self.assertIn("updated_date", data["application"])
+
+        # 3. Direct agent call
+        agent_res = update_job_application_notes(self.test_job_id, "Completed technical assessment")
+        self.assertTrue(agent_res["success"])
+        self.assertEqual(agent_res["application"]["notes"], "Completed technical assessment")
+
+        # 4. Clean up
+        withdraw_application(self.test_job_id)
+
 
 if __name__ == "__main__":
     unittest.main()

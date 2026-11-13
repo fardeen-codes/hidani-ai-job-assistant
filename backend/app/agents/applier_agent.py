@@ -13,6 +13,7 @@ from app.services.db_service import (
     apply_to_job,
     get_application_status,
     get_job_by_id,
+    update_application_notes,
     update_application_status,
     withdraw_application,
 )
@@ -128,6 +129,27 @@ def update_job_application_status(job_id: str, new_status: str) -> Dict[str, Any
         }
 
     success, message, updated_app = update_application_status(clean_id, new_status)
+    return {
+        "success": success,
+        "message": message,
+        "application": updated_app
+    }
+
+
+def update_job_application_notes(job_id: str, notes: str) -> Dict[str, Any]:
+    """
+    Sub-Agent 3 execution for updating candidate notes or interview comments:
+    Validates job ID, persists notes in applications.json, and returns confirmation.
+    """
+    clean_id = (job_id or "").strip()
+    if not clean_id:
+        return {
+            "success": False,
+            "message": "Please provide a valid Job ID to update application notes.",
+            "application": None
+        }
+
+    success, message, updated_app = update_application_notes(clean_id, notes)
     return {
         "success": success,
         "message": message,

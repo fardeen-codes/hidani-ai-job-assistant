@@ -399,6 +399,34 @@ def update_application_status(job_id: str, new_status: str) -> Tuple[bool, str, 
     return True, f"Application status for Job ID '{clean_id}' updated to '{canonical_status}'.", updated_app
 
 
+def update_application_notes(job_id: str, notes: str) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
+    """
+    Update personal applicant notes or interview remarks for a submitted application.
+    Returns: (success: bool, message: str, updated_application: Optional[dict])
+    """
+    clean_id = (job_id or "").strip()
+    if not clean_id:
+        return False, "Job ID cannot be empty.", None
+
+    with _db_lock:
+        applications = load_applications()
+        updated_app = None
+        for app in applications:
+            if app.get("job_id", "").strip().lower() == clean_id.lower():
+                app["notes"] = (notes or "").strip() or None
+                app["updated_date"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+                updated_app = app
+                break
+
+        if not updated_app:
+            return False, f"No existing application found for Job ID '{clean_id}'.", None
+
+        _save_applications(applications)
+
+    logger.info(f"Updated application notes for job {clean_id}")
+    return True, f"Application notes for Job ID '{clean_id}' have been updated.", updated_app
+
+
 def get_job_stats() -> Dict[str, Any]:
     """
     Compute aggregated market statistics across all available jobs,

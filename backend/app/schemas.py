@@ -108,6 +108,11 @@ class ApplicationStatusUpdateRequest(BaseModel):
     status: str = Field(..., min_length=1, description="Updated status (Applied, Under Review, Interview, Offer, Rejected)")
 
 
+class ApplicationNotesUpdateRequest(BaseModel):
+    """Payload to update personal candidate notes on a submitted job application."""
+    notes: str = Field(..., max_length=2000, description="Candidate notes, interview logs, or remarks")
+
+
 class SkillCount(BaseModel):
     skill: str
     count: int
