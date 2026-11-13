@@ -431,6 +431,48 @@ def update_application_notes(job_id: str, notes: str) -> Tuple[bool, str, Option
     return True, f"Application notes for Job ID '{clean_id}' have been updated.", updated_app
 
 
+def update_application_reminder(job_id: str, reminder_date: Optional[str]) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
+    """
+    Set or clear a follow-up reminder date for an application.
+    Returns: (success: bool, message: str, updated_application: Optional[dict])
+    """
+    clean_id = (job_id or "").strip()
+    if not clean_id:
+        return False, "Job ID cannot be empty.", None
+
+    clean_rem = (reminder_date or "").strip() or None
+
+    with _db_lock:
+        applications = load_applications()
+        updated_app = None
+        for app in applications:
+            if app.get("job_id", "").strip().lower() == clean_id.lower():
+                app["reminder_date"] = clean_rem
+                app["updated_date"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+                updated_app = app
+                break
+
+        if not updated_app:
+            return False, f"No existing application found for Job ID '{clean_id}'.", None
+
+        _save_applications(applications)
+
+    if clean_rem:
+        msg = f"Follow-up reminder for Job ID '{clean_id}' set for {clean_rem}."
+    else:
+        msg = f"Follow-up reminder for Job ID '{clean_id}' has been cleared."
+    logger.info(msg)
+    return True, msg, updated_app
+
+
+def get_upcoming_reminders() -> List[Dict[str, Any]]:
+    """Retrieve all submitted applications that have pending follow-up reminders, sorted chronologically."""
+    apps = load_applications()
+    reminders = [a for a in apps if a.get("reminder_date")]
+    reminders.sort(key=lambda x: str(x.get("reminder_date", "")))
+    return reminders
+
+
 def get_job_stats() -> Dict[str, Any]:
     """
     Compute aggregated market statistics across all available jobs,

@@ -47,6 +47,12 @@ class JobApplication(BaseModel):
     company: Optional[str] = Field(default=None, description="Company name")
     location: Optional[str] = Field(default=None, description="Job location")
     notes: Optional[str] = Field(default=None, description="Optional applicant cover note or remarks")
+    reminder_date: Optional[str] = Field(default=None, description="Optional follow-up reminder date or deadline")
+
+
+class ApplicationReminderUpdateRequest(BaseModel):
+    """Payload to set or clear a follow-up reminder on an application."""
+    reminder_date: Optional[str] = Field(default=None, description="Follow-up reminder date or timestamp (e.g. '2026-11-20'), or null to clear")
 
 
 class JobBookmark(BaseModel):

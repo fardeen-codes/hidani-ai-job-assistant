@@ -798,6 +798,54 @@ class BackendTestCase(unittest.TestCase):
         self.assertIsNone(analyze_skill_gap(""))
         self.assertIsNone(analyze_skill_gap("invalid-job-id-9999"))
 
+    def test_application_followup_reminders(self):
+        """Test setting, querying, and clearing application follow-up reminders."""
+        from app.agents.applier_agent import get_upcoming_reminders_agent, set_application_reminder_agent
+        withdraw_application(self.test_job_id)
+
+        # 1. Update reminder on non-existent application -> 404
+        res_404 = self.client.patch(
+            f"/api/applications/{self.test_job_id}/reminder",
+            json={"reminder_date": "2026-11-20"}
+        )
+        self.assertEqual(res_404.status_code, 404)
+
+        # 2. Submit application
+        apply_to_job(self.test_job_id)
+
+        # 3. Set reminder -> 200 OK
+        res_rem = self.client.patch(
+            f"/api/applications/{self.test_job_id}/reminder",
+            json={"reminder_date": "2026-11-20"}
+        )
+        self.assertEqual(res_rem.status_code, 200)
+        self.assertEqual(res_rem.json()["application"]["reminder_date"], "2026-11-20")
+
+        # 4. Query reminders list endpoint
+        res_list = self.client.get("/api/applications/reminders")
+        self.assertEqual(res_list.status_code, 200)
+        reminders = res_list.json()
+        self.assertTrue(any(r["job_id"] == self.test_job_id for r in reminders))
+
+        # 5. Direct agent helpers
+        agent_res = set_application_reminder_agent(self.test_job_id, "2026-11-25")
+        self.assertTrue(agent_res["success"])
+        self.assertEqual(agent_res["application"]["reminder_date"], "2026-11-25")
+
+        summary = get_upcoming_reminders_agent()
+        self.assertGreaterEqual(summary["total"], 1)
+
+        # 6. Clear reminder
+        res_clear = self.client.patch(
+            f"/api/applications/{self.test_job_id}/reminder",
+            json={"reminder_date": None}
+        )
+        self.assertEqual(res_clear.status_code, 200)
+        self.assertIsNone(res_clear.json()["application"]["reminder_date"])
+
+        # 7. Clean up
+        withdraw_application(self.test_job_id)
+
 
 if __name__ == "__main__":
     unittest.main()

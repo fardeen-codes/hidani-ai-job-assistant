@@ -13,7 +13,9 @@ from app.services.db_service import (
     apply_to_job,
     get_application_status,
     get_job_by_id,
+    get_upcoming_reminders,
     update_application_notes,
+    update_application_reminder,
     update_application_status,
     withdraw_application,
 )
@@ -154,5 +156,38 @@ def update_job_application_notes(job_id: str, notes: str) -> Dict[str, Any]:
         "success": success,
         "message": message,
         "application": updated_app
+    }
+
+
+def set_application_reminder_agent(job_id: str, reminder_date: Optional[str]) -> Dict[str, Any]:
+    """
+    Sub-Agent 3 execution for setting or clearing a follow-up reminder deadline on an application:
+    Validates job ID, persists reminder in applications.json, and returns confirmation.
+    """
+    clean_id = (job_id or "").strip()
+    if not clean_id:
+        return {
+            "success": False,
+            "message": "Please provide a valid Job ID to set reminder.",
+            "application": None
+        }
+
+    success, message, updated_app = update_application_reminder(clean_id, reminder_date)
+    return {
+        "success": success,
+        "message": message,
+        "application": updated_app
+    }
+
+
+def get_upcoming_reminders_agent() -> Dict[str, Any]:
+    """
+    Sub-Agent 3 execution for listing pending follow-up reminders across all applications.
+    """
+    reminders = get_upcoming_reminders()
+    return {
+        "total": len(reminders),
+        "reminders": reminders,
+        "message": f"Found {len(reminders)} pending application follow-up reminder(s)."
     }
 

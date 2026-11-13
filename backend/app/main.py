@@ -30,6 +30,7 @@ from app.config import (
 from app.schemas import (
     ApplicationCreateRequest,
     ApplicationNotesUpdateRequest,
+    ApplicationReminderUpdateRequest,
     ApplicationStatsResponse,
     ApplicationStatusUpdateRequest,
     ChatRequest,
@@ -51,6 +52,7 @@ from app.services.db_service import (
     get_job_by_id,
     get_job_stats,
     get_recent_searches,
+    get_upcoming_reminders,
     load_applications,
     load_jobs,
     record_search_query,
@@ -58,6 +60,7 @@ from app.services.db_service import (
     save_job_bookmark,
     search_jobs,
     update_application_notes,
+    update_application_reminder,
     update_application_status,
     withdraw_application,
 )
@@ -458,6 +461,17 @@ async def export_applications(
 
 
 @app.get(
+    "/api/applications/reminders",
+    response_model=List[JobApplication],
+    summary="List pending application follow-up reminders",
+    tags=["Applications"]
+)
+async def get_application_reminders_endpoint():
+    """Retrieve all submitted job applications with pending follow-up reminders, sorted chronologically."""
+    return get_upcoming_reminders()
+
+
+@app.get(
     "/api/applications/{job_id}",
     summary="Get application details by job ID",
     tags=["Applications"]
@@ -524,6 +538,32 @@ async def update_application_notes_endpoint(job_id: str, payload: ApplicationNot
             detail="Job ID cannot be empty."
         )
     success, message, updated_app = update_application_notes(clean_id, payload.notes)
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=message
+        )
+    return {
+        "status": "success",
+        "message": message,
+        "application": updated_app
+    }
+
+
+@app.patch(
+    "/api/applications/{job_id}/reminder",
+    summary="Set or clear application follow-up reminder",
+    tags=["Applications"]
+)
+async def update_application_reminder_endpoint(job_id: str, payload: ApplicationReminderUpdateRequest):
+    """Set or clear a follow-up reminder date or deadline for an application."""
+    clean_id = (job_id or "").strip()
+    if not clean_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Job ID cannot be empty."
+        )
+    success, message, updated_app = update_application_reminder(clean_id, payload.reminder_date)
     if not success:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
