@@ -738,6 +738,37 @@ class BackendTestCase(unittest.TestCase):
         # 4. Clean up
         withdraw_application(self.test_job_id)
 
+    def test_search_history_lifecycle(self):
+        """Test search query recording, retrieval, and clearing."""
+        from app.services.db_service import clear_search_history, get_recent_searches
+
+        # 1. Clear search history
+        res_del = self.client.delete("/api/searches/recent")
+        self.assertEqual(res_del.status_code, 200)
+        self.assertEqual(len(get_recent_searches()), 0)
+
+        # 2. Trigger search via /api/jobs
+        res_search = self.client.get("/api/jobs?query=python&location=remote")
+        self.assertEqual(res_search.status_code, 200)
+
+        # 3. Retrieve recent searches endpoint
+        res_history = self.client.get("/api/searches/recent")
+        self.assertEqual(res_history.status_code, 200)
+        entries = res_history.json()
+        self.assertGreaterEqual(len(entries), 1)
+        self.assertEqual(entries[0]["query"], "python")
+        self.assertEqual(entries[0]["location"], "remote")
+        self.assertGreater(entries[0]["results_count"], 0)
+        self.assertIn("timestamp", entries[0])
+
+        # 4. Duplicate search does not duplicate consecutive entries
+        self.client.get("/api/jobs?query=python&location=remote")
+        entries_after = self.client.get("/api/searches/recent").json()
+        self.assertEqual(len(entries_after), len(entries))
+
+        # 5. Clean up
+        clear_search_history()
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -8,7 +8,7 @@ import csv
 import io
 import logging
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
 from fastapi import FastAPI, File, HTTPException, Query, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -37,17 +37,21 @@ from app.schemas import (
     JobApplication,
     JobBookmark,
     JobStatsResponse,
+    SearchHistoryEntry,
     UploadResumeResponse,
 )
 from app.services.db_service import (
     apply_to_job,
+    clear_search_history,
     get_application_stats,
     get_application_status,
     get_bookmarked_jobs,
     get_job_by_id,
     get_job_stats,
+    get_recent_searches,
     load_applications,
     load_jobs,
+    record_search_query,
     remove_job_bookmark,
     save_job_bookmark,
     search_jobs,
@@ -249,6 +253,13 @@ async def get_jobs_list(
             order="desc" if is_desc else "asc",
             limit=None
         )
+        if clean_query or clean_loc or clean_exp:
+            record_search_query(
+                query=clean_query or None,
+                location=clean_loc or None,
+                experience=clean_exp or None,
+                results_count=len(all_jobs)
+            )
     else:
         all_jobs = load_jobs()
 
@@ -259,6 +270,19 @@ async def get_jobs_list(
         "offset": offset,
         "jobs": paged
     }
+
+
+@app.get("/api/searches/recent", response_model=List[SearchHistoryEntry], summary="Get recent job searches", tags=["Searches"])
+async def get_recent_searches_endpoint(limit: int = Query(10, ge=1, le=50)):
+    """Retrieve candidate's recent search queries and active filter history."""
+    return get_recent_searches(limit=limit)
+
+
+@app.delete("/api/searches/recent", summary="Clear search history", tags=["Searches"])
+async def clear_recent_searches_endpoint():
+    """Clear candidate's recorded search history."""
+    clear_search_history()
+    return {"status": "success", "message": "Search history cleared."}
 
 
 @app.get("/api/jobs/stats", response_model=JobStatsResponse, summary="Get job database statistics and market insights", tags=["Jobs"])

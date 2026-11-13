@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from app.config import APPLICATIONS_FILE, BOOKMARKS_FILE, JOBS_FILE
+from app.config import APPLICATIONS_FILE, BOOKMARKS_FILE, JOBS_FILE, SEARCH_HISTORY_FILE
 
 logger = logging.getLogger("DBService")
 _db_lock = threading.RLock()
@@ -31,6 +31,10 @@ _applications_cache_mtime: Optional[float] = None
 # In-memory mtime cache for bookmarks database
 _bookmarks_cache: Optional[List[Dict[str, Any]]] = None
 _bookmarks_cache_mtime: Optional[float] = None
+
+# In-memory mtime cache for search history
+_search_history_cache: Optional[List[Dict[str, Any]]] = None
+_search_history_cache_mtime: Optional[float] = None
 
 
 def invalidate_jobs_cache() -> None:
@@ -611,4 +615,101 @@ def remove_job_bookmark(job_id: str) -> Tuple[bool, str]:
 
     logger.info(f"Removed bookmark for job {clean_id}")
     return True, f"Job ID '{clean_id}' removed from your saved bookmarks."
+
+
+def _save_search_history(history: List[Dict[str, Any]]) -> None:
+    """Persist search history atomically and synchronize in-memory cache."""
+    global _search_history_cache, _search_history_cache_mtime
+    _atomic_write_json(SEARCH_HISTORY_FILE, history)
+    _search_history_cache = [dict(h) for h in history]
+    try:
+        _search_history_cache_mtime = SEARCH_HISTORY_FILE.stat().st_mtime if SEARCH_HISTORY_FILE.exists() else None
+    except OSError:
+        _search_history_cache_mtime = None
+
+
+def load_search_history() -> List[Dict[str, Any]]:
+    """Read search history with mtime-based in-memory caching."""
+    global _search_history_cache, _search_history_cache_mtime
+    with _db_lock:
+        if not SEARCH_HISTORY_FILE.exists():
+            _search_history_cache = []
+            _search_history_cache_mtime = None
+            return []
+        try:
+            current_mtime = SEARCH_HISTORY_FILE.stat().st_mtime
+            if _search_history_cache is not None and _search_history_cache_mtime == current_mtime:
+                return [dict(h) for h in _search_history_cache]
+
+            with open(SEARCH_HISTORY_FILE, "r", encoding="utf-8") as f:
+                content = f.read().strip()
+                if not content:
+                    _search_history_cache = []
+                    _search_history_cache_mtime = current_mtime
+                    return []
+                entries = json.loads(content)
+                _search_history_cache = [dict(h) for h in entries]
+                _search_history_cache_mtime = current_mtime
+                return [dict(h) for h in _search_history_cache]
+        except Exception as exc:
+            logger.error(f"Error loading search history: {exc}")
+            return [dict(h) for h in _search_history_cache] if _search_history_cache is not None else []
+
+
+def record_search_query(
+    query: Optional[str] = None,
+    location: Optional[str] = None,
+    experience: Optional[str] = None,
+    skills: Optional[List[str]] = None,
+    results_count: int = 0
+) -> None:
+    """Record a non-empty search query into candidate search history (keeps latest 50)."""
+    clean_q = (query or "").strip()
+    clean_loc = (location or "").strip()
+    clean_exp = (experience or "").strip()
+    clean_skills = [s.strip() for s in (skills or []) if s.strip()]
+
+    # If completely empty search query and filters, do not record
+    if not clean_q and not clean_loc and not clean_exp and not clean_skills:
+        return
+
+    entry = {
+        "query": clean_q or None,
+        "location": clean_loc or None,
+        "experience": clean_exp or None,
+        "skills": clean_skills,
+        "results_count": max(0, results_count),
+        "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    }
+
+    with _db_lock:
+        history = load_search_history()
+        # Avoid duplicate if identical to latest entry
+        if history:
+            latest = history[0]
+            if (
+                latest.get("query") == entry["query"]
+                and latest.get("location") == entry["location"]
+                and latest.get("experience") == entry["experience"]
+                and latest.get("skills") == entry["skills"]
+            ):
+                return
+        history.insert(0, entry)
+        if len(history) > 50:
+            history = history[:50]
+        _save_search_history(history)
+
+
+def get_recent_searches(limit: int = 10) -> List[Dict[str, Any]]:
+    """Retrieve the most recent candidate searches up to limit."""
+    history = load_search_history()
+    limit = max(1, min(limit, 50))
+    return history[:limit]
+
+
+def clear_search_history() -> bool:
+    """Clear all recorded search history."""
+    with _db_lock:
+        _save_search_history([])
+    return True
 

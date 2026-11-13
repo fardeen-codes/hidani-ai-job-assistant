@@ -58,6 +58,16 @@ class JobBookmark(BaseModel):
     location: Optional[str] = Field(default=None, description="Work location")
 
 
+class SearchHistoryEntry(BaseModel):
+    """Record of a recent candidate job search query."""
+    query: Optional[str] = Field(default=None, description="Search keyword or term")
+    location: Optional[str] = Field(default=None, description="Location filter")
+    experience: Optional[str] = Field(default=None, description="Experience level filter")
+    skills: List[str] = Field(default_factory=list, description="Skills filters")
+    timestamp: str = Field(description="Timestamp of the search query")
+    results_count: int = Field(default=0, description="Number of results matching the search")
+
+
 class ChatRequest(BaseModel):
     """Incoming user chat request."""
     message: str = Field(description="User prompt or conversational input")
