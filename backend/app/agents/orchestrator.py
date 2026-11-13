@@ -9,6 +9,7 @@ import json
 import logging
 import re
 import threading
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 from app.agents.applier_agent import (
@@ -17,16 +18,18 @@ from app.agents.applier_agent import (
     update_job_application_status,
     withdraw_job_application,
 )
-from app.agents.matcher_agent import match_jobs_for_candidate
+from app.agents.matcher_agent import analyze_skill_gap, match_jobs_for_candidate
 from app.config import OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_MODEL, is_openai_configured
 from app.schemas import ChatAction
 from app.services.db_service import (
     VALID_APPLICATION_STATUSES,
     get_bookmarked_jobs,
     get_job_by_id,
+    get_upcoming_reminders,
     load_applications,
     remove_job_bookmark,
     save_job_bookmark,
+    update_application_reminder,
 )
 
 logger = logging.getLogger("OrchestratorAgent")
@@ -193,6 +196,55 @@ ORCHESTRATOR_TOOLS = [
                 "properties": {}
             }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "analyze_skill_gap",
+            "description": "Analyze candidate readiness, matching skills, and missing skills for a specific job ID or ordinal index.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "job_id": {
+                        "type": "string",
+                        "description": "The exact Job ID (e.g. 'job-00001') or ordinal index ('1', '2') to evaluate."
+                    }
+                },
+                "required": ["job_id"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "set_followup_reminder",
+            "description": "Schedule a follow-up reminder date or deadline for an applied job.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "job_id": {
+                        "type": "string",
+                        "description": "The Job ID or recommendation index."
+                    },
+                    "reminder_date": {
+                        "type": "string",
+                        "description": "Target reminder date (e.g. '2026-11-20')."
+                    }
+                },
+                "required": ["job_id", "reminder_date"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_upcoming_reminders",
+            "description": "List all active application follow-up reminders.",
+            "parameters": {
+                "type": "object",
+                "properties": {}
+            }
+        }
     }
 ]
 
@@ -252,7 +304,9 @@ def _build_system_prompt(profile: Optional[Dict[str, Any]] = None) -> str:
         "2. Applier Agent (`apply_to_job`): Submits candidate applications without duplicates.\n"
         "3. Status Agent (`get_application_status`): Reviews applied jobs.\n"
         "4. Details Agent (`get_job_details`): Inspects full job descriptions.\n"
-        "5. Bookmarking Agent (`bookmark_job`, `get_bookmarked_jobs`): Saves positions for later candidate review.\n\n"
+        "5. Bookmarking Agent (`bookmark_job`, `get_bookmarked_jobs`): Saves positions for later candidate review.\n"
+        "6. Skill Gap & Match Analysis (`analyze_skill_gap`): Evaluates candidate readiness and missing skills for roles.\n"
+        "7. Reminders Agent (`set_followup_reminder`, `get_upcoming_reminders`): Sets application follow-up deadlines.\n\n"
         "RULES FOR CONVERSATION:\n"
         "- When recommending jobs, list them clearly with numbered items: 1., 2., 3., 4.\n"
         "- When the user asks to apply (e.g. 'apply to job 3' or 'apply to #2'), map it to the 3rd or 2nd job from your recent recommendations and call `apply_to_job`.\n"
@@ -367,6 +421,32 @@ def _execute_tool_call(name: str, args: Dict[str, Any], profile: Optional[Dict[s
         bms = get_bookmarked_jobs()
         payload = {"bookmarks": bms, "total": len(bms)}
         action = ChatAction(type="BOOKMARKS_LIST", data=payload)
+        return json.dumps(payload), action
+
+    elif name == "analyze_skill_gap":
+        raw_id = args.get("job_id", "")
+        resolved_id = _resolve_job_id_from_input(str(raw_id), session_id) or str(raw_id)
+        skills = profile.get("skills", []) if profile else []
+        exp_level = profile.get("experience_level", "Mid-Level") if profile else "Mid-Level"
+        analysis = analyze_skill_gap(resolved_id, candidate_skills=skills, candidate_level=exp_level)
+        if not analysis:
+            return f"Job with ID '{resolved_id}' not found.", None
+        action = ChatAction(type="SKILL_GAP_ANALYSIS", data=analysis)
+        return json.dumps(analysis), action
+
+    elif name == "set_followup_reminder":
+        raw_id = args.get("job_id", "")
+        rem_date = args.get("reminder_date", "")
+        resolved_id = _resolve_job_id_from_input(str(raw_id), session_id) or str(raw_id)
+        success, msg, app_data = update_application_reminder(resolved_id, rem_date)
+        payload = {"job_id": resolved_id, "success": success, "message": msg, "application": app_data}
+        action = ChatAction(type="REMINDER_SET", data=payload)
+        return json.dumps(payload), action
+
+    elif name == "get_upcoming_reminders":
+        rems = get_upcoming_reminders()
+        payload = {"total": len(rems), "reminders": rems}
+        action = ChatAction(type="REMINDERS_LIST", data=payload)
         return json.dumps(payload), action
 
     return f"Unknown tool '{name}'", None
@@ -591,6 +671,65 @@ def _fallback_intent_orchestrator(message: str, profile: Optional[Dict[str, Any]
         else:
             return (
                 "Please specify which job you would like to bookmark (e.g., `bookmark job 1` or `bookmark job-00001`).",
+                actions
+            )
+
+    # 7f. Check for Skill Gap Analysis Intent: "skill gap", "skills needed", "skills required", "what skills"
+    if any(k in msg_lower for k in ["skill gap", "skills needed", "skills required", "what skills", "missing skills", "skill fit", "skills for job"]):
+        target_id = _resolve_job_id_from_input(message, session_id)
+        if target_id:
+            cand_skills = profile.get("skills", []) if profile else []
+            cand_level = profile.get("experience_level", "Mid-Level") if profile else "Mid-Level"
+            analysis = analyze_skill_gap(target_id, candidate_skills=cand_skills, candidate_level=cand_level)
+            if analysis:
+                actions.append(ChatAction(type="SKILL_GAP_ANALYSIS", data=analysis))
+                matching_str = ", ".join(analysis["matching_skills"]) if analysis["matching_skills"] else "None specified"
+                missing_str = ", ".join(analysis["missing_skills"]) if analysis["missing_skills"] else "None (Complete match!)"
+                reply_text = (
+                    f"### Skill Fit Assessment: {analysis['job_title']} at {analysis['company']}\n\n"
+                    f"- **Match Score**: `{analysis['match_score']}%`\n"
+                    f"- **Readiness Level**: `{analysis['readiness']}`\n"
+                    f"- **Matching Skills**: {matching_str}\n"
+                    f"- **Missing / Recommended Skills**: {missing_str}\n\n"
+                    f"**Career Advice**: {analysis['recommendation']}"
+                )
+                return reply_text, actions
+            else:
+                return f"Notice: Job ID '{target_id}' was not found in the database.", actions
+        else:
+            return (
+                "Please specify which job you want to evaluate skills for (e.g., `skills for job 1` or `skill gap for job-00001`).",
+                actions
+            )
+
+    # 7g. Check for Reminders Listing Intent: "show reminders", "my reminders", "upcoming reminders"
+    if any(k in msg_lower for k in ["show reminders", "my reminders", "upcoming reminders", "view reminders", "list reminders"]):
+        rems = get_upcoming_reminders()
+        actions.append(ChatAction(type="REMINDERS_LIST", data={"total": len(rems), "reminders": rems}))
+        if not rems:
+            return (
+                "### Upcoming Reminders\n\n"
+                "You have no pending follow-up reminders scheduled.\n\n"
+                "You can schedule one anytime by asking: *'Remind me to follow up on job 1 on 2026-11-20'*.",
+                actions
+            )
+        lines = [f"### Upcoming Reminders ({len(rems)} Scheduled)\n"]
+        for r in rems:
+            lines.append(f"- **{r.get('job_title', 'Role')}** at **{r.get('company', 'Company')}** (ID: `{r.get('job_id')}`) — Follow up: `{r.get('reminder_date')}`")
+        return "\n".join(lines), actions
+
+    # 7h. Check for Set Reminder Intent: "remind me", "set reminder", "schedule reminder"
+    if any(k in msg_lower for k in ["remind me", "set reminder", "schedule reminder", "add reminder"]):
+        target_id = _resolve_job_id_from_input(message, session_id)
+        if target_id:
+            date_match = re.search(r"\b(202\d-[01]\d-[0-3]\d)\b", message)
+            rem_date = date_match.group(1) if date_match else datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            success, msg, app_data = update_application_reminder(target_id, rem_date)
+            actions.append(ChatAction(type="REMINDER_SET", data={"job_id": target_id, "success": success, "message": msg, "application": app_data}))
+            return f"### Follow-up Reminder Scheduled\n\n{msg}", actions
+        else:
+            return (
+                "Please specify which application you would like to set a reminder for (e.g., `remind me for job 1 on 2026-11-20`).",
                 actions
             )
 

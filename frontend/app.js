@@ -262,6 +262,12 @@ function setupEventListeners() {
     }
   };
 
+  // Global helper to check skill gap
+  window.checkSkillGap = (jobId) => {
+    elements.messageInput.value = `skills needed for ${jobId}`;
+    handleSendMessage();
+  };
+
   // Global helper to clear profile
   window.clearStoredProfile = () => {
     state.profile = null;
@@ -467,6 +473,10 @@ function appendAssistantMessage(markdownContent, actions = []) {
         renderApplicationBadge(actionsSlot, action.data);
       } else if (action.type === 'BOOKMARK_SAVED' && action.data) {
         renderBookmarkBadge(actionsSlot, action.data);
+      } else if (action.type === 'SKILL_GAP_ANALYSIS' && action.data) {
+        renderSkillGapBadge(actionsSlot, action.data);
+      } else if (action.type === 'REMINDER_SET' && action.data) {
+        renderReminderBadge(actionsSlot, action.data);
       }
     });
   }
@@ -589,6 +599,66 @@ function renderBookmarkBadge(container, data) {
     </div>
     <span class="font-mono text-[10px] px-2 py-0.5 rounded bg-neutral-950 border border-neutral-800 text-neutral-400">
       ${escapeHtml(data.job_id || bm.job_id || 'Bookmark')}
+    </span>
+  `;
+  container.appendChild(badge);
+}
+
+/**
+ * Render skill gap analysis widget
+ */
+function renderSkillGapBadge(container, analysis) {
+  if (!analysis) return;
+  const badge = document.createElement('div');
+  badge.className = 'p-3.5 rounded-lg border border-neutral-800 bg-neutral-950 text-xs shadow-sm';
+
+  const matchPills = (analysis.matching_skills || []).map(s => 
+    `<span class="px-2 py-0.5 rounded bg-emerald-950/60 text-emerald-300 font-mono text-[10px] border border-emerald-800/60">${escapeHtml(s)}</span>`
+  ).join(' ') || '<span class="text-neutral-500 italic">None</span>';
+
+  const missingPills = (analysis.missing_skills || []).map(s => 
+    `<span class="px-2 py-0.5 rounded bg-rose-950/60 text-rose-300 font-mono text-[10px] border border-rose-800/60">${escapeHtml(s)}</span>`
+  ).join(' ') || '<span class="text-emerald-400">All required skills met!</span>';
+
+  badge.innerHTML = `
+    <div class="flex items-center justify-between mb-2">
+      <div class="font-semibold text-white">${escapeHtml(analysis.job_title)} • ${escapeHtml(analysis.company)}</div>
+      <span class="px-2 py-0.5 rounded bg-neutral-800 text-neutral-200 font-mono text-[11px]">${analysis.match_score}% Score</span>
+    </div>
+    <div class="space-y-1.5 mb-2.5">
+      <div><span class="text-neutral-400 text-[11px]">Matching Skills:</span> ${matchPills}</div>
+      <div><span class="text-neutral-400 text-[11px]">Missing / Learn:</span> ${missingPills}</div>
+    </div>
+    <div class="p-2 rounded bg-neutral-900 border border-neutral-800 text-neutral-300 text-[11px] leading-relaxed">
+      ${escapeHtml(analysis.recommendation || '')}
+    </div>
+  `;
+  container.appendChild(badge);
+}
+
+/**
+ * Render follow-up reminder confirmation widget
+ */
+function renderReminderBadge(container, data) {
+  if (!data) return;
+  const badge = document.createElement('div');
+  const isSuccess = data.success !== false;
+  badge.className = `p-3 rounded-lg border text-xs flex items-center justify-between gap-3 ${
+    isSuccess
+      ? 'bg-neutral-900 border-indigo-800/60 text-indigo-200'
+      : 'bg-neutral-900 border-neutral-700 text-neutral-300'
+  }`;
+
+  badge.innerHTML = `
+    <div class="flex items-center gap-2">
+      <span class="text-indigo-400">⏱</span>
+      <div>
+        <span class="font-semibold text-white">${escapeHtml(data.message || 'Follow-up reminder updated')}</span>
+        ${data.application && data.application.reminder_date ? `<div class="text-[11px] text-neutral-400 mt-0.5">Target date: ${escapeHtml(data.application.reminder_date)}</div>` : ''}
+      </div>
+    </div>
+    <span class="font-mono text-[10px] px-2 py-0.5 rounded bg-neutral-950 border border-neutral-800 text-neutral-400">
+      ${escapeHtml(data.job_id || 'Reminder')}
     </span>
   `;
   container.appendChild(badge);

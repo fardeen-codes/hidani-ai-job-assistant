@@ -846,6 +846,49 @@ class BackendTestCase(unittest.TestCase):
         # 7. Clean up
         withdraw_application(self.test_job_id)
 
+    def test_orchestrator_skill_gap_and_reminders_intents(self):
+        """Test Orchestrator tool routing and fallback intents for skill gap evaluation and follow-up reminders."""
+        from app.agents.orchestrator import _execute_tool_call, _fallback_intent_orchestrator
+        session_id = "test-orchestrator-advanced-suite"
+        apply_to_job(self.test_job_id)
+
+        # 1. Tool execution: analyze_skill_gap
+        res_gap, action_gap = _execute_tool_call("analyze_skill_gap", {"job_id": self.test_job_id}, session_id=session_id)
+        self.assertIsNotNone(action_gap)
+        self.assertEqual(action_gap.type, "SKILL_GAP_ANALYSIS")
+        self.assertEqual(action_gap.data["job_id"], self.test_job_id)
+
+        # 2. Tool execution: set_followup_reminder
+        res_rem, action_rem = _execute_tool_call("set_followup_reminder", {"job_id": self.test_job_id, "reminder_date": "2026-11-22"}, session_id=session_id)
+        self.assertIsNotNone(action_rem)
+        self.assertEqual(action_rem.type, "REMINDER_SET")
+        self.assertTrue(action_rem.data["success"])
+
+        # 3. Tool execution: get_upcoming_reminders
+        res_list, action_list = _execute_tool_call("get_upcoming_reminders", {}, session_id=session_id)
+        self.assertIsNotNone(action_list)
+        self.assertEqual(action_list.type, "REMINDERS_LIST")
+        self.assertGreaterEqual(action_list.data["total"], 1)
+
+        # 4. Fallback intent: skills needed for job
+        _fallback_intent_orchestrator("recommend python jobs", session_id=session_id)
+        reply_gap, actions_gap = _fallback_intent_orchestrator("skills needed for job 1", session_id=session_id)
+        self.assertIn("Skill Fit Assessment", reply_gap)
+        self.assertTrue(any(a.type == "SKILL_GAP_ANALYSIS" for a in actions_gap))
+
+        # 5. Fallback intent: set reminder
+        reply_rem, actions_rem = _fallback_intent_orchestrator(f"remind me for {self.test_job_id} on 2026-11-30", session_id=session_id)
+        self.assertIn("Follow-up Reminder Scheduled", reply_rem)
+        self.assertTrue(any(a.type == "REMINDER_SET" for a in actions_rem))
+
+        # 6. Fallback intent: show upcoming reminders
+        reply_show, actions_show = _fallback_intent_orchestrator("show upcoming reminders", session_id=session_id)
+        self.assertIn("Upcoming Reminders", reply_show)
+        self.assertTrue(any(a.type == "REMINDERS_LIST" for a in actions_show))
+
+        # Clean up
+        withdraw_application(self.test_job_id)
+
 
 if __name__ == "__main__":
     unittest.main()
