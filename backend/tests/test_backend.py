@@ -602,6 +602,35 @@ class BackendTestCase(unittest.TestCase):
 
         withdraw_application(self.test_job_id)
 
+    def test_application_export_json_and_csv(self):
+        """Test GET /api/applications/export for JSON and CSV file downloads."""
+        withdraw_application(self.test_job_id)
+        self.client.post("/api/applications", json={
+            "job_id": self.test_job_id,
+            "notes": "Export test candidate"
+        })
+
+        # 1. JSON Export
+        res_json = self.client.get("/api/applications/export?format=json")
+        self.assertEqual(res_json.status_code, 200)
+        self.assertIn("job_applications.json", res_json.headers.get("content-disposition", ""))
+        self.assertIsInstance(res_json.json(), list)
+        self.assertTrue(any(a["job_id"] == self.test_job_id for a in res_json.json()))
+
+        # 2. CSV Export
+        res_csv = self.client.get("/api/applications/export?format=csv")
+        self.assertEqual(res_csv.status_code, 200)
+        self.assertIn("text/csv", res_csv.headers.get("content-type", ""))
+        self.assertIn("job_applications.csv", res_csv.headers.get("content-disposition", ""))
+        self.assertIn("Job ID,Job Title,Company", res_csv.text)
+        self.assertIn(self.test_job_id, res_csv.text)
+
+        # 3. Invalid format yields 400
+        res_bad = self.client.get("/api/applications/export?format=xml")
+        self.assertEqual(res_bad.status_code, 400)
+
+        withdraw_application(self.test_job_id)
+
 
 if __name__ == "__main__":
     unittest.main()

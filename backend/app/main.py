@@ -4,13 +4,15 @@ Provides RESTful APIs for resume upload, multi-agent conversational chat,
 and session state inspection.
 """
 
+import csv
+import io
 import logging
 from pathlib import Path
 from typing import Optional
 
 from fastapi import FastAPI, File, HTTPException, Query, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 
 from app.agents.orchestrator import (
     clear_session_state,
@@ -345,6 +347,49 @@ async def submit_application(payload: ApplicationCreateRequest):
 async def get_applications_statistics():
     """Retrieve aggregated statistics across submitted applications including status breakdown and top companies."""
     return get_application_stats()
+
+
+@app.get(
+    "/api/applications/export",
+    summary="Export applications as JSON or CSV",
+    tags=["Applications"]
+)
+async def export_applications(
+    format: str = Query("json", description="Export format: json or csv")
+):
+    """Export all submitted job applications in JSON or CSV format for spreadsheet tracking."""
+    fmt = (format or "json").strip().lower()
+    if fmt not in {"json", "csv"}:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid format. Supported export formats are 'json' and 'csv'."
+        )
+
+    apps = load_applications()
+    if fmt == "csv":
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(["Job ID", "Job Title", "Company", "Location", "Status", "Applied Date", "Notes"])
+        for app in apps:
+            writer.writerow([
+                app.get("job_id", ""),
+                app.get("job_title", ""),
+                app.get("company", ""),
+                app.get("location", ""),
+                app.get("status", "Applied"),
+                app.get("applied_date", ""),
+                app.get("notes") or ""
+            ])
+        return Response(
+            content=output.getvalue(),
+            media_type="text/csv",
+            headers={"Content-Disposition": "attachment; filename=job_applications.csv"}
+        )
+
+    return JSONResponse(
+        content=apps,
+        headers={"Content-Disposition": "attachment; filename=job_applications.json"}
+    )
 
 
 @app.get(
