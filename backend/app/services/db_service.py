@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from app.config import APPLICATIONS_FILE, JOBS_FILE
+from app.config import APPLICATIONS_FILE, BOOKMARKS_FILE, JOBS_FILE
 
 logger = logging.getLogger("DBService")
 _db_lock = threading.RLock()
@@ -27,6 +27,10 @@ _jobs_cache_mtime: Optional[float] = None
 # In-memory mtime cache for applications database
 _applications_cache: Optional[List[Dict[str, Any]]] = None
 _applications_cache_mtime: Optional[float] = None
+
+# In-memory mtime cache for bookmarks database
+_bookmarks_cache: Optional[List[Dict[str, Any]]] = None
+_bookmarks_cache_mtime: Optional[float] = None
 
 
 def invalidate_jobs_cache() -> None:
@@ -44,6 +48,14 @@ def invalidate_applications_cache() -> None:
     with _db_lock:
         _applications_cache = None
         _applications_cache_mtime = None
+
+
+def invalidate_bookmarks_cache() -> None:
+    """Clear in-memory bookmarks cache to force reload on next access."""
+    global _bookmarks_cache, _bookmarks_cache_mtime
+    with _db_lock:
+        _bookmarks_cache = None
+        _bookmarks_cache_mtime = None
 
 
 def _atomic_write_json(file_path: Path, data: Any) -> None:
@@ -471,4 +483,104 @@ def get_application_stats() -> Dict[str, Any]:
         "top_companies": top_companies,
         "recent_applications": recent_apps,
     }
+
+
+def _save_bookmarks(bookmarks: List[Dict[str, Any]]) -> None:
+    """Persist bookmarks atomically and synchronize the in-memory cache."""
+    global _bookmarks_cache, _bookmarks_cache_mtime
+    _atomic_write_json(BOOKMARKS_FILE, bookmarks)
+    _bookmarks_cache = [dict(b) for b in bookmarks]
+    try:
+        _bookmarks_cache_mtime = BOOKMARKS_FILE.stat().st_mtime if BOOKMARKS_FILE.exists() else None
+    except OSError:
+        _bookmarks_cache_mtime = None
+
+
+def load_bookmarks() -> List[Dict[str, Any]]:
+    """Read all bookmarked jobs with mtime-based in-memory caching."""
+    global _bookmarks_cache, _bookmarks_cache_mtime
+    with _db_lock:
+        if not BOOKMARKS_FILE.exists():
+            _bookmarks_cache = []
+            _bookmarks_cache_mtime = None
+            return []
+        try:
+            current_mtime = BOOKMARKS_FILE.stat().st_mtime
+            if _bookmarks_cache is not None and _bookmarks_cache_mtime == current_mtime:
+                return [dict(b) for b in _bookmarks_cache]
+
+            with open(BOOKMARKS_FILE, "r", encoding="utf-8") as f:
+                content = f.read().strip()
+                if not content:
+                    _bookmarks_cache = []
+                    _bookmarks_cache_mtime = current_mtime
+                    return []
+                bms = json.loads(content)
+                _bookmarks_cache = [dict(b) for b in bms]
+                _bookmarks_cache_mtime = current_mtime
+                return [dict(b) for b in _bookmarks_cache]
+        except Exception as exc:
+            logger.error(f"Error loading bookmarks: {exc}")
+            return [dict(b) for b in _bookmarks_cache] if _bookmarks_cache is not None else []
+
+
+def save_job_bookmark(job_id: str) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
+    """
+    Bookmark / save a job posting for later review.
+    Returns: (success: bool, message: str, bookmark_record: Optional[dict])
+    """
+    clean_id = (job_id or "").strip()
+    if not clean_id:
+        return False, "Job ID cannot be empty.", None
+
+    job = get_job_by_id(clean_id)
+    if not job:
+        return False, f"Job with ID '{clean_id}' was not found in the database.", None
+
+    with _db_lock:
+        bookmarks = load_bookmarks()
+        for b in bookmarks:
+            if b.get("job_id", "").strip().lower() == clean_id.lower():
+                return False, f"Job '{job.get('title')}' (ID: {clean_id}) is already in your saved bookmarks.", b
+
+        new_bm = {
+            "job_id": job.get("job_id"),
+            "job_title": job.get("title"),
+            "company": job.get("company"),
+            "location": job.get("location"),
+            "saved_date": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+        }
+        bookmarks.append(new_bm)
+        _save_bookmarks(bookmarks)
+
+    logger.info(f"Bookmarked job {clean_id} ({job.get('title')})")
+    return True, f"Job '{job.get('title')}' at {job.get('company')} has been saved to your bookmarks.", new_bm
+
+
+def get_bookmarked_jobs() -> List[Dict[str, Any]]:
+    """Retrieve all saved job bookmarks."""
+    return load_bookmarks()
+
+
+def remove_job_bookmark(job_id: str) -> Tuple[bool, str]:
+    """
+    Remove / unsave a job from bookmarks by Job ID.
+    Returns: (success: bool, message: str)
+    """
+    clean_id = (job_id or "").strip()
+    if not clean_id:
+        return False, "Job ID cannot be empty."
+
+    with _db_lock:
+        bookmarks = load_bookmarks()
+        initial_len = len(bookmarks)
+        remaining = [b for b in bookmarks if b.get("job_id", "").strip().lower() != clean_id.lower()]
+
+        if len(remaining) == initial_len:
+            return False, f"No bookmark found for Job ID '{clean_id}'."
+
+        _save_bookmarks(remaining)
+
+    logger.info(f"Removed bookmark for job {clean_id}")
+    return True, f"Job ID '{clean_id}' removed from your saved bookmarks."
 

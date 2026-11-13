@@ -34,6 +34,7 @@ from app.schemas import (
     ChatResponse,
     ChatStateResponse,
     JobApplication,
+    JobBookmark,
     JobStatsResponse,
     UploadResumeResponse,
 )
@@ -41,10 +42,13 @@ from app.services.db_service import (
     apply_to_job,
     get_application_stats,
     get_application_status,
+    get_bookmarked_jobs,
     get_job_by_id,
     get_job_stats,
     load_applications,
     load_jobs,
+    remove_job_bookmark,
+    save_job_bookmark,
     search_jobs,
     update_application_status,
     withdraw_application,
@@ -460,6 +464,67 @@ async def withdraw_application_endpoint(job_id: str):
             status_code=status.HTTP_404_NOT_FOUND,
             detail=message
         )
+    return {
+        "status": "success",
+        "message": message,
+        "job_id": clean_id
+    }
+
+
+# Bookmarks Endpoints
+@app.get("/api/bookmarks", response_model=list, summary="List all saved job bookmarks", tags=["Bookmarks"])
+async def get_bookmarks_list():
+    """Retrieve all bookmarked / saved jobs."""
+    raw_bms = get_bookmarked_jobs()
+    return [JobBookmark(**b).model_dump() for b in raw_bms]
+
+
+@app.post("/api/bookmarks/{job_id}", status_code=status.HTTP_201_CREATED, summary="Bookmark a job posting", tags=["Bookmarks"])
+async def bookmark_job_endpoint(job_id: str):
+    """Save a job posting to bookmarks for later review."""
+    clean_id = (job_id or "").strip()
+    if not clean_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Job ID cannot be empty."
+        )
+
+    success, message, bm_data = save_job_bookmark(clean_id)
+    if not success:
+        if bm_data is not None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=message
+            )
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=message
+        )
+
+    return {
+        "status": "success",
+        "message": message,
+        "bookmark": bm_data
+    }
+
+
+@app.delete("/api/bookmarks/{job_id}", summary="Remove a job from bookmarks", tags=["Bookmarks"])
+async def remove_bookmark_endpoint(job_id: str):
+    """Remove a bookmarked job."""
+    clean_id = (job_id or "").strip()
+    if not clean_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Job ID cannot be empty."
+        )
+
+    success, message = remove_job_bookmark(clean_id)
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=message
+        )
+
     return {
         "status": "success",
         "message": message,

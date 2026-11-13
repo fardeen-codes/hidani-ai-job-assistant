@@ -49,6 +49,15 @@ class JobApplication(BaseModel):
     notes: Optional[str] = Field(default=None, description="Optional applicant cover note or remarks")
 
 
+class JobBookmark(BaseModel):
+    """Saved / bookmarked job posting record."""
+    job_id: str = Field(description="ID of the bookmarked job")
+    saved_date: str = Field(description="ISO 8601 timestamp when job was bookmarked")
+    job_title: Optional[str] = Field(default=None, description="Title of the job")
+    company: Optional[str] = Field(default=None, description="Company name")
+    location: Optional[str] = Field(default=None, description="Work location")
+
+
 class ChatRequest(BaseModel):
     """Incoming user chat request."""
     message: str = Field(description="User prompt or conversational input")

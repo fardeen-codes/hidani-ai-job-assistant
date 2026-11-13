@@ -30,8 +30,10 @@ JOBS_FILE = DATA_DIR / "jobs.json"
 IS_SERVERLESS = os.getenv("VERCEL") == "1" or os.getenv("AWS_LAMBDA_FUNCTION_NAME") is not None
 if IS_SERVERLESS or not os.access(DATA_DIR if DATA_DIR.exists() else BACKEND_DIR, os.W_OK):
     APPLICATIONS_FILE = Path("/tmp") / "applications.json"
+    BOOKMARKS_FILE = Path("/tmp") / "bookmarks.json"
 else:
     APPLICATIONS_FILE = DATA_DIR / "applications.json"
+    BOOKMARKS_FILE = DATA_DIR / "bookmarks.json"
 
 # Ensure data directory and files exist
 try:
@@ -46,6 +48,13 @@ except OSError:
 try:
     if not APPLICATIONS_FILE.exists():
         with open(APPLICATIONS_FILE, "w", encoding="utf-8") as f:
+            f.write("[]")
+except OSError:
+    pass
+
+try:
+    if not BOOKMARKS_FILE.exists():
+        with open(BOOKMARKS_FILE, "w", encoding="utf-8") as f:
             f.write("[]")
 except OSError:
     pass

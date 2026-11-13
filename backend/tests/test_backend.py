@@ -631,6 +631,40 @@ class BackendTestCase(unittest.TestCase):
 
         withdraw_application(self.test_job_id)
 
+    def test_job_bookmarks_lifecycle(self):
+        """Test bookmarking a job, duplicate prevention, listing, and removal."""
+        from app.services.db_service import remove_job_bookmark
+        remove_job_bookmark(self.test_job_id)
+
+        # 1. Bookmark valid job -> 201 Created
+        res_post = self.client.post(f"/api/bookmarks/{self.test_job_id}")
+        self.assertEqual(res_post.status_code, 201)
+        data = res_post.json()
+        self.assertEqual(data["bookmark"]["job_id"], self.test_job_id)
+        self.assertIn("saved_date", data["bookmark"])
+
+        # 2. Duplicate bookmark -> 409 Conflict
+        res_dup = self.client.post(f"/api/bookmarks/{self.test_job_id}")
+        self.assertEqual(res_dup.status_code, 409)
+
+        # 3. Retrieve list
+        res_list = self.client.get("/api/bookmarks")
+        self.assertEqual(res_list.status_code, 200)
+        bm_ids = [b["job_id"] for b in res_list.json()]
+        self.assertIn(self.test_job_id, bm_ids)
+
+        # 4. Remove bookmark -> 200 OK
+        res_del = self.client.delete(f"/api/bookmarks/{self.test_job_id}")
+        self.assertEqual(res_del.status_code, 200)
+
+        # 5. Remove non-existent -> 404
+        res_del_404 = self.client.delete(f"/api/bookmarks/{self.test_job_id}")
+        self.assertEqual(res_del_404.status_code, 404)
+
+        # 6. Bookmark non-existent job -> 404
+        res_missing = self.client.post("/api/bookmarks/job-does-not-exist-xyz")
+        self.assertEqual(res_missing.status_code, 404)
+
 
 if __name__ == "__main__":
     unittest.main()
