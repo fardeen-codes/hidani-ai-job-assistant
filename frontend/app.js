@@ -15,6 +15,7 @@ const state = {
   profile: JSON.parse(localStorage.getItem('hidani_candidate_profile') || 'null'),
   isSending: false,
   appliedJobIds: new Set(JSON.parse(localStorage.getItem('hidani_applied_jobs') || '[]')),
+  bookmarkedJobIds: new Set(JSON.parse(localStorage.getItem('hidani_bookmarked_jobs') || '[]')),
   systemHealth: null,
   activeFilter: ''
 };
@@ -227,6 +228,40 @@ function setupEventListeners() {
     handleSendMessage();
   };
 
+  // Global helper for saving / bookmarking
+  window.bookmarkJob = async (jobId, btnEl) => {
+    try {
+      const isAlready = state.bookmarkedJobIds.has(jobId);
+      const endpoint = `${API_BASE}/bookmarks/${encodeURIComponent(jobId)}`;
+      const method = isAlready ? 'DELETE' : 'POST';
+      const res = await fetch(endpoint, { method });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.detail || 'Failed to update bookmark', 'error');
+        return;
+      }
+      if (isAlready) {
+        state.bookmarkedJobIds.delete(jobId);
+        showToast('Bookmark removed', 'info');
+        if (btnEl) {
+          btnEl.innerHTML = 'Save';
+          btnEl.className = 'px-3 py-1.5 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white text-xs font-medium border border-neutral-700 transition-colors';
+        }
+      } else {
+        state.bookmarkedJobIds.add(jobId);
+        showToast(data.message || 'Job bookmarked!', 'success');
+        if (btnEl) {
+          btnEl.innerHTML = '★ Saved';
+          btnEl.className = 'px-3 py-1.5 rounded bg-amber-950/60 text-amber-300 hover:bg-amber-900/80 text-xs font-medium border border-amber-800/80 transition-colors';
+        }
+      }
+      localStorage.setItem('hidani_bookmarked_jobs', JSON.stringify(Array.from(state.bookmarkedJobIds)));
+    } catch (err) {
+      console.error('Error bookmarking job:', err);
+      showToast('Could not save bookmark', 'error');
+    }
+  };
+
   // Global helper to clear profile
   window.clearStoredProfile = () => {
     state.profile = null;
@@ -430,6 +465,8 @@ function appendAssistantMessage(markdownContent, actions = []) {
         renderInteractiveJobCards(actionsSlot, action.data);
       } else if (action.type === 'APPLICATION_SUBMITTED' && action.data) {
         renderApplicationBadge(actionsSlot, action.data);
+      } else if (action.type === 'BOOKMARK_SAVED' && action.data) {
+        renderBookmarkBadge(actionsSlot, action.data);
       }
     });
   }
@@ -446,6 +483,7 @@ function renderInteractiveJobCards(container, jobs) {
 
   jobs.forEach((job, idx) => {
     const isApplied = state.appliedJobIds.has(job.job_id);
+    const isBookmarked = state.bookmarkedJobIds.has(job.job_id);
     const score = job.match_score || 85;
 
     const card = document.createElement('div');
@@ -490,6 +528,17 @@ function renderInteractiveJobCards(container, jobs) {
             </a>
           ` : ''}
           <button
+            onclick="window.bookmarkJob('${escapeHtml(job.job_id)}', this)"
+            title="${isBookmarked ? 'Remove bookmark' : 'Save job'}"
+            class="px-3 py-1.5 rounded text-xs font-medium border transition-colors ${
+              isBookmarked
+                ? 'bg-amber-950/60 text-amber-300 hover:bg-amber-900/80 border-amber-800/80'
+                : 'bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white border-neutral-700'
+            }"
+          >
+            ${isBookmarked ? '★ Saved' : 'Save'}
+          </button>
+          <button
             onclick="window.applyToJob('${escapeHtml(job.job_id)}')"
             ${isApplied ? 'disabled' : ''}
             class="px-3.5 py-1.5 rounded text-xs font-semibold transition-colors ${
@@ -508,6 +557,41 @@ function renderInteractiveJobCards(container, jobs) {
   });
 
   container.appendChild(cardList);
+}
+
+/**
+ * Render bookmark confirmation widget
+ */
+function renderBookmarkBadge(container, data) {
+  if (!data) return;
+  const badge = document.createElement('div');
+  const isSuccess = data.success !== false;
+  const bm = data.bookmark || {};
+  if (isSuccess && (data.job_id || bm.job_id)) {
+    const jId = data.job_id || bm.job_id;
+    state.bookmarkedJobIds.add(jId);
+    localStorage.setItem('hidani_bookmarked_jobs', JSON.stringify(Array.from(state.bookmarkedJobIds)));
+  }
+
+  badge.className = `p-3 rounded-lg border text-xs flex items-center justify-between gap-3 ${
+    isSuccess
+      ? 'bg-neutral-900 border-amber-800/60 text-amber-200'
+      : 'bg-neutral-900 border-neutral-700 text-neutral-300'
+  }`;
+
+  badge.innerHTML = `
+    <div class="flex items-center gap-2">
+      <span class="text-amber-400 text-sm">★</span>
+      <div>
+        <span class="font-semibold text-white">${escapeHtml(data.message || 'Job bookmark updated')}</span>
+        ${bm.job_title ? `<div class="text-[11px] text-neutral-400 mt-0.5">${escapeHtml(bm.job_title)} • ${escapeHtml(bm.company || '')}</div>` : ''}
+      </div>
+    </div>
+    <span class="font-mono text-[10px] px-2 py-0.5 rounded bg-neutral-950 border border-neutral-800 text-neutral-400">
+      ${escapeHtml(data.job_id || bm.job_id || 'Bookmark')}
+    </span>
+  `;
+  container.appendChild(badge);
 }
 
 /**
@@ -629,6 +713,7 @@ async function fetchAndRenderJobsList(keyword = '') {
     elements.jobsListContainer.innerHTML = '';
     jobs.forEach(job => {
       const isApplied = state.appliedJobIds.has(job.job_id);
+      const isBookmarked = state.bookmarkedJobIds.has(job.job_id);
       const row = document.createElement('div');
       row.className = 'p-3.5 rounded-lg bg-neutral-950 border border-neutral-800 hover:border-neutral-700 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3';
       
@@ -651,6 +736,17 @@ async function fetchAndRenderJobsList(keyword = '') {
             class="px-2.5 py-1.5 rounded text-xs text-neutral-300 hover:text-white bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 transition-colors"
           >
             Ask AI
+          </button>
+          <button
+            onclick="window.bookmarkJob('${escapeHtml(job.job_id)}', this)"
+            title="${isBookmarked ? 'Remove bookmark' : 'Save job'}"
+            class="px-2.5 py-1.5 rounded text-xs font-medium border transition-colors ${
+              isBookmarked
+                ? 'bg-amber-950/60 text-amber-300 hover:bg-amber-900/80 border-amber-800/80'
+                : 'bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white border-neutral-700'
+            }"
+          >
+            ${isBookmarked ? '★ Saved' : 'Save'}
           </button>
           <button
             onclick="quickApplyFromModal('${escapeHtml(job.job_id)}')"

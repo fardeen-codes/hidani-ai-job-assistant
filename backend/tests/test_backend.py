@@ -665,6 +665,47 @@ class BackendTestCase(unittest.TestCase):
         res_missing = self.client.post("/api/bookmarks/job-does-not-exist-xyz")
         self.assertEqual(res_missing.status_code, 404)
 
+    def test_orchestrator_bookmarking_intent_and_tools(self):
+        """Test Orchestrator tool calls and conversational intents for saving and listing bookmarks."""
+        from app.agents.orchestrator import _execute_tool_call, _fallback_intent_orchestrator
+        from app.services.db_service import remove_job_bookmark
+        session_id = "test-orchestrator-bookmark-session"
+        remove_job_bookmark(self.test_job_id)
+
+        # 1. Tool execution: bookmark_job
+        tool_res, action = _execute_tool_call("bookmark_job", {"job_id": self.test_job_id}, session_id=session_id)
+        self.assertIsNotNone(action)
+        self.assertEqual(action.type, "BOOKMARK_SAVED")
+        self.assertTrue(action.data.get("success"))
+
+        # 2. Tool execution: get_bookmarked_jobs
+        list_res, list_action = _execute_tool_call("get_bookmarked_jobs", {}, session_id=session_id)
+        self.assertIsNotNone(list_action)
+        self.assertEqual(list_action.type, "BOOKMARKS_LIST")
+        self.assertGreaterEqual(list_action.data.get("total", 0), 1)
+
+        # 3. Conversational intent: show saved jobs
+        reply_list, actions_list = _fallback_intent_orchestrator("show my saved jobs", session_id=session_id)
+        self.assertIn("Saved Bookmarks", reply_list)
+        self.assertTrue(any(a.type == "BOOKMARKS_LIST" for a in actions_list))
+
+        # 4. Conversational intent: remove bookmark
+        reply_del, actions_del = _fallback_intent_orchestrator(f"remove bookmark {self.test_job_id}", session_id=session_id)
+        self.assertIn("Bookmark Update", reply_del)
+        self.assertTrue(any(a.type == "BOOKMARK_REMOVED" for a in actions_del))
+
+        # 5. Conversational intent: bookmark job via recommendation ordinal
+        _fallback_intent_orchestrator("recommend python jobs", session_id=session_id)
+        reply_bm, actions_bm = _fallback_intent_orchestrator("bookmark job 1", session_id=session_id)
+        self.assertIn("Job Bookmarked", reply_bm)
+        self.assertTrue(any(a.type == "BOOKMARK_SAVED" for a in actions_bm))
+        for a in actions_bm:
+            if a.data and a.data.get("job_id"):
+                remove_job_bookmark(a.data["job_id"])
+
+        # Clean up
+        remove_job_bookmark(self.test_job_id)
+
 
 if __name__ == "__main__":
     unittest.main()

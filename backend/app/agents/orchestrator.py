@@ -20,7 +20,14 @@ from app.agents.applier_agent import (
 from app.agents.matcher_agent import match_jobs_for_candidate
 from app.config import OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_MODEL, is_openai_configured
 from app.schemas import ChatAction
-from app.services.db_service import VALID_APPLICATION_STATUSES, get_job_by_id, load_applications
+from app.services.db_service import (
+    VALID_APPLICATION_STATUSES,
+    get_bookmarked_jobs,
+    get_job_by_id,
+    load_applications,
+    remove_job_bookmark,
+    save_job_bookmark,
+)
 
 logger = logging.getLogger("OrchestratorAgent")
 
@@ -158,6 +165,34 @@ ORCHESTRATOR_TOOLS = [
                 "required": ["job_id", "status"]
             }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "bookmark_job",
+            "description": "Bookmark or save a job position for later review by Job ID or recommendation number.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "job_id": {
+                        "type": "string",
+                        "description": "The exact Job ID (e.g. 'job-00001') or ordinal index (e.g. '1', '2', '3') of the job to save."
+                    }
+                },
+                "required": ["job_id"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_bookmarked_jobs",
+            "description": "Retrieve all saved or bookmarked job positions for the candidate.",
+            "parameters": {
+                "type": "object",
+                "properties": {}
+            }
+        }
     }
 ]
 
@@ -216,7 +251,8 @@ def _build_system_prompt(profile: Optional[Dict[str, Any]] = None) -> str:
         "1. Matcher Agent (`search_jobs`): Finds matching jobs and computes match reasoning based on candidate skills, designation, and experience.\n"
         "2. Applier Agent (`apply_to_job`): Submits candidate applications without duplicates.\n"
         "3. Status Agent (`get_application_status`): Reviews applied jobs.\n"
-        "4. Details Agent (`get_job_details`): Inspects full job descriptions.\n\n"
+        "4. Details Agent (`get_job_details`): Inspects full job descriptions.\n"
+        "5. Bookmarking Agent (`bookmark_job`, `get_bookmarked_jobs`): Saves positions for later candidate review.\n\n"
         "RULES FOR CONVERSATION:\n"
         "- When recommending jobs, list them clearly with numbered items: 1., 2., 3., 4.\n"
         "- When the user asks to apply (e.g. 'apply to job 3' or 'apply to #2'), map it to the 3rd or 2nd job from your recent recommendations and call `apply_to_job`.\n"
@@ -318,6 +354,20 @@ def _execute_tool_call(name: str, args: Dict[str, Any], profile: Optional[Dict[s
         res = update_job_application_status(resolved_id, str(new_status))
         action = ChatAction(type="APPLICATION_UPDATED", data=res)
         return json.dumps(res), action
+
+    elif name == "bookmark_job":
+        raw_id = args.get("job_id", "")
+        resolved_id = _resolve_job_id_from_input(str(raw_id), session_id) or str(raw_id)
+        success, msg, bm = save_job_bookmark(resolved_id)
+        payload = {"job_id": resolved_id, "success": success, "message": msg, "bookmark": bm}
+        action = ChatAction(type="BOOKMARK_SAVED", data=payload)
+        return json.dumps(payload), action
+
+    elif name == "get_bookmarked_jobs":
+        bms = get_bookmarked_jobs()
+        payload = {"bookmarks": bms, "total": len(bms)}
+        action = ChatAction(type="BOOKMARKS_LIST", data=payload)
+        return json.dumps(payload), action
 
     return f"Unknown tool '{name}'", None
 
@@ -491,6 +541,58 @@ def _fallback_intent_orchestrator(message: str, profile: Optional[Dict[str, Any]
             lines.append(f"- **{a.get('job_title', 'Software Role')}** at **{a.get('company', 'Tech')}** (ID: `{a.get('job_id')}`) — Status: `{a.get('status')}` ({a.get('applied_date')})")
         lines.append("\nLet me know if you would like to apply to additional openings or review another position.")
         return "\n".join(lines), actions
+
+    # 7c. Check for Saved Bookmarks Listing Intent: "saved jobs", "bookmarks", "show bookmarks"
+    if any(k in msg_lower for k in ["saved jobs", "my bookmarks", "show bookmarks", "view bookmarks", "bookmarked jobs", "saved positions", "list bookmarks"]):
+        bms = get_bookmarked_jobs()
+        payload = {"bookmarks": bms, "total": len(bms)}
+        actions.append(ChatAction(type="BOOKMARKS_LIST", data=payload))
+        if not bms:
+            return (
+                "### Saved Bookmarks\n\n"
+                "You haven't bookmarked any jobs yet.\n\n"
+                "You can save any job by typing *'bookmark job 1'* or clicking the bookmark button on any recommendation card.",
+                actions
+            )
+        lines = [f"### Saved Bookmarks ({len(bms)} Total)\n"]
+        for b in bms:
+            lines.append(f"- **{b.get('job_title', 'Role')}** at **{b.get('company', 'Company')}** (ID: `{b.get('job_id')}`) — Saved: `{b.get('saved_date')}`")
+        lines.append("\nYou can apply anytime by asking: *'Apply to job <ID>'* or remove with *'Remove bookmark <ID>'*.")
+        return "\n".join(lines), actions
+
+    # 7d. Check for Bookmark Removal Intent: "remove bookmark", "unsave job", "delete bookmark"
+    if any(k in msg_lower for k in ["remove bookmark", "unsave job", "delete bookmark", "unbookmark"]):
+        target_id = _resolve_job_id_from_input(message, session_id)
+        if target_id:
+            success, msg = remove_job_bookmark(target_id)
+            actions.append(ChatAction(type="BOOKMARK_REMOVED", data={"job_id": target_id, "success": success, "message": msg}))
+            return f"### Bookmark Update\n\n{msg}", actions
+        else:
+            return "Please specify which job bookmark you want to remove (e.g. `remove bookmark for job-00001` or `remove bookmark 1`).", actions
+
+    # 7e. Check for Job Bookmark Intent: "bookmark job 1", "save job 2", "bookmark this job"
+    if any(k in msg_lower for k in ["bookmark", "save job", "save this job", "save position", "bookmark job"]):
+        target_id = _resolve_job_id_from_input(message, session_id)
+        if target_id:
+            success, msg, bm = save_job_bookmark(target_id)
+            actions.append(ChatAction(type="BOOKMARK_SAVED", data={"job_id": target_id, "success": success, "message": msg, "bookmark": bm}))
+            if success:
+                return (
+                    f"### Job Bookmarked\n\n"
+                    f"{msg}\n\n"
+                    f"- **Job ID**: `{target_id}`\n"
+                    f"- **Role**: {bm.get('job_title')}\n"
+                    f"- **Company**: {bm.get('company')}\n\n"
+                    f"You can view all saved jobs anytime by asking: *'Show my saved jobs'*.",
+                    actions
+                )
+            else:
+                return f"Notice: {msg}", actions
+        else:
+            return (
+                "Please specify which job you would like to bookmark (e.g., `bookmark job 1` or `bookmark job-00001`).",
+                actions
+            )
 
     # 8. Check for Job Recommendation & Natural Refinement Intent
     job_intent_words = [
