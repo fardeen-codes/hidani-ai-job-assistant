@@ -1656,3 +1656,51 @@ def check_database_health() -> Dict[str, Any]:
         "collections": collection_statuses
     }
 
+
+def compact_database() -> Dict[str, Any]:
+    """
+    Purge orphan references, deduplicate search history, and format/compact
+    all persistent JSON collections.
+    """
+    with _db_lock:
+        jobs = load_jobs()
+        valid_job_ids = {j.get("job_id", "").strip().lower() for j in jobs if j.get("job_id")}
+
+        # 1. Clean orphan bookmarks
+        bookmarks = load_bookmarks()
+        initial_bm_count = len(bookmarks)
+        clean_bookmarks = [b for b in bookmarks if b.get("job_id", "").strip().lower() in valid_job_ids]
+        removed_orphans = initial_bm_count - len(clean_bookmarks)
+        _save_bookmarks(clean_bookmarks)
+
+        # 2. Deduplicate search history
+        history = load_search_history()
+        initial_hist_count = len(history)
+        seen_queries = set()
+        clean_history = []
+        for h in history:
+            key = (h.get("query"), h.get("location"), h.get("experience"))
+            if key not in seen_queries:
+                seen_queries.add(key)
+                clean_history.append(h)
+        dedup_hist = initial_hist_count - len(clean_history)
+        _save_search_history(clean_history)
+
+        # 3. Compact applications and saved searches
+        apps = load_applications()
+        _save_applications(apps)
+
+        searches = load_saved_searches()
+        _save_saved_searches(searches)
+
+        total_files = 4
+        msg = f"Compacted {total_files} collections: purged {removed_orphans} orphan bookmarks and {dedup_hist} duplicate history entries."
+        logger.info(msg)
+        return {
+            "status": "success",
+            "message": msg,
+            "removed_orphan_bookmarks": removed_orphans,
+            "deduplicated_history": dedup_hist,
+            "total_compacted_files": total_files
+        }
+

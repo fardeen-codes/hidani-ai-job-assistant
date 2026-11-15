@@ -1398,6 +1398,16 @@ class BackendTestCase(unittest.TestCase):
         res_empty = self.client.get("/api/jobs/suggestions?prefix=")
         self.assertEqual(res_empty.status_code, 422)
 
+    def test_database_compaction_and_orphan_cleanup(self):
+        """Test database compaction endpoint and orphan pruning."""
+        res = self.client.post("/api/admin/db/compact")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "success")
+        self.assertIn("removed_orphan_bookmarks", data)
+        self.assertIn("deduplicated_history", data)
+        self.assertIn("total_compacted_files", data)
+
 
 if __name__ == "__main__":
     unittest.main()

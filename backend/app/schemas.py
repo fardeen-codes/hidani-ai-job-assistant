@@ -342,3 +342,12 @@ class DatabaseHealthResponse(BaseModel):
     total_collections: int = Field(description="Total monitored collections count")
     healthy_collections: int = Field(description="Number of collections in healthy state")
     collections: List[CollectionHealthStatus] = Field(default_factory=list, description="Collection health statuses")
+
+
+class DatabaseCompactionResponse(BaseModel):
+    """Result of database cleanup, compaction, and orphan purging."""
+    status: str = Field(description="Operation result status: success or error")
+    message: str = Field(description="Summary message")
+    removed_orphan_bookmarks: int = Field(description="Number of purged orphan bookmarks")
+    deduplicated_history: int = Field(description="Number of duplicate history entries pruned")
+    total_compacted_files: int = Field(description="Total JSON files rewritten and compacted")

@@ -45,6 +45,7 @@ from app.schemas import (
     ChatResponse,
     ChatStateResponse,
     DatabaseBackupSnapshot,
+    DatabaseCompactionResponse,
     DatabaseHealthResponse,
     DatabaseRestoreResponse,
     JobApplication,
@@ -65,6 +66,7 @@ from app.services.db_service import (
     bulk_update_application_status,
     check_database_health,
     clear_search_history,
+    compact_database,
     create_database_backup,
     create_saved_search,
     delete_saved_search,
@@ -997,6 +999,17 @@ async def restore_database_backup_endpoint(payload: DatabaseBackupSnapshot):
 async def check_database_health_endpoint():
     """Perform integrity diagnostic check across all local JSON collections."""
     return check_database_health()
+
+
+@app.post(
+    "/api/admin/db/compact",
+    response_model=DatabaseCompactionResponse,
+    summary="Compact database and purge orphan references",
+    tags=["Database Admin"]
+)
+async def compact_database_endpoint():
+    """Purge orphaned bookmarks and deduplicate search history."""
+    return compact_database()
 
 
 # Static Frontend Delivery
