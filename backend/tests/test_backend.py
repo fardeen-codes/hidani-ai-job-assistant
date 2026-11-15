@@ -889,6 +889,34 @@ class BackendTestCase(unittest.TestCase):
         # Clean up
         withdraw_application(self.test_job_id)
 
+    def test_job_category_classification_and_filtering(self):
+        """Test industry domain classification, stats breakdown, and category filter."""
+        from app.services.db_service import classify_job_category
+
+        # 1. Classification helper verification
+        self.assertEqual(classify_job_category("Senior Backend Engineer"), "Engineering")
+        self.assertEqual(classify_job_category("Working Student - LLM Quantization & Inference"), "Data & AI")
+        self.assertEqual(classify_job_category("Head of Product"), "Product & Design")
+        self.assertEqual(classify_job_category("Finance Intern"), "Finance & Operations")
+        self.assertEqual(classify_job_category("SEM Manager"), "Marketing & Sales")
+
+        # 2. Filter endpoint /api/jobs?category=Engineering
+        res_eng = self.client.get("/api/jobs?category=Engineering&limit=10")
+        self.assertEqual(res_eng.status_code, 200)
+        jobs_eng = res_eng.json()["jobs"]
+        self.assertGreater(len(jobs_eng), 0)
+        for j in jobs_eng:
+            self.assertEqual(j["category"], "Engineering")
+
+        # 3. Market stats category breakdown
+        res_stats = self.client.get("/api/jobs/stats")
+        self.assertEqual(res_stats.status_code, 200)
+        data = res_stats.json()
+        self.assertIn("category_breakdown", data)
+        cats = data["category_breakdown"]
+        self.assertIn("Engineering", cats)
+        self.assertGreater(cats["Engineering"], 0)
+
 
 if __name__ == "__main__":
     unittest.main()

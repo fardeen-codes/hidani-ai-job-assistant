@@ -83,6 +83,28 @@ def _atomic_write_json(file_path: Path, data: Any) -> None:
             json.dump(data, f, indent=2, ensure_ascii=False)
 
 
+JOB_CATEGORIES: Dict[str, List[str]] = {
+    "Engineering": ["engineer", "developer", "backend", "frontend", "full stack", "fullstack", "devops", "software", "architect", "embedded", "qa", "quality", "programmer", "tech lead", "cloud", "security", "infrastructure"],
+    "Data & AI": ["data", "machine learning", "ai", "llm", "deep learning", "analytics", "bi", "scientist", "nlp", "computer vision", "quantization"],
+    "Product & Design": ["product manager", "head of product", "product owner", "ux", "ui", "designer", "design", "graphic"],
+    "Finance & Operations": ["finance", "financial", "accounting", "accountant", "controller", "operations", "audit", "tax", "legal", "hr", "recruiting", "talent", "payroll"],
+    "Marketing & Sales": ["marketing", "sales", "business development", "bdr", "sdr", "account executive", "customer success", "sem", "seo", "growth", "media buyer", "advertising"],
+}
+
+
+def classify_job_category(title: str, skills: Optional[List[str]] = None) -> str:
+    """Classify a job posting into an industry domain based on its title and required skills."""
+    text = (title or "").lower()
+    skills_text = " ".join([str(s).lower() for s in (skills or [])])
+    combined = f"{text} {skills_text}"
+
+    for cat in ["Data & AI", "Product & Design", "Finance & Operations", "Marketing & Sales", "Engineering"]:
+        for kw in JOB_CATEGORIES[cat]:
+            if kw in combined:
+                return cat
+    return "Other"
+
+
 def load_jobs() -> List[Dict[str, Any]]:
     """Load all jobs from jobs.json with error recovery and mtime-based in-memory caching."""
     global _jobs_cache, _jobs_by_id_cache, _jobs_cache_mtime
@@ -105,6 +127,9 @@ def load_jobs() -> List[Dict[str, Any]]:
                     _jobs_cache_mtime = current_mtime
                     return []
                 jobs = json.loads(content)
+                for j in jobs:
+                    if "category" not in j:
+                        j["category"] = classify_job_category(j.get("title", ""), j.get("skills", []))
                 _jobs_cache = jobs
                 _jobs_by_id_cache = {
                     j.get("job_id", "").strip().lower(): j
@@ -136,12 +161,13 @@ def search_jobs(
     experience_level: Optional[str] = None,
     location: Optional[str] = None,
     company: Optional[str] = None,
+    category: Optional[str] = None,
     sort_by: Optional[str] = None,
     order: Optional[str] = "asc",
     limit: Optional[int] = 10
 ) -> List[Dict[str, Any]]:
     """
-    Search and filter jobs by designation, skills, query keyword, location, company, and experience level.
+    Search and filter jobs by designation, skills, query keyword, location, company, category, and experience level.
     Supports sorting by title, company, experience, or relevance score.
     Returns matched job dictionaries.
     """
@@ -155,6 +181,7 @@ def search_jobs(
     exp_clean = (experience_level or "").strip().lower()
     loc_clean = (location or "").strip().lower()
     company_clean = (company or "").strip().lower()
+    cat_clean = (category or "").strip().lower()
 
     scored_jobs = []
 
@@ -176,6 +203,12 @@ def search_jobs(
         # Strict company filter if specified
         if company_clean and company_clean not in company_lower:
             continue
+
+        # Strict category filter if specified
+        if cat_clean:
+            job_cat = (job.get("category") or classify_job_category(job.get("title", ""), job.get("skills", []))).lower()
+            if cat_clean not in job_cat:
+                continue
 
         score = 0.0
 
@@ -485,6 +518,7 @@ def get_job_stats() -> Dict[str, Any]:
     skills_counter: Counter = Counter()
     locations_counter: Counter = Counter()
     exp_counter: Counter = Counter()
+    category_counter: Counter = Counter()
 
     for job in jobs:
         loc = (job.get("location") or "").strip()
@@ -496,6 +530,10 @@ def get_job_stats() -> Dict[str, Any]:
         exp = (job.get("experience") or "").strip()
         if exp:
             exp_counter[exp] += 1
+
+        cat = job.get("category") or classify_job_category(job.get("title", ""), job.get("skills", []))
+        if cat:
+            category_counter[cat] += 1
 
         for skill in job.get("skills", []):
             clean_skill = str(skill).strip()
@@ -519,6 +557,7 @@ def get_job_stats() -> Dict[str, Any]:
         "top_locations": top_locations,
         "top_skills": top_skills,
         "experience_breakdown": dict(exp_counter),
+        "category_breakdown": dict(category_counter),
         "total_applications": apps_count,
     }
 

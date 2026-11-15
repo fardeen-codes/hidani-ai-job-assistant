@@ -235,6 +235,7 @@ async def get_jobs_list(
     location: Optional[str] = Query(None, description="Optional location filter (e.g. Remote, Berlin)"),
     experience_level: Optional[str] = Query(None, description="Optional experience tier filter (Entry-Level, Mid-Level, Senior)"),
     company: Optional[str] = Query(None, description="Optional company name filter"),
+    category: Optional[str] = Query(None, description="Optional industry domain filter (Engineering, Data & AI, Product & Design, Finance & Operations, Marketing & Sales)"),
     sort_by: Optional[str] = Query(None, description="Optional field to sort by (title, company, experience, location)"),
     order: Optional[str] = Query("asc", description="Sort direction (asc, desc)"),
     limit: int = Query(20, ge=1, le=100),
@@ -245,15 +246,17 @@ async def get_jobs_list(
     clean_loc = (location or "").strip()
     clean_exp = (experience_level or "").strip()
     clean_company = (company or "").strip()
+    clean_category = (category or "").strip()
     clean_sort = (sort_by or "").strip().lower()
     is_desc = (order or "asc").strip().lower() == "desc"
 
-    if clean_query or clean_loc or clean_exp or clean_company or clean_sort:
+    if clean_query or clean_loc or clean_exp or clean_company or clean_category or clean_sort:
         all_jobs = search_jobs(
             query=clean_query or None,
             location=clean_loc or None,
             experience_level=clean_exp or None,
             company=clean_company or None,
+            category=clean_category or None,
             sort_by=clean_sort or None,
             order="desc" if is_desc else "asc",
             limit=None
