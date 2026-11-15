@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Optional
 
 from app.config import OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_MODEL, is_openai_configured
 from app.schemas import Job
-from app.services.db_service import load_jobs, search_jobs
+from app.services.db_service import get_job_by_id, load_jobs, search_jobs
 
 logger = logging.getLogger("MatcherAgent")
 
@@ -318,3 +318,53 @@ def analyze_skill_gap(
         "readiness": readiness,
         "recommendation": rec
     }
+
+
+def batch_score_jobs(
+    profile: Optional[Dict[str, Any]] = None,
+    candidate_skills: Optional[List[str]] = None,
+    job_ids: Optional[List[str]] = None
+) -> List[Dict[str, Any]]:
+    """
+    Evaluate candidate compatibility, match scores, and skill overlap across multiple job IDs in batch.
+    """
+    effective_skills = list(candidate_skills or [])
+    level = "Mid-Level"
+    if profile:
+        if not effective_skills and profile.get("skills"):
+            effective_skills = profile.get("skills", [])
+        level = profile.get("experience_level") or profile.get("experience") or "Mid-Level"
+
+    cand_norm_map = {_normalize_skill(s): s for s in effective_skills if s and s.strip()}
+
+    results = []
+    for jid in (job_ids or []):
+        job = get_job_by_id(jid)
+        if not job:
+            continue
+
+        job_skills = job.get("skills") or []
+        matching = []
+        missing = []
+
+        for s in job_skills:
+            clean_s = str(s).strip()
+            norm_s = _normalize_skill(clean_s)
+            if norm_s in cand_norm_map:
+                matching.append(clean_s)
+            else:
+                missing.append(clean_s)
+
+        score = _calculate_lexical_score(job, effective_skills, level)
+
+        results.append({
+            "job_id": job.get("job_id"),
+            "job_title": job.get("title", ""),
+            "company": job.get("company", ""),
+            "match_score": round(score, 1),
+            "matching_skills": matching,
+            "missing_skills": missing
+        })
+
+    results.sort(key=lambda x: x["match_score"], reverse=True)
+    return results

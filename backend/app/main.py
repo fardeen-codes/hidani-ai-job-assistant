@@ -14,7 +14,7 @@ from fastapi import FastAPI, File, HTTPException, Query, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 
-from app.agents.matcher_agent import analyze_skill_gap
+from app.agents.matcher_agent import analyze_skill_gap, batch_score_jobs
 from app.agents.orchestrator import (
     clear_session_state,
     get_session_metrics,
@@ -47,6 +47,8 @@ from app.schemas import (
     ApplicationTagsUpdateRequest,
     ApplicationTimelineResponse,
     ApplicationVelocityResponse,
+    BatchScoreRequest,
+    BatchScoreResponse,
     BookmarkUpdateRequest,
     BulkApplicationStatusUpdateRequest,
     BulkApplicationStatusUpdateResponse,
@@ -604,6 +606,25 @@ async def evaluate_job_skill_gap(
             detail=f"Job with ID '{clean_id}' was not found in the database."
         )
     return analysis
+
+
+@app.post(
+    "/api/matcher/batch-score",
+    response_model=BatchScoreResponse,
+    summary="Batch evaluate candidate compatibility against multiple jobs",
+    tags=["Matcher"]
+)
+async def batch_score_jobs_endpoint(payload: BatchScoreRequest):
+    """Score candidate compatibility, matching skills, and missing skills across multiple job postings."""
+    results = batch_score_jobs(
+        profile=payload.profile,
+        candidate_skills=payload.candidate_skills,
+        job_ids=payload.job_ids
+    )
+    return {
+        "total_evaluated": len(results),
+        "results": results
+    }
 
 
 @app.get(

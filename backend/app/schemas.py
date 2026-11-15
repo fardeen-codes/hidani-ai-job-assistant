@@ -566,3 +566,26 @@ class AdvancedJobFilterResponse(BaseModel):
     limit: int = Field(description="Page size limit")
     offset: int = Field(description="Offset index")
     jobs: List[Dict[str, Any]] = Field(default_factory=list, description="Matching job records")
+
+
+class BatchScoreRequest(BaseModel):
+    """Payload to score candidate compatibility against multiple jobs."""
+    profile: Optional[Dict[str, Any]] = Field(None, description="Candidate resume profile")
+    candidate_skills: Optional[List[str]] = Field(default_factory=list, description="Explicit candidate skill list")
+    job_ids: List[str] = Field(..., min_length=1, max_length=50, description="List of target job IDs to evaluate")
+
+
+class BatchJobScoreItem(BaseModel):
+    """Compatibility score and matched skills for an evaluated job."""
+    job_id: str = Field(description="Job identifier")
+    job_title: str = Field(description="Role title")
+    company: str = Field(description="Hiring company")
+    match_score: float = Field(description="Score between 0 and 100")
+    matching_skills: List[str] = Field(default_factory=list, description="Overlapping skills")
+    missing_skills: List[str] = Field(default_factory=list, description="Job skills missing from candidate profile")
+
+
+class BatchScoreResponse(BaseModel):
+    """Batch job evaluation compatibility response."""
+    total_evaluated: int = Field(description="Count of evaluated jobs")
+    results: List[BatchJobScoreItem] = Field(default_factory=list, description="Evaluated jobs ranked by match score")

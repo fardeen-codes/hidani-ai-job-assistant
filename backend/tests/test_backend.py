@@ -1895,6 +1895,25 @@ class BackendTestCase(unittest.TestCase):
         # Clean up
         withdraw_application(self.test_job_id)
 
+    def test_batch_job_scoring(self):
+        """Test scoring multiple job postings in batch against candidate profile."""
+        payload = {
+            "candidate_skills": ["Python", "FastAPI", "Docker", "PostgreSQL"],
+            "job_ids": [self.test_job_id]
+        }
+        res = self.client.post("/api/matcher/batch-score", json=payload)
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertIn("total_evaluated", data)
+        self.assertIn("results", data)
+        self.assertEqual(data["total_evaluated"], 1)
+        item = data["results"][0]
+        self.assertEqual(item["job_id"], self.test_job_id)
+        self.assertIn("match_score", item)
+        self.assertIn("matching_skills", item)
+        self.assertIn("missing_skills", item)
+        self.assertIsInstance(item["matching_skills"], list)
+
 
 if __name__ == "__main__":
     unittest.main()
