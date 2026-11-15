@@ -801,3 +801,18 @@ class StaleJobsResponse(BaseModel):
     threshold_days: int = Field(description="Configured days threshold used for evaluation")
     total_stale_jobs: int = Field(description="Count of stale job postings identified")
     jobs: List[StaleJobItem] = Field(default_factory=list)
+
+
+class SkillCoOccurrenceItem(BaseModel):
+    """Co-occurrence frequency and correlation score between two skills."""
+    co_skill: str = Field(description="Correlated companion skill")
+    co_occurrence_count: int = Field(description="Jobs demanding both skills concurrently")
+    affinity_score: float = Field(description="Affinity correlation ratio (0.0 to 1.0)")
+
+
+class SkillCorrelationResponse(BaseModel):
+    """Correlation matrix identifying companion skills frequently required together."""
+    status: str = Field(default="success")
+    target_skill: str = Field(description="Queried anchor skill")
+    total_jobs_with_skill: int = Field(description="Total jobs containing the anchor skill")
+    correlated_skills: List[SkillCoOccurrenceItem] = Field(default_factory=list)

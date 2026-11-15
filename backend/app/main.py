@@ -92,6 +92,8 @@ from app.schemas import (
     SearchHistoryEntry,
     SearchSuggestionsResponse,
     SessionMetricsResponse,
+    SkillCoOccurrenceItem,
+    SkillCorrelationResponse,
     SkillGapAnalysisResponse,
     SkillSalaryInsightsResponse,
     StaleJobItem,
@@ -144,6 +146,7 @@ from app.services.db_service import (
     get_rejection_analytics,
     get_search_suggestions,
     get_similar_jobs,
+    get_skill_correlations,
     get_skill_salary_insights,
     get_stale_jobs,
     get_tier_salary_insights,
@@ -840,6 +843,20 @@ async def get_stale_jobs_endpoint(
 ):
     """Scan the job database to surface older listings that may be expired or no longer actively hiring."""
     return get_stale_jobs(threshold_days=threshold_days, limit=limit)
+
+
+@app.get(
+    "/api/jobs/analytics/skill-correlations",
+    response_model=SkillCorrelationResponse,
+    summary="Get companion skill co-occurrence correlations",
+    tags=["Jobs"]
+)
+async def get_skill_correlations_endpoint(
+    skill: str = Query(..., min_length=1, description="Anchor skill to evaluate companion co-occurrences for"),
+    limit: int = Query(10, ge=1, le=50, description="Max correlated companion skills to return")
+):
+    """Identify companion skills most frequently demanded alongside a target technical skill."""
+    return get_skill_correlations(skill=skill, limit=limit)
 
 
 @app.get("/api/jobs/export/csv", summary="Export jobs as CSV", tags=["Jobs"])

@@ -2282,6 +2282,21 @@ class BackendTestCase(unittest.TestCase):
             self.assertGreaterEqual(item["age_days"], 30)
             self.assertIn(item["status"], ["stale", "expired"])
 
+    def test_skill_correlations_analytics(self):
+        """Test companion skill co-occurrence and affinity ratio analytics."""
+        res = self.client.get("/api/jobs/analytics/skill-correlations?skill=python&limit=5")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "success")
+        self.assertEqual(data["target_skill"], "python")
+        self.assertGreater(data["total_jobs_with_skill"], 0)
+        self.assertIsInstance(data["correlated_skills"], list)
+        for item in data["correlated_skills"]:
+            self.assertIn("co_skill", item)
+            self.assertGreaterEqual(item["co_occurrence_count"], 1)
+            self.assertGreater(item["affinity_score"], 0.0)
+            self.assertLessEqual(item["affinity_score"], 1.0)
+
 
 if __name__ == "__main__":
     unittest.main()

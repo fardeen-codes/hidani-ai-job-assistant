@@ -3492,3 +3492,63 @@ def get_stale_jobs(threshold_days: int = 45, limit: int = 50) -> Dict[str, Any]:
         "jobs": stale_items[:limit]
     }
 
+
+def get_skill_correlations(skill: str, limit: int = 10) -> Dict[str, Any]:
+    """
+    Find companion skills most frequently demanded alongside the target anchor skill.
+    """
+    clean_target = (skill or "").strip().lower()
+    if not clean_target:
+        return {
+            "status": "success",
+            "target_skill": "",
+            "total_jobs_with_skill": 0,
+            "correlated_skills": []
+        }
+
+    jobs = load_jobs()
+    matching_jobs = []
+    display_name_map = {}
+
+    for job in jobs:
+        jskills = job.get("skills") or []
+        lower_skills = set()
+        for s in jskills:
+            if s and s.strip():
+                clean_s = s.strip()
+                lower_skills.add(clean_s.lower())
+                display_name_map[clean_s.lower()] = clean_s
+        if clean_target in lower_skills:
+            matching_jobs.append(lower_skills)
+
+    total_with_skill = len(matching_jobs)
+    if total_with_skill == 0:
+        return {
+            "status": "success",
+            "target_skill": skill,
+            "total_jobs_with_skill": 0,
+            "correlated_skills": []
+        }
+
+    co_counts = Counter()
+    for lower_skills in matching_jobs:
+        for s in lower_skills:
+            if s != clean_target:
+                co_counts[s] += 1
+
+    correlated = []
+    for co_s, count in co_counts.most_common(limit):
+        affinity = round(count / total_with_skill, 3)
+        correlated.append({
+            "co_skill": display_name_map.get(co_s, co_s),
+            "co_occurrence_count": count,
+            "affinity_score": affinity
+        })
+
+    return {
+        "status": "success",
+        "target_skill": skill,
+        "total_jobs_with_skill": total_with_skill,
+        "correlated_skills": correlated
+    }
+
