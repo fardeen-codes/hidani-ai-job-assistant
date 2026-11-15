@@ -1012,3 +1012,23 @@ class SalaryNegotiationScriptResponse(BaseModel):
     phone_script_bullet_points: List[str] = Field(default_factory=list)
     counter_delta: float
     counter_delta_pct: float
+
+
+class ColdOutreachMessageRequest(BaseModel):
+    """Payload to generate tailored cold outreach notes for recruiters or hiring managers."""
+    recipient_type: str = Field(default="Recruiter", description="'Recruiter', 'Hiring Manager', or 'Peer / Engineer'")
+    company: str = Field(..., description="Target company name")
+    role_title: str = Field(..., description="Target role title")
+    candidate_background: Optional[str] = Field(None, description="Brief 1-2 sentence background summary")
+    channel: Optional[str] = Field(default="LinkedIn", description="'LinkedIn' (short, < 300 chars) or 'Email' (standard)")
+
+
+class ColdOutreachMessageResponse(BaseModel):
+    """Generated outreach message with channel limit compliance status."""
+    status: str = Field(default="success")
+    channel: str
+    subject: Optional[str] = None
+    message: str
+    character_count: int
+    is_within_channel_limit: bool
+

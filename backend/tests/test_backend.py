@@ -2574,6 +2574,45 @@ class BackendTestCase(unittest.TestCase):
         self.assertIn("$195,000", data["email_body"])
         self.assertTrue(len(data["phone_script_bullet_points"]) >= 3)
 
+    def test_cold_outreach_message_generator(self):
+        """Test tailored cold outreach copy generation for LinkedIn and Email."""
+        # 1. LinkedIn connection note (<= 300 characters limit)
+        li_payload = {
+            "recipient_type": "Recruiter",
+            "company": "Datadog",
+            "role_title": "Senior Distributed Systems Engineer",
+            "candidate_background": "7 years scaling high-throughput telemetry pipelines",
+            "channel": "LinkedIn"
+        }
+        res_li = self.client.post("/api/chat/tools/cold-outreach", json=li_payload)
+        self.assertEqual(res_li.status_code, 200)
+        data_li = res_li.json()
+        self.assertEqual(data_li["status"], "success")
+        self.assertEqual(data_li["channel"], "LinkedIn")
+        self.assertIsNone(data_li["subject"])
+        self.assertTrue(data_li["is_within_channel_limit"])
+        self.assertLessEqual(data_li["character_count"], 300)
+        self.assertIn("Datadog", data_li["message"])
+
+        # 2. Email format
+        email_payload = {
+            "recipient_type": "Hiring Manager",
+            "company": "Cloudflare",
+            "role_title": "Staff Platform Engineer",
+            "candidate_background": "Distributed caching and edge compute architecture",
+            "channel": "Email"
+        }
+        res_email = self.client.post("/api/chat/tools/cold-outreach", json=email_payload)
+        self.assertEqual(res_email.status_code, 200)
+        data_email = res_email.json()
+        self.assertEqual(data_email["status"], "success")
+        self.assertEqual(data_email["channel"], "Email")
+        self.assertIsNotNone(data_email["subject"])
+        self.assertIn("Staff Platform Engineer", data_email["subject"])
+        self.assertIn("Cloudflare", data_email["message"])
+        self.assertIn("Hiring Manager", data_email["message"])
+        self.assertTrue(data_email["is_within_channel_limit"])
+
 
 if __name__ == "__main__":
     unittest.main()

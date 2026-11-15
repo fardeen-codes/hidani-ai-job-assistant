@@ -1202,3 +1202,70 @@ Candidate"""
         "counter_delta_pct": delta_pct
     }
 
+
+def generate_cold_outreach_message(
+    company: str,
+    role_title: str,
+    recipient_type: str = "Recruiter",
+    candidate_background: Optional[str] = None,
+    channel: str = "LinkedIn"
+) -> Dict[str, Any]:
+    """
+    Generate tailored cold outreach copy optimized for LinkedIn notes (<= 300 chars) or email inquiries.
+    """
+    clean_company = (company or "").strip()
+    clean_role = (role_title or "").strip()
+    clean_channel = (channel or "LinkedIn").strip().capitalize()
+    rec_label = recipient_type.strip() if recipient_type else "Hiring Team"
+    bg = candidate_background.strip() if candidate_background else ""
+
+    if clean_channel == "Linkedin":
+        clean_channel = "LinkedIn"
+
+    if clean_channel == "LinkedIn":
+        # Character limit on LinkedIn connection invitation is 300 characters
+        if bg:
+            # Keep it tight so it fits in 300 chars
+            base_msg = f"Hi! Saw {clean_company}'s {clean_role} opening. With my background in {bg[:80]}, I'd love to connect and share how I can support your roadmap!"
+        else:
+            base_msg = f"Hi! I saw the {clean_role} role at {clean_company} and would love to connect. My engineering background aligns closely with the team's mission!"
+        
+        # Enforce hard 300 char clamp if needed
+        if len(base_msg) > 300:
+            base_msg = base_msg[:297] + "..."
+
+        return {
+            "status": "success",
+            "channel": "LinkedIn",
+            "subject": None,
+            "message": base_msg,
+            "character_count": len(base_msg),
+            "is_within_channel_limit": len(base_msg) <= 300
+        }
+    else:
+        subject = f"Inquiry: {clean_role} — {clean_company}"
+        bg_section = (
+            f"With experience across {bg}, I have delivered robust systems and solved high-impact technical problems."
+            if bg
+            else f"I have a track record of building performant systems and driving high-impact technical deliverables."
+        )
+        body = f"""Hi {rec_label},
+
+I noticed the {clean_role} position at {clean_company} and wanted to reach out directly.
+
+{bg_section}
+
+I would welcome the opportunity to connect for 10-15 minutes to share how my experience directly aligns with {clean_company}'s engineering goals.
+
+Best regards,
+Candidate"""
+        return {
+            "status": "success",
+            "channel": "Email",
+            "subject": subject,
+            "message": body,
+            "character_count": len(body),
+            "is_within_channel_limit": len(body) <= 3000
+        }
+
+

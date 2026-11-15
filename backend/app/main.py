@@ -19,6 +19,7 @@ from app.agents.orchestrator import (
     clear_session_state,
     evaluate_intent_confidence_and_clarification,
     export_session_transcript,
+    generate_cold_outreach_message,
     generate_salary_negotiation_script,
     get_session_metrics,
     get_session_preferences,
@@ -79,6 +80,8 @@ from app.schemas import (
     ChatRequest,
     ChatResponse,
     ChatStateResponse,
+    ColdOutreachMessageRequest,
+    ColdOutreachMessageResponse,
     CompanyDirectoryResponse,
     CompanyHiringSurgeItem,
     CompanyHiringSurgeResponse,
@@ -555,6 +558,24 @@ async def generate_negotiation_script_endpoint(payload: SalaryNegotiationScriptR
         target_counter=payload.target_counter,
         leverage_points=payload.key_leverage_points
     )
+
+
+@app.post(
+    "/api/chat/tools/cold-outreach",
+    response_model=ColdOutreachMessageResponse,
+    summary="Generate tailored cold outreach message for recruiters or hiring managers",
+    tags=["Chat"]
+)
+async def generate_cold_outreach_endpoint(payload: ColdOutreachMessageRequest):
+    """Generate concise LinkedIn connection request notes or professional cold outreach emails."""
+    return generate_cold_outreach_message(
+        company=payload.company,
+        role_title=payload.role_title,
+        recipient_type=payload.recipient_type,
+        candidate_background=payload.candidate_background,
+        channel=payload.channel
+    )
+
 
 
 @app.get(
