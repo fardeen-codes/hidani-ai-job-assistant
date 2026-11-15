@@ -143,6 +143,8 @@ from app.schemas import (
     SkillSalaryInsightsResponse,
     StaleJobItem,
     StaleJobsResponse,
+    StorageSpeedBenchmark,
+    SystemDiagnosticsResponse,
     TierSalaryInsightsResponse,
     UploadResumeResponse,
     WeightedSkillScoreRequest,
@@ -217,6 +219,7 @@ from app.services.db_service import (
     repair_database_records,
     restore_database_backup,
     rollback_application_state,
+    run_system_storage_diagnostics,
     save_candidate_profile,
     save_job_bookmark,
     search_jobs,
@@ -2204,6 +2207,18 @@ async def compute_database_checksums_endpoint():
 async def vacuum_database_endpoint():
     """Perform recursive JSON key ordering, whitespace trimming, and space reclaiming vacuum on database files."""
     return vacuum_database_collections()
+
+
+@app.get(
+    "/api/admin/system/diagnostics",
+    response_model=SystemDiagnosticsResponse,
+    summary="Run environment diagnostics and storage IOPS throughput profiler",
+    tags=["Database Admin"]
+)
+async def run_system_diagnostics_endpoint():
+    """Execute live system runtime diagnostics, process environment inspection, and storage I/O speed benchmark."""
+    return run_system_storage_diagnostics()
+
 
 
 

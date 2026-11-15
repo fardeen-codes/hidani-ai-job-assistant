@@ -1161,6 +1161,28 @@ class DatabaseVacuumResponse(BaseModel):
     collections: List[DatabaseVacuumCollectionResult] = Field(default_factory=list)
 
 
+class StorageSpeedBenchmark(BaseModel):
+    """Storage I/O write and read throughput benchmarking."""
+    write_speed_mb_s: float
+    read_speed_mb_s: float
+    block_size_bytes: int
+    test_file_size_mb: float
+
+
+class SystemDiagnosticsResponse(BaseModel):
+    """Comprehensive environment diagnostics, process stats, and storage IOPS profile."""
+    status: str = Field(default="success")
+    timestamp: str
+    python_version: str
+    operating_system: str
+    process_id: int
+    working_directory: str
+    storage_root: str
+    storage_benchmark: StorageSpeedBenchmark
+    total_database_records: int
+
+
+
 
 
 

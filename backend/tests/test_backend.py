@@ -2778,6 +2778,23 @@ class BackendTestCase(unittest.TestCase):
             self.assertIn("bytes_before", col)
             self.assertIn("bytes_after", col)
 
+    def test_system_diagnostics_profiler(self):
+        """Test system environment inspection and storage I/O speed profiler."""
+        res = self.client.get("/api/admin/system/diagnostics")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "success")
+        self.assertIn("python_version", data)
+        self.assertIn("operating_system", data)
+        self.assertGreater(data["process_id"], 0)
+        self.assertGreaterEqual(data["total_database_records"], 0)
+        
+        bench = data["storage_benchmark"]
+        self.assertGreater(bench["write_speed_mb_s"], 0.0)
+        self.assertGreater(bench["read_speed_mb_s"], 0.0)
+        self.assertEqual(bench["block_size_bytes"], 64 * 1024)
+        self.assertGreater(bench["test_file_size_mb"], 0.0)
+
 
 if __name__ == "__main__":
     unittest.main()

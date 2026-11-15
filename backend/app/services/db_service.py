@@ -11,7 +11,9 @@ import io
 import json
 import logging
 import os
+import platform
 import re
+import sys
 import tempfile
 import threading
 import time
@@ -23,6 +25,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from app.config import (
     APPLICATIONS_FILE,
     BOOKMARKS_FILE,
+    DATA_DIR,
     JOBS_FILE,
     PROFILE_FILE,
     SAVED_SEARCHES_FILE,
@@ -4141,6 +4144,70 @@ def vacuum_database_collections() -> Dict[str, Any]:
         "total_bytes_saved": total_saved,
         "collections": collection_results
     }
+
+
+def run_system_storage_diagnostics() -> Dict[str, Any]:
+    """
+    Run diagnostic profiling of runtime host, process footprint, and storage I/O throughput.
+    """
+    block_size = 64 * 1024 # 64 KB
+    blocks_count = 8 # 512 KB total
+    total_bytes = block_size * blocks_count
+    total_mb = total_bytes / (1024 * 1024)
+
+    test_payload = b"X" * block_size
+    bench_dir = DATA_DIR if DATA_DIR.exists() else Path(tempfile.gettempdir())
+    bench_file = bench_dir / f".bench_io_{int(time.time() * 1000)}.tmp"
+
+    write_speed_mb_s = 0.0
+    read_speed_mb_s = 0.0
+
+    try:
+        # 1. Write benchmark
+        t0 = time.perf_counter()
+        with open(bench_file, "wb") as f:
+            for _ in range(blocks_count):
+                f.write(test_payload)
+            f.flush()
+            os.fsync(f.fileno())
+        t_write = time.perf_counter() - t0
+        write_speed_mb_s = round(total_mb / max(t_write, 0.0001), 2)
+
+        # 2. Read benchmark
+        t1 = time.perf_counter()
+        with open(bench_file, "rb") as f:
+            while f.read(block_size):
+                pass
+        t_read = time.perf_counter() - t1
+        read_speed_mb_s = round(total_mb / max(t_read, 0.0001), 2)
+    except Exception as exc:
+        logger.warning(f"Storage I/O benchmarking encountered error: {exc}")
+    finally:
+        if bench_file.exists():
+            try:
+                bench_file.unlink()
+            except OSError:
+                pass
+
+    total_records = len(load_jobs()) + len(load_applications()) + len(load_bookmarks())
+
+    return {
+        "status": "success",
+        "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
+        "python_version": sys.version.split()[0],
+        "operating_system": f"{platform.system()} {platform.release()}",
+        "process_id": os.getpid(),
+        "working_directory": os.getcwd(),
+        "storage_root": str(DATA_DIR),
+        "storage_benchmark": {
+            "write_speed_mb_s": write_speed_mb_s,
+            "read_speed_mb_s": read_speed_mb_s,
+            "block_size_bytes": block_size,
+            "test_file_size_mb": total_mb
+        },
+        "total_database_records": total_records
+    }
+
 
 
 
