@@ -230,6 +230,22 @@ def classify_work_mode(location: Optional[str] = "", title: Optional[str] = "", 
     return "Onsite"
 
 
+def normalize_experience_tier(experience: Optional[str] = "", title: Optional[str] = "") -> str:
+    """
+    Standardize varied job experience strings into 4 normalized career tiers:
+    Entry-Level, Mid-Level, Senior, or Lead.
+    """
+    combined = f"{experience or ''} {title or ''}".lower()
+
+    if any(k in combined for k in ["lead", "principal", "staff", "architect", "director", "head of", "vp", "chief", "7+", "8+", "10+"]):
+        return "Lead"
+    if any(k in combined for k in ["senior", "sr.", "sr ", "5+", "5-7", "5-8", "6+", "4+"]):
+        return "Senior"
+    if any(k in combined for k in ["entry", "intern", "junior", "jr.", "jr ", "graduate", "fresher", "0-1", "0-2"]):
+        return "Entry-Level"
+    return "Mid-Level"
+
+
 def load_jobs() -> List[Dict[str, Any]]:
     """Load all jobs from jobs.json with error recovery and mtime-based in-memory caching."""
     global _jobs_cache, _jobs_by_id_cache, _jobs_cache_mtime
@@ -261,6 +277,8 @@ def load_jobs() -> List[Dict[str, Any]]:
                         j["freshness"] = compute_job_freshness(j)
                     if "work_mode" not in j:
                         j["work_mode"] = classify_work_mode(j.get("location", ""), j.get("title", ""), j.get("description", ""))
+                    if "normalized_tier" not in j:
+                        j["normalized_tier"] = normalize_experience_tier(j.get("experience"), j.get("title"))
                 _jobs_cache = jobs
                 _jobs_by_id_cache = {
                     j.get("job_id", "").strip().lower(): j
@@ -415,6 +433,7 @@ def search_jobs(
     category: Optional[str] = None,
     freshness: Optional[str] = None,
     work_mode: Optional[str] = None,
+    tier: Optional[str] = None,
     has_salary: Optional[bool] = None,
     min_salary: Optional[float] = None,
     sort_by: Optional[str] = None,
@@ -439,6 +458,7 @@ def search_jobs(
     cat_clean = (category or "").strip().lower()
     fresh_clean = (freshness or "").strip().lower()
     mode_clean = (work_mode or "").strip().lower()
+    tier_clean = (tier or "").strip().lower()
 
     scored_jobs = []
 
@@ -477,6 +497,12 @@ def search_jobs(
         if mode_clean:
             job_mode = (job.get("work_mode") or classify_work_mode(job.get("location", ""), job.get("title", ""), job.get("description", ""))).lower()
             if mode_clean != job_mode:
+                continue
+
+        # Strict standardized career tier filter if specified
+        if tier_clean:
+            job_tier = (job.get("normalized_tier") or normalize_experience_tier(job.get("experience"), job.get("title"))).lower()
+            if tier_clean != job_tier:
                 continue
 
         # Strict salary presence filter

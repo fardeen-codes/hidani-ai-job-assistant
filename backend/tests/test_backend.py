@@ -1642,6 +1642,30 @@ class BackendTestCase(unittest.TestCase):
         # Clean up
         withdraw_application(self.test_job_id)
 
+    def test_experience_tier_normalization_and_filtering(self):
+        """Test standardized career tier classification and tier filtering."""
+        # 1. Fetch senior tier jobs
+        res_sr = self.client.get("/api/jobs?tier=Senior&limit=5")
+        self.assertEqual(res_sr.status_code, 200)
+        sr_jobs = res_sr.json()["jobs"]
+        self.assertGreater(len(sr_jobs), 0)
+        for j in sr_jobs:
+            self.assertEqual(j["normalized_tier"], "Senior")
+
+        # 2. Fetch entry-level tier jobs
+        res_entry = self.client.get("/api/jobs?tier=Entry-Level&limit=5")
+        self.assertEqual(res_entry.status_code, 200)
+        entry_jobs = res_entry.json()["jobs"]
+        for j in entry_jobs:
+            self.assertEqual(j["normalized_tier"], "Entry-Level")
+
+        # 3. Fetch lead tier jobs
+        res_lead = self.client.get("/api/jobs?tier=Lead&limit=5")
+        self.assertEqual(res_lead.status_code, 200)
+        lead_jobs = res_lead.json()["jobs"]
+        for j in lead_jobs:
+            self.assertEqual(j["normalized_tier"], "Lead")
+
 
 if __name__ == "__main__":
     unittest.main()
