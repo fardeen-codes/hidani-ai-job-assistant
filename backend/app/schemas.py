@@ -979,3 +979,17 @@ class DisambiguationResponse(BaseModel):
     confidence: float = Field(description="Top confidence score")
     clarification_message: Optional[str] = Field(None, description="Conversational prompt asking user to clarify")
     quick_replies: List[IntentClarificationItem] = Field(default_factory=list)
+
+
+class SessionPreferencesUpdateRequest(BaseModel):
+    """Contextual conversational preferences retained for current chat session."""
+    target_title: Optional[str] = Field(None, description="In-session target title or keyword")
+    location_preference: Optional[str] = Field(None, description="In-session preferred location")
+    min_salary: Optional[float] = Field(None, ge=0, description="In-session minimum salary filter")
+
+
+class SessionPreferencesResponse(BaseModel):
+    """Retained session preferences and conversational memory state."""
+    status: str = Field(default="success")
+    session_id: str
+    preferences: Dict[str, Any] = Field(default_factory=dict)

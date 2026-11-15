@@ -1114,3 +1114,38 @@ def evaluate_intent_confidence_and_clarification(user_message: str) -> Dict[str,
         "quick_replies": quick_replies
     }
 
+
+def update_session_preferences(
+    session_id: str,
+    target_title: Optional[str] = None,
+    location_preference: Optional[str] = None,
+    min_salary: Optional[float] = None
+) -> Dict[str, Any]:
+    """Store conversational memory preferences for a chat session."""
+    clean_id = (session_id or "default-session").strip()
+    with _session_lock:
+        if clean_id not in _session_metadata:
+            _session_metadata[clean_id] = {
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "turns_count": 0,
+                "preferences": {}
+            }
+        prefs = _session_metadata[clean_id].setdefault("preferences", {})
+        if target_title is not None:
+            prefs["target_title"] = target_title.strip() or None
+        if location_preference is not None:
+            prefs["location_preference"] = location_preference.strip() or None
+        if min_salary is not None:
+            prefs["min_salary"] = min_salary
+        _session_metadata[clean_id]["last_active"] = datetime.now(timezone.utc).isoformat()
+    return dict(prefs)
+
+
+def get_session_preferences(session_id: str) -> Dict[str, Any]:
+    """Retrieve in-memory preferences stored for a session."""
+    clean_id = (session_id or "default-session").strip()
+    with _session_lock:
+        meta = _session_metadata.get(clean_id, {})
+        prefs = meta.get("preferences", {})
+    return dict(prefs)
+

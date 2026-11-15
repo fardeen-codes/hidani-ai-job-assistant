@@ -2526,6 +2526,31 @@ class BackendTestCase(unittest.TestCase):
         self.assertEqual(data_clear["top_intent"], "job_search")
         self.assertGreater(data_clear["confidence"], 0.3)
 
+    def test_chat_session_preference_memory(self):
+        """Test retaining and updating candidate conversational preferences in chat session state."""
+        session_id = "test-session-preferences-mem"
+        try:
+            # 1. Update session preferences -> 200 OK
+            payload = {
+                "target_title": "Senior DevOps Engineer",
+                "location_preference": "Remote",
+                "min_salary": 145000.0
+            }
+            res_patch = self.client.patch(f"/api/chat/session/{session_id}/preferences", json=payload)
+            self.assertEqual(res_patch.status_code, 200)
+            data = res_patch.json()
+            self.assertEqual(data["status"], "success")
+            self.assertEqual(data["preferences"]["target_title"], "Senior DevOps Engineer")
+            self.assertEqual(data["preferences"]["min_salary"], 145000.0)
+
+            # 2. Retrieve session preferences -> 200 OK
+            res_get = self.client.get(f"/api/chat/session/{session_id}/preferences")
+            self.assertEqual(res_get.status_code, 200)
+            get_data = res_get.json()
+            self.assertEqual(get_data["preferences"]["location_preference"], "Remote")
+        finally:
+            self.client.post(f"/api/chat/reset/{session_id}")
+
 
 if __name__ == "__main__":
     unittest.main()

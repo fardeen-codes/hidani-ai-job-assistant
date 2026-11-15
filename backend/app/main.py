@@ -20,8 +20,10 @@ from app.agents.orchestrator import (
     evaluate_intent_confidence_and_clarification,
     export_session_transcript,
     get_session_metrics,
+    get_session_preferences,
     get_session_state,
     run_orchestrator,
+    update_session_preferences,
 )
 from app.agents.parser_agent import parse_resume_with_llm
 from app.config import (
@@ -109,6 +111,8 @@ from app.schemas import (
     SearchHistoryEntry,
     SearchSuggestionsResponse,
     SessionMetricsResponse,
+    SessionPreferencesResponse,
+    SessionPreferencesUpdateRequest,
     SkillCoOccurrenceItem,
     SkillCorrelationResponse,
     SkillGapAnalysisResponse,
@@ -595,6 +599,41 @@ async def export_chat_transcript_endpoint(
         media_type=media_type,
         headers={"Content-Disposition": f'attachment; filename="transcript_{clean_id}.{ext}"'}
     )
+
+
+@app.get(
+    "/api/chat/session/{session_id}/preferences",
+    response_model=SessionPreferencesResponse,
+    summary="Get retained chat session preferences",
+    tags=["Chat"]
+)
+async def get_session_preferences_endpoint(session_id: str):
+    """Retrieve candidate context and preferences retained in current conversation session."""
+    clean_id = (session_id or "").strip()
+    if not clean_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Session ID cannot be empty.")
+    prefs = get_session_preferences(clean_id)
+    return SessionPreferencesResponse(status="success", session_id=clean_id, preferences=prefs)
+
+
+@app.patch(
+    "/api/chat/session/{session_id}/preferences",
+    response_model=SessionPreferencesResponse,
+    summary="Update retained chat session preferences",
+    tags=["Chat"]
+)
+async def update_session_preferences_endpoint(session_id: str, payload: SessionPreferencesUpdateRequest):
+    """Update contextual preferences (target role, location, min salary) in session memory."""
+    clean_id = (session_id or "").strip()
+    if not clean_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Session ID cannot be empty.")
+    prefs = update_session_preferences(
+        session_id=clean_id,
+        target_title=payload.target_title,
+        location_preference=payload.location_preference,
+        min_salary=payload.min_salary
+    )
+    return SessionPreferencesResponse(status="success", session_id=clean_id, preferences=prefs)
 
 
 @app.get("/api/jobs", summary="Browse available jobs", tags=["Jobs"])
