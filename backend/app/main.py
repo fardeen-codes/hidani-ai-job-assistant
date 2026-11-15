@@ -87,6 +87,8 @@ from app.schemas import (
     JobBookmark,
     JobStatsResponse,
     JobTagCloudResponse,
+    OfferComparisonRequest,
+    OfferComparisonResponse,
     ProfileCompletenessResponse,
     RemoteWorkBreakdownResponse,
     RemoteWorkPolicyMetric,
@@ -127,6 +129,7 @@ from app.services.db_service import (
     check_database_health,
     clear_search_history,
     compact_database,
+    compare_offer_packages,
     create_database_backup,
     create_saved_search,
     delete_candidate_certification,
@@ -1123,6 +1126,18 @@ async def get_applications_rejections_endpoint():
 async def get_application_channel_analytics_endpoint():
     """Analyze application interview and offer conversion performance grouped by channel."""
     return get_application_channel_analytics()
+
+
+@app.post(
+    "/api/applications/compare-offers",
+    response_model=OfferComparisonResponse,
+    summary="Compare job offer compensation packages side-by-side",
+    tags=["Applications"]
+)
+async def compare_offers_endpoint(payload: OfferComparisonRequest):
+    """Compare multiple job offers evaluating base salary, equity, bonus, and total first-year compensation."""
+    offers_dicts = [o.model_dump() for o in payload.offers]
+    return compare_offer_packages(offers_dicts)
 
 
 @app.get(

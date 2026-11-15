@@ -882,3 +882,40 @@ class ApplicationChannelAnalyticsResponse(BaseModel):
     total_applications: int = Field(description="Total candidate applications")
     top_performing_channel: Optional[str] = Field(None, description="Channel with highest interview conversion rate")
     channels: List[ApplicationChannelMetric] = Field(default_factory=list)
+
+
+class OfferPackageItem(BaseModel):
+    """Compensation breakdown for an employment offer."""
+    job_id: str = Field(description="Associated job ID")
+    company: str = Field(description="Company offering the package")
+    role_title: str = Field(description="Offered role title")
+    base_salary: float = Field(..., ge=0, description="Annualized base salary")
+    target_bonus: Optional[float] = Field(0.0, ge=0, description="Annual bonus expectation")
+    equity_annual_value: Optional[float] = Field(0.0, ge=0, description="Annualized equity / RSU value")
+    signing_bonus: Optional[float] = Field(0.0, ge=0, description="One-time upfront sign-on bonus")
+    benefits_notes: Optional[str] = Field(None, description="Health, 401k match, PTO notes")
+
+
+class OfferComparisonRequest(BaseModel):
+    """Payload to compare multiple compensation offers."""
+    offers: List[OfferPackageItem] = Field(..., min_length=2, max_length=10, description="Offers to compare")
+
+
+class OfferComparisonSummaryItem(BaseModel):
+    """Ranked compensation comparison summary for an individual offer."""
+    job_id: str
+    company: str
+    role_title: str
+    base_salary: float
+    first_year_total_comp: float
+    recurring_total_comp: float
+    rank: int
+    is_highest_comp: bool
+
+
+class OfferComparisonResponse(BaseModel):
+    """Detailed side-by-side compensation comparison report."""
+    status: str = Field(default="success")
+    total_offers_evaluated: int
+    highest_paying_company: str
+    offers: List[OfferComparisonSummaryItem] = Field(default_factory=list)

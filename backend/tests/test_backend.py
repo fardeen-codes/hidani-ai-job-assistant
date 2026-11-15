@@ -2388,6 +2388,48 @@ class BackendTestCase(unittest.TestCase):
         # 3. Clean up
         withdraw_application(self.test_job_id)
 
+    def test_application_offer_packages_comparison(self):
+        """Test comparing multiple job offers, ranking by total first-year compensation."""
+        # 1. Validation failure for < 2 offers -> 422
+        res_single = self.client.post("/api/applications/compare-offers", json={"offers": [
+            {"job_id": "job_1", "company": "Co A", "role_title": "SWE", "base_salary": 120000.0}
+        ]})
+        self.assertEqual(res_single.status_code, 422)
+
+        # 2. Compare 2 offers -> 200 OK
+        payload = {
+            "offers": [
+                {
+                    "job_id": "job_a",
+                    "company": "Alpha Tech",
+                    "role_title": "Senior Engineer",
+                    "base_salary": 140000.0,
+                    "target_bonus": 15000.0,
+                    "equity_annual_value": 20000.0,
+                    "signing_bonus": 10000.0
+                },
+                {
+                    "job_id": "job_b",
+                    "company": "Beta Cloud",
+                    "role_title": "Staff Engineer",
+                    "base_salary": 160000.0,
+                    "target_bonus": 25000.0,
+                    "equity_annual_value": 35000.0,
+                    "signing_bonus": 20000.0
+                }
+            ]
+        }
+        res = self.client.post("/api/applications/compare-offers", json=payload)
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "success")
+        self.assertEqual(data["total_offers_evaluated"], 2)
+        self.assertEqual(data["highest_paying_company"], "Beta Cloud")
+        self.assertEqual(data["offers"][0]["company"], "Beta Cloud")
+        self.assertEqual(data["offers"][0]["rank"], 1)
+        self.assertTrue(data["offers"][0]["is_highest_comp"])
+        self.assertEqual(data["offers"][1]["rank"], 2)
+
 
 if __name__ == "__main__":
     unittest.main()

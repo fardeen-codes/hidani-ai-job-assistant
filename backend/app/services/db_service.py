@@ -3773,3 +3773,53 @@ def get_application_channel_analytics() -> Dict[str, Any]:
         "channels": metrics
     }
 
+
+def compare_offer_packages(offers: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """
+    Compare compensation packages across job offers, calculating total first-year and recurring TC.
+    """
+    if not offers:
+        return {
+            "status": "success",
+            "total_offers_evaluated": 0,
+            "highest_paying_company": "",
+            "offers": []
+        }
+
+    evaluated = []
+    for item in offers:
+        base = float(item.get("base_salary") or 0.0)
+        bonus = float(item.get("target_bonus") or 0.0)
+        equity = float(item.get("equity_annual_value") or 0.0)
+        signing = float(item.get("signing_bonus") or 0.0)
+
+        first_year = base + bonus + equity + signing
+        recurring = base + bonus + equity
+
+        evaluated.append({
+            "job_id": item.get("job_id", ""),
+            "company": item.get("company", "Unknown"),
+            "role_title": item.get("role_title", "Untitled Role"),
+            "base_salary": round(base, 2),
+            "first_year_total_comp": round(first_year, 2),
+            "recurring_total_comp": round(recurring, 2),
+        })
+
+    evaluated.sort(key=lambda x: -x["first_year_total_comp"])
+
+    ranked_offers = []
+    highest_co = evaluated[0]["company"] if evaluated else ""
+    for rank, offer in enumerate(evaluated, start=1):
+        ranked_offers.append({
+            **offer,
+            "rank": rank,
+            "is_highest_comp": (rank == 1)
+        })
+
+    return {
+        "status": "success",
+        "total_offers_evaluated": len(ranked_offers),
+        "highest_paying_company": highest_co,
+        "offers": ranked_offers
+    }
+
