@@ -1007,6 +1007,38 @@ class BackendTestCase(unittest.TestCase):
         # Clean up
         withdraw_application(self.test_job_id)
 
+    def test_saved_searches_lifecycle(self):
+        """Test creating, listing, and deleting saved search subscriptions."""
+        # 1. Create saved search -> 201 Created
+        payload = {
+            "title": "Remote Python Roles",
+            "query": "python",
+            "location": "remote",
+            "experience_level": "Mid-Level",
+            "category": "Engineering"
+        }
+        res_create = self.client.post("/api/searches/saved", json=payload)
+        self.assertEqual(res_create.status_code, 201)
+        created = res_create.json()
+        search_id = created["search_id"]
+        self.assertEqual(created["title"], "Remote Python Roles")
+        self.assertEqual(created["query"], "python")
+        self.assertIn("created_date", created)
+
+        # 2. List saved searches -> includes created
+        res_list = self.client.get("/api/searches/saved")
+        self.assertEqual(res_list.status_code, 200)
+        items = res_list.json()
+        self.assertTrue(any(s["search_id"] == search_id for s in items))
+
+        # 3. Delete saved search -> 200 OK
+        res_del = self.client.delete(f"/api/searches/saved/{search_id}")
+        self.assertEqual(res_del.status_code, 200)
+
+        # 4. Delete non-existent search -> 404
+        res_del_404 = self.client.delete(f"/api/searches/saved/{search_id}")
+        self.assertEqual(res_del_404.status_code, 404)
+
 
 if __name__ == "__main__":
     unittest.main()

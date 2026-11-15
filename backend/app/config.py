@@ -32,10 +32,12 @@ if IS_SERVERLESS or not os.access(DATA_DIR if DATA_DIR.exists() else BACKEND_DIR
     APPLICATIONS_FILE = Path("/tmp") / "applications.json"
     BOOKMARKS_FILE = Path("/tmp") / "bookmarks.json"
     SEARCH_HISTORY_FILE = Path("/tmp") / "search_history.json"
+    SAVED_SEARCHES_FILE = Path("/tmp") / "saved_searches.json"
 else:
     APPLICATIONS_FILE = DATA_DIR / "applications.json"
     BOOKMARKS_FILE = DATA_DIR / "bookmarks.json"
     SEARCH_HISTORY_FILE = DATA_DIR / "search_history.json"
+    SAVED_SEARCHES_FILE = DATA_DIR / "saved_searches.json"
 
 # Ensure data directory and files exist
 try:
@@ -64,6 +66,13 @@ except OSError:
 try:
     if not SEARCH_HISTORY_FILE.exists():
         with open(SEARCH_HISTORY_FILE, "w", encoding="utf-8") as f:
+            f.write("[]")
+except OSError:
+    pass
+
+try:
+    if not SAVED_SEARCHES_FILE.exists():
+        with open(SAVED_SEARCHES_FILE, "w", encoding="utf-8") as f:
             f.write("[]")
 except OSError:
     pass

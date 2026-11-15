@@ -14,7 +14,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from app.config import APPLICATIONS_FILE, BOOKMARKS_FILE, JOBS_FILE, SEARCH_HISTORY_FILE
+from app.config import (
+    APPLICATIONS_FILE,
+    BOOKMARKS_FILE,
+    JOBS_FILE,
+    SAVED_SEARCHES_FILE,
+    SEARCH_HISTORY_FILE,
+)
 
 logger = logging.getLogger("DBService")
 _db_lock = threading.RLock()
@@ -35,6 +41,10 @@ _bookmarks_cache_mtime: Optional[float] = None
 # In-memory mtime cache for search history
 _search_history_cache: Optional[List[Dict[str, Any]]] = None
 _search_history_cache_mtime: Optional[float] = None
+
+# In-memory mtime cache for saved searches
+_saved_searches_cache: Optional[List[Dict[str, Any]]] = None
+_saved_searches_cache_mtime: Optional[float] = None
 
 
 def invalidate_jobs_cache() -> None:
@@ -873,4 +883,102 @@ def clear_search_history() -> bool:
     with _db_lock:
         _save_search_history([])
     return True
+
+
+def _save_saved_searches(searches: List[Dict[str, Any]]) -> None:
+    """Persist saved searches atomically and synchronize in-memory cache."""
+    global _saved_searches_cache, _saved_searches_cache_mtime
+    _atomic_write_json(SAVED_SEARCHES_FILE, searches)
+    _saved_searches_cache = [dict(s) for s in searches]
+    try:
+        _saved_searches_cache_mtime = SAVED_SEARCHES_FILE.stat().st_mtime if SAVED_SEARCHES_FILE.exists() else None
+    except OSError:
+        _saved_searches_cache_mtime = None
+
+
+def load_saved_searches() -> List[Dict[str, Any]]:
+    """Read saved searches with mtime-based in-memory caching."""
+    global _saved_searches_cache, _saved_searches_cache_mtime
+    with _db_lock:
+        if not SAVED_SEARCHES_FILE.exists():
+            _saved_searches_cache = []
+            _saved_searches_cache_mtime = None
+            return []
+        try:
+            current_mtime = SAVED_SEARCHES_FILE.stat().st_mtime
+            if _saved_searches_cache is not None and _saved_searches_cache_mtime == current_mtime:
+                return [dict(s) for s in _saved_searches_cache]
+
+            with open(SAVED_SEARCHES_FILE, "r", encoding="utf-8") as f:
+                content = f.read().strip()
+                if not content:
+                    _saved_searches_cache = []
+                    _saved_searches_cache_mtime = current_mtime
+                    return []
+                searches = json.loads(content)
+                _saved_searches_cache = [dict(s) for s in searches]
+                _saved_searches_cache_mtime = current_mtime
+                return [dict(s) for s in _saved_searches_cache]
+        except Exception as exc:
+            logger.error(f"Error loading saved searches: {exc}")
+            return [dict(s) for s in _saved_searches_cache] if _saved_searches_cache is not None else []
+
+
+def create_saved_search(
+    title: str,
+    query: Optional[str] = None,
+    location: Optional[str] = None,
+    experience_level: Optional[str] = None,
+    category: Optional[str] = None
+) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
+    """Create and persist a new saved search criteria / job alert."""
+    clean_title = (title or "").strip()
+    if not clean_title:
+        return False, "Title cannot be empty.", None
+
+    clean_query = (query or "").strip() or None
+    clean_loc = (location or "").strip() or None
+    clean_exp = (experience_level or "").strip() or None
+    clean_cat = (category or "").strip() or None
+
+    search_id = f"search_{int(datetime.now(timezone.utc).timestamp())}_{os.urandom(3).hex()}"
+    now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+
+    new_search = {
+        "search_id": search_id,
+        "title": clean_title,
+        "query": clean_query,
+        "location": clean_loc,
+        "experience_level": clean_exp,
+        "category": clean_cat,
+        "created_date": now_str
+    }
+
+    with _db_lock:
+        searches = load_saved_searches()
+        searches.append(new_search)
+        _save_saved_searches(searches)
+
+    logger.info(f"Created saved search '{clean_title}' ({search_id})")
+    return True, f"Saved search '{clean_title}' created successfully.", new_search
+
+
+def delete_saved_search(search_id: str) -> Tuple[bool, str]:
+    """Remove a saved search subscription by its unique search_id."""
+    clean_id = (search_id or "").strip()
+    if not clean_id:
+        return False, "Search ID cannot be empty."
+
+    with _db_lock:
+        searches = load_saved_searches()
+        initial_len = len(searches)
+        remaining = [s for s in searches if s.get("search_id") != clean_id]
+
+        if len(remaining) == initial_len:
+            return False, f"Saved search with ID '{clean_id}' was not found."
+
+        _save_saved_searches(remaining)
+
+    logger.info(f"Deleted saved search {clean_id}")
+    return True, f"Saved search with ID '{clean_id}' has been deleted."
 

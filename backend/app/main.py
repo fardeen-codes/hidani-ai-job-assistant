@@ -42,6 +42,8 @@ from app.schemas import (
     JobApplication,
     JobBookmark,
     JobStatsResponse,
+    SavedSearch,
+    SavedSearchCreateRequest,
     SearchHistoryEntry,
     SkillGapAnalysisResponse,
     UploadResumeResponse,
@@ -50,6 +52,8 @@ from app.services.db_service import (
     apply_to_job,
     bulk_update_application_status,
     clear_search_history,
+    create_saved_search,
+    delete_saved_search,
     get_application_stats,
     get_application_status,
     get_application_timeline,
@@ -60,6 +64,7 @@ from app.services.db_service import (
     get_upcoming_reminders,
     load_applications,
     load_jobs,
+    load_saved_searches,
     record_search_query,
     remove_job_bookmark,
     save_job_bookmark,
@@ -296,6 +301,54 @@ async def clear_recent_searches_endpoint():
     """Clear candidate's recorded search history."""
     clear_search_history()
     return {"status": "success", "message": "Search history cleared."}
+
+
+@app.post(
+    "/api/searches/saved",
+    response_model=SavedSearch,
+    status_code=status.HTTP_201_CREATED,
+    summary="Save a search query subscription / job alert",
+    tags=["Searches"]
+)
+async def create_saved_search_endpoint(payload: SavedSearchCreateRequest):
+    """Save a search criteria subscription for quick candidate re-runs."""
+    success, message, new_search = create_saved_search(
+        title=payload.title,
+        query=payload.query,
+        location=payload.location,
+        experience_level=payload.experience_level,
+        category=payload.category
+    )
+    if not success or not new_search:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=message)
+    return new_search
+
+
+@app.get(
+    "/api/searches/saved",
+    response_model=List[SavedSearch],
+    summary="List saved search subscriptions",
+    tags=["Searches"]
+)
+async def list_saved_searches_endpoint():
+    """Retrieve all saved search subscriptions."""
+    return load_saved_searches()
+
+
+@app.delete(
+    "/api/searches/saved/{search_id}",
+    summary="Delete a saved search subscription",
+    tags=["Searches"]
+)
+async def delete_saved_search_endpoint(search_id: str):
+    """Delete a saved search subscription by its search_id."""
+    clean_id = (search_id or "").strip()
+    if not clean_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Search ID cannot be empty.")
+    success, message = delete_saved_search(clean_id)
+    if not success:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=message)
+    return {"status": "success", "message": message}
 
 
 @app.get("/api/jobs/stats", response_model=JobStatsResponse, summary="Get job database statistics and market insights", tags=["Jobs"])

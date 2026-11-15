@@ -90,6 +90,26 @@ class SearchHistoryEntry(BaseModel):
     results_count: int = Field(default=0, description="Number of results matching the search")
 
 
+class SavedSearchCreateRequest(BaseModel):
+    """Payload to create a new saved search subscription / job alert."""
+    title: str = Field(..., min_length=1, max_length=100, description="Name/label for the saved search")
+    query: Optional[str] = Field(None, description="Search keyword")
+    location: Optional[str] = Field(None, description="Location filter")
+    experience_level: Optional[str] = Field(None, description="Experience tier filter")
+    category: Optional[str] = Field(None, description="Industry domain / category filter")
+
+
+class SavedSearch(BaseModel):
+    """Saved search subscription record."""
+    search_id: str = Field(description="Unique identifier for the saved search")
+    title: str = Field(description="User-defined title")
+    query: Optional[str] = None
+    location: Optional[str] = None
+    experience_level: Optional[str] = None
+    category: Optional[str] = None
+    created_date: str = Field(description="Timestamp of creation")
+
+
 class ChatRequest(BaseModel):
     """Incoming user chat request."""
     message: str = Field(description="User prompt or conversational input")
