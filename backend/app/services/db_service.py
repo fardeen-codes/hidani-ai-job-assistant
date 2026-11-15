@@ -2048,3 +2048,75 @@ def get_company_profile(company_name: str) -> Optional[Dict[str, Any]]:
         "sample_titles": sample_titles
     }
 
+
+def generate_followup_template(job_id: str, template_type: str = "status_inquiry") -> Tuple[bool, str, Optional[Dict[str, Any]]]:
+    """
+    Generate a tailored follow-up reminder email draft (status inquiry, interview follow-up, or thank you note)
+    for a submitted job application.
+    """
+    clean_id = (job_id or "").strip()
+    if not clean_id:
+        return False, "Job ID cannot be empty.", None
+
+    apps = load_applications()
+    target_app = None
+    for a in apps:
+        if a.get("job_id", "").strip().lower() == clean_id.lower():
+            target_app = a
+            break
+
+    if not target_app:
+        return False, f"No existing application found for Job ID '{clean_id}'.", None
+
+    company = target_app.get("company", "").strip() or "the Hiring Team"
+    job_title = target_app.get("job_title", "").strip() or "Position"
+    candidate_name = target_app.get("candidate_name", "").strip() or "Candidate"
+    applied_date = target_app.get("applied_date", "") or "recently"
+
+    clean_type = (template_type or "status_inquiry").strip().lower()
+
+    if clean_type == "interview_followup":
+        subject = f"Interview Follow-up: {job_title} - {candidate_name}"
+        body = (
+            f"Dear {company} Team,\n\n"
+            f"Thank you once again for the opportunity to interview for the {job_title} role. "
+            f"I greatly enjoyed our conversation and learning more about the team's ongoing initiatives.\n\n"
+            f"I am writing to check in regarding next steps in the interview process. Please let me know "
+            f"if there is any additional information or work samples I can provide.\n\n"
+            f"Thank you for your time and consideration,\n"
+            f"{candidate_name}"
+        )
+    elif clean_type == "thank_you":
+        subject = f"Thank You - {job_title} Interview - {candidate_name}"
+        body = (
+            f"Dear {company} Team,\n\n"
+            f"Thank you very much for speaking with me today regarding the {job_title} position. "
+            f"I appreciated learning firsthand about your vision and team culture, which further solidified "
+            f"my enthusiasm for this role.\n\n"
+            f"Please feel free to reach out if you have any follow-up questions. I look forward to hearing from you.\n\n"
+            f"Warm regards,\n"
+            f"{candidate_name}"
+        )
+    else:
+        # Default status inquiry
+        clean_type = "status_inquiry"
+        subject = f"Application Status Inquiry: {job_title} - {candidate_name}"
+        body = (
+            f"Dear Hiring Team at {company},\n\n"
+            f"I hope this message finds you well.\n\n"
+            f"I am writing to respectfully check on the status of my application for the {job_title} position, "
+            f"which I submitted on {applied_date}. I remain very eager to contribute to {company}'s success.\n\n"
+            f"Please let me know if there are any supplemental materials or portfolio references I can provide.\n\n"
+            f"Sincerely,\n"
+            f"{candidate_name}"
+        )
+
+    return True, "Follow-up template generated successfully.", {
+        "job_id": clean_id,
+        "company": company,
+        "job_title": job_title,
+        "template_type": clean_type,
+        "subject": subject,
+        "body": body
+    }
+

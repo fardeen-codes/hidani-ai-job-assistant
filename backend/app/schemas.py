@@ -436,3 +436,13 @@ class CompanyDirectoryResponse(BaseModel):
     """Directory listing of hiring companies with aggregates."""
     total_companies: int = Field(description="Total number of unique companies hiring")
     companies: List[CompanyProfile] = Field(default_factory=list, description="List of company profiles")
+
+
+class FollowupTemplateResponse(BaseModel):
+    """Generated follow-up reminder email draft."""
+    job_id: str = Field(description="Target job identifier")
+    company: str = Field(description="Company applied to")
+    job_title: str = Field(description="Role title")
+    template_type: str = Field(description="Type of template: status_inquiry, interview_followup, or thank_you")
+    subject: str = Field(description="Suggested email subject line")
+    body: str = Field(description="Polite, personalized email body text")

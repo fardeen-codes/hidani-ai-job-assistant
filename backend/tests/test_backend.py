@@ -1587,6 +1587,40 @@ class BackendTestCase(unittest.TestCase):
         res_404 = self.client.get("/api/companies/NonExistentFictionalCo999")
         self.assertEqual(res_404.status_code, 404)
 
+    def test_application_followup_template_generation(self):
+        """Test generating customized follow-up reminder email templates."""
+        # Ensure application exists
+        self.client.post("/api/applications", json={"job_id": self.test_job_id, "notes": "Test notes"})
+
+        # 1. Status inquiry template (default)
+        res_default = self.client.get(f"/api/applications/{self.test_job_id}/followup-template")
+        self.assertEqual(res_default.status_code, 200)
+        data = res_default.json()
+        self.assertEqual(data["job_id"], self.test_job_id)
+        self.assertEqual(data["template_type"], "status_inquiry")
+        self.assertIn("subject", data)
+        self.assertIn("body", data)
+        self.assertIn("status of my application", data["body"].lower())
+
+        # 2. Interview follow-up template
+        res_iv = self.client.get(f"/api/applications/{self.test_job_id}/followup-template?template_type=interview_followup")
+        self.assertEqual(res_iv.status_code, 200)
+        self.assertEqual(res_iv.json()["template_type"], "interview_followup")
+        self.assertIn("interview", res_iv.json()["subject"].lower())
+
+        # 3. Thank you template
+        res_ty = self.client.get(f"/api/applications/{self.test_job_id}/followup-template?template_type=thank_you")
+        self.assertEqual(res_ty.status_code, 200)
+        self.assertEqual(res_ty.json()["template_type"], "thank_you")
+        self.assertIn("thank you", res_ty.json()["subject"].lower())
+
+        # 4. 404 for unapplied job
+        res_404 = self.client.get("/api/applications/non-existent-9999/followup-template")
+        self.assertEqual(res_404.status_code, 404)
+
+        # Clean up
+        withdraw_application(self.test_job_id)
+
 
 if __name__ == "__main__":
     unittest.main()

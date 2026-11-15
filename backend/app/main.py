@@ -54,6 +54,7 @@ from app.schemas import (
     DatabaseCompactionResponse,
     DatabaseHealthResponse,
     DatabaseRestoreResponse,
+    FollowupTemplateResponse,
     JobApplication,
     JobBookmark,
     JobStatsResponse,
@@ -81,6 +82,7 @@ from app.services.db_service import (
     create_saved_search,
     delete_saved_search,
     execute_saved_search,
+    generate_followup_template,
     get_application_funnel_metrics,
     get_application_stats,
     get_application_status,
@@ -993,6 +995,26 @@ async def update_application_outcome_endpoint(job_id: str, payload: ApplicationO
         "message": message,
         "application": updated_app
     }
+
+
+@app.get(
+    "/api/applications/{job_id}/followup-template",
+    response_model=FollowupTemplateResponse,
+    summary="Generate personalized follow-up reminder email draft",
+    tags=["Applications"]
+)
+async def get_application_followup_template_endpoint(
+    job_id: str,
+    template_type: str = Query("status_inquiry", description="Template style: status_inquiry, interview_followup, or thank_you")
+):
+    """Generate a polite, tailored email template for following up with hiring teams."""
+    clean_id = (job_id or "").strip()
+    if not clean_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Job ID cannot be empty.")
+    success, message, draft = generate_followup_template(clean_id, template_type=template_type)
+    if not success or not draft:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=message)
+    return draft
 
 
 @app.delete("/api/applications/{job_id}", summary="Withdraw an active job application", tags=["Applications"])
