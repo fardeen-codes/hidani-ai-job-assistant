@@ -1039,6 +1039,48 @@ class BackendTestCase(unittest.TestCase):
         res_del_404 = self.client.delete(f"/api/searches/saved/{search_id}")
         self.assertEqual(res_del_404.status_code, 404)
 
+    def test_application_custom_tags_lifecycle(self):
+        """Test adding, deduplicating, filtering, and clearing custom organization tags on job applications."""
+        withdraw_application(self.test_job_id)
+        apply_to_job(self.test_job_id)
+
+        # 1. Update tags with case duplicate
+        payload = {"tags": ["High Priority", "Referral", "high priority", "Tier 1"]}
+        res = self.client.put(f"/api/applications/{self.test_job_id}/tags", json=payload)
+        self.assertEqual(res.status_code, 200)
+        app_data = res.json()["application"]
+        self.assertEqual(app_data["tags"], ["High Priority", "Referral", "Tier 1"])
+
+        # 2. Filter applications by tag (case-insensitive)
+        res_tag = self.client.get("/api/applications?tag=referral")
+        self.assertEqual(res_tag.status_code, 200)
+        matched = [a for a in res_tag.json() if a["job_id"] == self.test_job_id]
+        self.assertEqual(len(matched), 1)
+
+        # 3. Filter with non-matching tag
+        res_none = self.client.get("/api/applications?tag=nonexistent-tag")
+        self.assertEqual(res_none.status_code, 200)
+        matched_none = [a for a in res_none.json() if a["job_id"] == self.test_job_id]
+        self.assertEqual(len(matched_none), 0)
+
+        # 4. Timeline records TAGS_UPDATED event
+        res_timeline = self.client.get(f"/api/applications/{self.test_job_id}/timeline")
+        self.assertEqual(res_timeline.status_code, 200)
+        events = res_timeline.json()["timeline"]
+        self.assertTrue(any(e["event_type"] == "TAGS_UPDATED" for e in events))
+
+        # 5. Invalid job ID -> 404
+        res_404 = self.client.put("/api/applications/non-existent-job-xyz/tags", json={"tags": ["Test"]})
+        self.assertEqual(res_404.status_code, 404)
+
+        # 6. Clear tags
+        res_clear = self.client.put(f"/api/applications/{self.test_job_id}/tags", json={"tags": []})
+        self.assertEqual(res_clear.status_code, 200)
+        self.assertEqual(res_clear.json()["application"]["tags"], [])
+
+        # Clean up
+        withdraw_application(self.test_job_id)
+
 
 if __name__ == "__main__":
     unittest.main()

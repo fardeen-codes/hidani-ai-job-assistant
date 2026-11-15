@@ -588,6 +588,49 @@ def get_application_timeline(job_id: str) -> Optional[List[Dict[str, Any]]]:
     return apps[0].get("timeline") or []
 
 
+def update_application_tags(
+    job_id: str,
+    tags: List[str]
+) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
+    """
+    Update organizational tags/labels on an existing application.
+    Deduplicates and normalizes tags, and records event in audit timeline.
+    Returns: (success: bool, message: str, updated_application: Optional[dict])
+    """
+    clean_id = (job_id or "").strip()
+    if not clean_id:
+        return False, "Job ID cannot be empty.", None
+
+    seen = set()
+    clean_tags = []
+    for t in (tags or []):
+        norm = str(t).strip()
+        if norm and norm.lower() not in seen:
+            seen.add(norm.lower())
+            clean_tags.append(norm)
+
+    with _db_lock:
+        applications = load_applications()
+        updated_app = None
+        for app in applications:
+            if app.get("job_id", "").strip().lower() == clean_id.lower():
+                app["tags"] = clean_tags
+                app["updated_date"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+                tags_desc = f"Tags updated to: {', '.join(clean_tags)}" if clean_tags else "Tags cleared"
+                _record_app_event(app, "TAGS_UPDATED", tags_desc)
+                updated_app = app
+                break
+
+        if not updated_app:
+            return False, f"No existing application found for Job ID '{clean_id}'.", None
+
+        _save_applications(applications)
+
+    msg = f"Application tags for Job ID '{clean_id}' updated ({len(clean_tags)} tag(s))."
+    logger.info(msg)
+    return True, msg, updated_app
+
+
 def get_upcoming_reminders() -> List[Dict[str, Any]]:
     """Retrieve all submitted applications that have pending follow-up reminders, sorted chronologically."""
     apps = load_applications()

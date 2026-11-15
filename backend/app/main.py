@@ -33,6 +33,7 @@ from app.schemas import (
     ApplicationReminderUpdateRequest,
     ApplicationStatsResponse,
     ApplicationStatusUpdateRequest,
+    ApplicationTagsUpdateRequest,
     ApplicationTimelineResponse,
     BulkApplicationStatusUpdateRequest,
     BulkApplicationStatusUpdateResponse,
@@ -72,6 +73,7 @@ from app.services.db_service import (
     update_application_notes,
     update_application_reminder,
     update_application_status,
+    update_application_tags,
     withdraw_application,
 )
 from app.services.document_parser import (
@@ -411,9 +413,10 @@ async def evaluate_job_skill_gap(
 @app.get("/api/applications", summary="List all submitted applications", tags=["Applications"])
 async def get_applications_list(
     status: Optional[str] = Query(None, description="Optional status filter (e.g. Applied, Under Review)"),
-    search: Optional[str] = Query(None, description="Optional search keyword matching job title or company")
+    search: Optional[str] = Query(None, description="Optional search keyword matching job title or company"),
+    tag: Optional[str] = Query(None, description="Optional tag filter")
 ):
-    """List all recorded job applications from applications.json with optional status and search filters."""
+    """List all recorded job applications from applications.json with optional status, search, and tag filters."""
     apps = load_applications()
     if status:
         stat_clean = status.strip().lower()
@@ -425,6 +428,12 @@ async def get_applications_list(
             if search_clean in (a.get("job_title") or "").lower()
             or search_clean in (a.get("company") or "").lower()
             or search_clean in (a.get("job_id") or "").lower()
+        ]
+    if tag:
+        tag_clean = tag.strip().lower()
+        apps = [
+            a for a in apps
+            if any(tag_clean == (t or "").strip().lower() for t in a.get("tags", []))
         ]
     return apps
 
@@ -646,6 +655,32 @@ async def update_application_notes_endpoint(job_id: str, payload: ApplicationNot
             detail="Job ID cannot be empty."
         )
     success, message, updated_app = update_application_notes(clean_id, payload.notes)
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=message
+        )
+    return {
+        "status": "success",
+        "message": message,
+        "application": updated_app
+    }
+
+
+@app.put(
+    "/api/applications/{job_id}/tags",
+    summary="Update application custom tags",
+    tags=["Applications"]
+)
+async def update_application_tags_endpoint(job_id: str, payload: ApplicationTagsUpdateRequest):
+    """Update custom organization tags and labels for a submitted application."""
+    clean_id = (job_id or "").strip()
+    if not clean_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Job ID cannot be empty."
+        )
+    success, message, updated_app = update_application_tags(clean_id, payload.tags)
     if not success:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

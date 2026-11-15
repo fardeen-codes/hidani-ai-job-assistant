@@ -56,7 +56,13 @@ class JobApplication(BaseModel):
     location: Optional[str] = Field(default=None, description="Job location")
     notes: Optional[str] = Field(default=None, description="Optional applicant cover note or remarks")
     reminder_date: Optional[str] = Field(default=None, description="Optional follow-up reminder date or deadline")
+    tags: List[str] = Field(default_factory=list, description="Custom organizational tags/labels")
     timeline: List[ApplicationTimelineEvent] = Field(default_factory=list, description="Audit log of application events")
+
+
+class ApplicationTagsUpdateRequest(BaseModel):
+    """Payload to update custom organization tags on an application."""
+    tags: List[str] = Field(..., max_length=15, description="List of custom tags (max 15)")
 
 
 class ApplicationTimelineResponse(BaseModel):
