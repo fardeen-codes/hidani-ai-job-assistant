@@ -271,6 +271,7 @@ async def get_jobs_list(
     company: Optional[str] = Query(None, description="Optional company name filter"),
     category: Optional[str] = Query(None, description="Optional industry domain filter (Engineering, Data & AI, Product & Design, Finance & Operations, Marketing & Sales)"),
     freshness: Optional[str] = Query(None, description="Optional freshness filter (new, recent, archive)"),
+    work_mode: Optional[str] = Query(None, description="Optional work mode filter (Remote, Hybrid, Onsite)"),
     has_salary: Optional[bool] = Query(None, description="Optional filter for jobs with disclosed compensation"),
     min_salary: Optional[float] = Query(None, ge=0, description="Optional minimum annual salary filter"),
     sort_by: Optional[str] = Query(None, description="Optional field to sort by (title, company, experience, location, salary)"),
@@ -285,10 +286,11 @@ async def get_jobs_list(
     clean_company = (company or "").strip()
     clean_category = (category or "").strip()
     clean_freshness = (freshness or "").strip()
+    clean_mode = (work_mode or "").strip()
     clean_sort = (sort_by or "").strip().lower()
     is_desc = (order or "asc").strip().lower() == "desc"
 
-    if clean_query or clean_loc or clean_exp or clean_company or clean_category or clean_freshness or clean_sort or has_salary is not None or min_salary is not None:
+    if clean_query or clean_loc or clean_exp or clean_company or clean_category or clean_freshness or clean_mode or clean_sort or has_salary is not None or min_salary is not None:
         all_jobs = search_jobs(
             query=clean_query or None,
             location=clean_loc or None,
@@ -296,6 +298,7 @@ async def get_jobs_list(
             company=clean_company or None,
             category=clean_category or None,
             freshness=clean_freshness or None,
+            work_mode=clean_mode or None,
             has_salary=has_salary,
             min_salary=min_salary,
             sort_by=clean_sort or None,

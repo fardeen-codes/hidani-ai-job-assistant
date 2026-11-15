@@ -220,6 +220,16 @@ def compute_job_freshness(job: Dict[str, Any]) -> str:
     return "Archive"
 
 
+def classify_work_mode(location: Optional[str] = "", title: Optional[str] = "", description: Optional[str] = "") -> str:
+    """Classify work arrangement into Remote, Hybrid, or Onsite."""
+    combined = f"{location or ''} {title or ''} {description or ''}".lower()
+    if "hybrid" in combined or "partially remote" in combined or "flexible remote" in combined:
+        return "Hybrid"
+    if "remote" in combined or "wfh" in combined or "telecommute" in combined or "work from home" in combined:
+        return "Remote"
+    return "Onsite"
+
+
 def load_jobs() -> List[Dict[str, Any]]:
     """Load all jobs from jobs.json with error recovery and mtime-based in-memory caching."""
     global _jobs_cache, _jobs_by_id_cache, _jobs_cache_mtime
@@ -249,6 +259,8 @@ def load_jobs() -> List[Dict[str, Any]]:
                         j["salary"] = extract_salary_info(f"{j.get('description', '')} {j.get('title', '')}")
                     if "freshness" not in j:
                         j["freshness"] = compute_job_freshness(j)
+                    if "work_mode" not in j:
+                        j["work_mode"] = classify_work_mode(j.get("location", ""), j.get("title", ""), j.get("description", ""))
                 _jobs_cache = jobs
                 _jobs_by_id_cache = {
                     j.get("job_id", "").strip().lower(): j
@@ -402,6 +414,7 @@ def search_jobs(
     company: Optional[str] = None,
     category: Optional[str] = None,
     freshness: Optional[str] = None,
+    work_mode: Optional[str] = None,
     has_salary: Optional[bool] = None,
     min_salary: Optional[float] = None,
     sort_by: Optional[str] = None,
@@ -425,6 +438,7 @@ def search_jobs(
     company_clean = (company or "").strip().lower()
     cat_clean = (category or "").strip().lower()
     fresh_clean = (freshness or "").strip().lower()
+    mode_clean = (work_mode or "").strip().lower()
 
     scored_jobs = []
 
@@ -457,6 +471,12 @@ def search_jobs(
         if fresh_clean:
             job_fresh = (job.get("freshness") or compute_job_freshness(job)).lower()
             if fresh_clean != job_fresh:
+                continue
+
+        # Strict work arrangement policy filter if specified
+        if mode_clean:
+            job_mode = (job.get("work_mode") or classify_work_mode(job.get("location", ""), job.get("title", ""), job.get("description", ""))).lower()
+            if mode_clean != job_mode:
                 continue
 
         # Strict salary presence filter

@@ -1444,6 +1444,36 @@ class BackendTestCase(unittest.TestCase):
         # 4. Clean up
         withdraw_application(self.test_job_id)
 
+    def test_job_work_mode_classification_and_filtering(self):
+        """Test work mode arrangement classification (Remote, Hybrid, Onsite) and API filtering."""
+        from unittest.mock import patch
+        from app.services.db_service import classify_work_mode, search_jobs
+
+        self.assertEqual(classify_work_mode(location="Remote - Anywhere"), "Remote")
+        self.assertEqual(classify_work_mode(location="Berlin, Germany (Hybrid)"), "Hybrid")
+        self.assertEqual(classify_work_mode(location="Munich, Germany"), "Onsite")
+
+        mock_jobs = [
+            {"job_id": "mode-1", "title": "Dev", "company": "Co", "location": "Remote", "work_mode": "Remote"},
+            {"job_id": "mode-2", "title": "Dev", "company": "Co", "location": "Berlin", "work_mode": "Hybrid"},
+            {"job_id": "mode-3", "title": "Dev", "company": "Co", "location": "Munich", "work_mode": "Onsite"}
+        ]
+        with patch("app.services.db_service.load_jobs", return_value=mock_jobs):
+            res_remote = search_jobs(work_mode="remote")
+            self.assertEqual(len(res_remote), 1)
+            self.assertEqual(res_remote[0]["job_id"], "mode-1")
+
+            res_hybrid = search_jobs(work_mode="hybrid")
+            self.assertEqual(len(res_hybrid), 1)
+            self.assertEqual(res_hybrid[0]["job_id"], "mode-2")
+
+        # Integration test
+        res = self.client.get("/api/jobs?work_mode=remote&limit=5")
+        self.assertEqual(res.status_code, 200)
+        jobs = res.json()["jobs"]
+        for j in jobs:
+            self.assertEqual(j.get("work_mode"), "Remote")
+
 
 if __name__ == "__main__":
     unittest.main()
