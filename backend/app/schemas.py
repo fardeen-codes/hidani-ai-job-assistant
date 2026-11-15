@@ -155,6 +155,19 @@ class BookmarkUpdateRequest(BaseModel):
     category: Optional[str] = Field(None, description="Categorization or folder tag")
 
 
+class BulkBookmarkDeleteRequest(BaseModel):
+    """Payload to delete multiple saved bookmarks in batch."""
+    job_ids: List[str] = Field(..., min_length=1, description="List of Job IDs to remove from bookmarks")
+
+
+class BulkBookmarkDeleteResponse(BaseModel):
+    """Result of bulk bookmark removal."""
+    status: str = Field(description="Operation result status: success or partial")
+    deleted_count: int = Field(description="Number of bookmarks successfully removed")
+    remaining_count: int = Field(description="Number of bookmarks remaining")
+    message: str = Field(description="Summary message")
+
+
 class SearchSuggestion(BaseModel):
     """Autocompletion suggestion item for candidate job search."""
     text: str = Field(description="Suggested search term")

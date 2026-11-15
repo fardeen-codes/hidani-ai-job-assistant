@@ -1489,6 +1489,22 @@ class BackendTestCase(unittest.TestCase):
             self.assertTrue(item["avg_max_salary"] >= item["avg_min_salary"])
 
 
+    def test_bulk_remove_bookmarks(self):
+        """Test bulk removal of bookmarks with single batch operation."""
+        # Ensure test bookmark exists
+        self.client.post(f"/api/bookmarks/{self.test_job_id}")
+
+        res = self.client.post("/api/bookmarks/bulk/delete", json={"job_ids": [self.test_job_id, "non-existent-id"]})
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "success")
+        self.assertTrue(data["deleted_count"] >= 1)
+
+        # Empty job_ids -> 422
+        res_empty = self.client.post("/api/bookmarks/bulk/delete", json={"job_ids": []})
+        self.assertEqual(res_empty.status_code, 422)
+
+
 if __name__ == "__main__":
     unittest.main()
 

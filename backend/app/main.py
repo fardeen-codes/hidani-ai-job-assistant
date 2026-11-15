@@ -42,6 +42,8 @@ from app.schemas import (
     BookmarkUpdateRequest,
     BulkApplicationStatusUpdateRequest,
     BulkApplicationStatusUpdateResponse,
+    BulkBookmarkDeleteRequest,
+    BulkBookmarkDeleteResponse,
     ChatRequest,
     ChatResponse,
     ChatStateResponse,
@@ -66,6 +68,7 @@ from app.services.db_service import (
     add_application_interview,
     apply_to_job,
     archive_application,
+    bulk_remove_bookmarks,
     bulk_update_application_status,
     check_database_health,
     clear_search_history,
@@ -935,6 +938,25 @@ async def get_bookmarks_list():
     """Retrieve all bookmarked / saved jobs."""
     raw_bms = get_bookmarked_jobs()
     return [JobBookmark(**b).model_dump() for b in raw_bms]
+
+
+@app.post(
+    "/api/bookmarks/bulk/delete",
+    response_model=BulkBookmarkDeleteResponse,
+    summary="Bulk remove multiple job bookmarks",
+    tags=["Bookmarks"]
+)
+async def bulk_delete_bookmarks_endpoint(payload: BulkBookmarkDeleteRequest):
+    """Remove multiple saved bookmarks simultaneously."""
+    success, message, deleted_cnt, rem_cnt = bulk_remove_bookmarks(payload.job_ids)
+    if not success:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=message)
+    return BulkBookmarkDeleteResponse(
+        status="success",
+        deleted_count=deleted_cnt,
+        remaining_count=rem_cnt,
+        message=message
+    )
 
 
 @app.post("/api/bookmarks/{job_id}", status_code=status.HTTP_201_CREATED, summary="Bookmark a job posting", tags=["Bookmarks"])

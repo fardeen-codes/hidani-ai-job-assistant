@@ -1457,6 +1457,27 @@ def update_job_bookmark(
     return True, f"Bookmark for Job ID '{clean_id}' updated successfully.", target_bm
 
 
+def bulk_remove_bookmarks(job_ids: List[str]) -> Tuple[bool, str, int, int]:
+    """
+    Remove multiple bookmarks in batch under thread lock.
+    Returns: (success: bool, message: str, deleted_count: int, remaining_count: int)
+    """
+    clean_ids = {str(jid).strip().lower() for jid in (job_ids or []) if str(jid).strip()}
+    if not clean_ids:
+        return False, "Job IDs list cannot be empty.", 0, 0
+
+    with _db_lock:
+        bookmarks = load_bookmarks()
+        initial_count = len(bookmarks)
+        remaining = [b for b in bookmarks if b.get("job_id", "").strip().lower() not in clean_ids]
+        deleted_count = initial_count - len(remaining)
+        _save_bookmarks(remaining)
+
+    msg = f"Successfully removed {deleted_count} bookmark(s). {len(remaining)} remaining."
+    logger.info(msg)
+    return True, msg, deleted_count, len(remaining)
+
+
 def _save_search_history(history: List[Dict[str, Any]]) -> None:
     """Persist search history atomically and synchronize in-memory cache."""
     global _search_history_cache, _search_history_cache_mtime
