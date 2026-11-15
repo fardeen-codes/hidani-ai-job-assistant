@@ -336,6 +336,63 @@ def get_similar_jobs(job_id: str, limit: int = 5) -> List[Dict[str, Any]]:
     return candidates[:limit]
 
 
+def get_search_suggestions(prefix: str, limit: int = 8) -> List[Dict[str, Any]]:
+    """
+    Generate typeahead suggestions matching a search prefix across
+    job titles, hiring companies, and technical skills.
+    """
+    clean_pre = (prefix or "").strip().lower()
+    if not clean_pre:
+        return []
+
+    all_jobs = load_jobs()
+    limit = max(1, min(limit or 8, 25))
+
+    title_counts: Counter = Counter()
+    company_counts: Counter = Counter()
+    skill_counts: Counter = Counter()
+
+    for job in all_jobs:
+        t = (job.get("title") or "").strip()
+        if t and clean_pre in t.lower():
+            title_counts[t] += 1
+
+        c = (job.get("company") or "").strip()
+        if c and clean_pre in c.lower():
+            company_counts[c] += 1
+
+        for s in (job.get("skills") or []):
+            clean_s = str(s).strip()
+            if clean_s and clean_pre in clean_s.lower():
+                skill_counts[clean_s] += 1
+
+    raw_candidates = []
+    for text, count in title_counts.most_common(limit):
+        raw_candidates.append({"text": text, "type": "title", "match_count": count})
+    for text, count in skill_counts.most_common(limit):
+        raw_candidates.append({"text": text, "type": "skill", "match_count": count})
+    for text, count in company_counts.most_common(limit):
+        raw_candidates.append({"text": text, "type": "company", "match_count": count})
+
+    def sort_key(item):
+        starts = item["text"].lower().startswith(clean_pre)
+        return (1 if starts else 0, item["match_count"])
+
+    raw_candidates.sort(key=sort_key, reverse=True)
+
+    suggestions = []
+    seen = set()
+    for item in raw_candidates:
+        key = item["text"].lower()
+        if key not in seen:
+            seen.add(key)
+            suggestions.append(item)
+            if len(suggestions) >= limit:
+                break
+
+    return suggestions
+
+
 def search_jobs(
     skills: Optional[List[str]] = None,
     designation: Optional[str] = None,

@@ -1382,6 +1382,22 @@ class BackendTestCase(unittest.TestCase):
         # Clean up
         withdraw_application(self.test_job_id)
 
+    def test_search_query_autocomplete_suggestions(self):
+        """Test typeahead search query suggestions across titles, skills, and companies."""
+        res = self.client.get("/api/jobs/suggestions?prefix=eng&limit=5")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["prefix"], "eng")
+        self.assertIn("suggestions", data)
+        self.assertTrue(len(data["suggestions"]) <= 5)
+        for s in data["suggestions"]:
+            self.assertIn(s["type"], ["title", "skill", "company"])
+            self.assertTrue("eng" in s["text"].lower())
+
+        # Empty prefix returns 422
+        res_empty = self.client.get("/api/jobs/suggestions?prefix=")
+        self.assertEqual(res_empty.status_code, 422)
+
 
 if __name__ == "__main__":
     unittest.main()

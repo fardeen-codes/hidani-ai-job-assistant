@@ -135,6 +135,19 @@ class BookmarkUpdateRequest(BaseModel):
     category: Optional[str] = Field(None, description="Categorization or folder tag")
 
 
+class SearchSuggestion(BaseModel):
+    """Autocompletion suggestion item for candidate job search."""
+    text: str = Field(description="Suggested search term")
+    type: str = Field(description="Suggestion category: title, skill, or company")
+    match_count: int = Field(description="Number of matching jobs in database")
+
+
+class SearchSuggestionsResponse(BaseModel):
+    """List of autocomplete suggestions for a given search query prefix."""
+    prefix: str = Field(description="Queried search prefix")
+    suggestions: List[SearchSuggestion] = Field(default_factory=list, description="Matching suggestions")
+
+
 class SearchHistoryEntry(BaseModel):
     """Record of a recent candidate job search query."""
     query: Optional[str] = Field(default=None, description="Search keyword or term")

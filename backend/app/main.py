@@ -54,6 +54,7 @@ from app.schemas import (
     SavedSearch,
     SavedSearchCreateRequest,
     SearchHistoryEntry,
+    SearchSuggestionsResponse,
     SkillGapAnalysisResponse,
     UploadResumeResponse,
 )
@@ -75,6 +76,7 @@ from app.services.db_service import (
     get_job_by_id,
     get_job_stats,
     get_recent_searches,
+    get_search_suggestions,
     get_similar_jobs,
     get_upcoming_reminders,
     load_applications,
@@ -380,6 +382,25 @@ async def delete_saved_search_endpoint(search_id: str):
 async def get_jobs_statistics():
     """Retrieve aggregated job market statistics, top demanded skills, and remote job distribution."""
     return get_job_stats()
+
+
+@app.get(
+    "/api/jobs/suggestions",
+    response_model=SearchSuggestionsResponse,
+    summary="Get search query autocomplete suggestions",
+    tags=["Jobs"]
+)
+async def get_search_suggestions_endpoint(
+    prefix: str = Query(..., min_length=1, description="Query prefix to search for"),
+    limit: int = Query(8, ge=1, le=25, description="Max suggestions to return")
+):
+    """Retrieve fast typeahead suggestions across job titles, skills, and hiring companies."""
+    clean_prefix = (prefix or "").strip()
+    suggestions = get_search_suggestions(clean_prefix, limit=limit)
+    return SearchSuggestionsResponse(
+        prefix=clean_prefix,
+        suggestions=suggestions
+    )
 
 
 @app.get("/api/jobs/{job_id}", summary="Get job details by ID", tags=["Jobs"])
