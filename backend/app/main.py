@@ -34,6 +34,7 @@ from app.schemas import (
     ApplicationFunnelResponse,
     ApplicationInterviewCreateRequest,
     ApplicationNotesUpdateRequest,
+    ApplicationOutcomeUpdateRequest,
     ApplicationReminderUpdateRequest,
     ApplicationStatsResponse,
     ApplicationStatusUpdateRequest,
@@ -97,6 +98,7 @@ from app.services.db_service import (
     save_job_bookmark,
     search_jobs,
     update_application_notes,
+    update_application_outcome,
     update_application_reminder,
     update_application_status,
     update_application_tags,
@@ -907,6 +909,34 @@ async def add_application_attachment_endpoint(job_id: str, payload: ApplicationA
         "status": "success",
         "message": message,
         "attachment": att_entry
+    }
+
+
+@app.post(
+    "/api/applications/{job_id}/outcome",
+    response_model=dict,
+    summary="Record interview outcome or rejection reason",
+    tags=["Applications"]
+)
+async def update_application_outcome_endpoint(job_id: str, payload: ApplicationOutcomeUpdateRequest):
+    """Record final application conclusion outcome and debrief notes."""
+    clean_id = (job_id or "").strip()
+    if not clean_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Job ID cannot be empty.")
+    success, message, updated_app = update_application_outcome(
+        job_id=clean_id,
+        outcome=payload.outcome,
+        reason_code=payload.reason_code,
+        feedback_notes=payload.feedback_notes
+    )
+    if not success:
+        if "cannot be empty" in message:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=message)
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=message)
+    return {
+        "status": "success",
+        "message": message,
+        "application": updated_app
     }
 
 

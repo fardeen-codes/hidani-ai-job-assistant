@@ -1074,6 +1074,51 @@ def add_application_attachment(
     return True, f"Attachment '{clean_file}' has been added to the application.", att_entry
 
 
+def update_application_outcome(
+    job_id: str,
+    outcome: str,
+    reason_code: Optional[str] = None,
+    feedback_notes: Optional[str] = None
+) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
+    """
+    Record conclusion outcome (Offer, Rejected, Accepted, Declined) and retrospective feedback.
+    Synchronizes status and logs timeline event.
+    Returns: (success: bool, message: str, updated_application: Optional[dict])
+    """
+    clean_id = (job_id or "").strip()
+    if not clean_id:
+        return False, "Job ID cannot be empty.", None
+
+    clean_outcome = (outcome or "").strip()
+    if not clean_outcome:
+        return False, "Outcome cannot be empty.", None
+
+    now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+
+    with _db_lock:
+        applications = load_applications()
+        target_app = None
+        for app in applications:
+            if app.get("job_id", "").strip().lower() == clean_id.lower():
+                app["outcome"] = clean_outcome
+                app["rejection_reason"] = (reason_code or "").strip() or None
+                app["feedback_notes"] = (feedback_notes or "").strip() or None
+                app["status"] = clean_outcome
+                app["updated_date"] = now_str
+                detail = f"Outcome recorded: {clean_outcome}" + (f" ({reason_code})" if reason_code else "")
+                _record_app_event(app, "OUTCOME_RECORDED", detail)
+                target_app = app
+                break
+
+        if not target_app:
+            return False, f"No existing application found for Job ID '{clean_id}'.", None
+
+        _save_applications(applications)
+
+    logger.info(f"Recorded outcome '{clean_outcome}' for application {clean_id}")
+    return True, f"Outcome '{clean_outcome}' recorded for Job ID '{clean_id}'.", target_app
+
+
 def get_upcoming_reminders() -> List[Dict[str, Any]]:
     """Retrieve all submitted applications that have pending follow-up reminders, sorted chronologically."""
     apps = load_applications()

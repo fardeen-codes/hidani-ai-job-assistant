@@ -113,7 +113,17 @@ class JobApplication(BaseModel):
     attachments: List[ApplicationAttachment] = Field(default_factory=list, description="Associated document attachments")
     is_archived: bool = Field(default=False, description="Whether application has been archived")
     archived_date: Optional[str] = Field(default=None, description="Timestamp of archiving")
+    outcome: Optional[str] = Field(default=None, description="Final outcome: Offer, Rejected, Accepted, Declined")
+    rejection_reason: Optional[str] = Field(default=None, description="Reason code: Skill Gap, Compensation, Headcount, etc.")
+    feedback_notes: Optional[str] = Field(default=None, description="Detailed interviewer or debrief feedback")
     timeline: List[ApplicationTimelineEvent] = Field(default_factory=list, description="Audit log of application events")
+
+
+class ApplicationOutcomeUpdateRequest(BaseModel):
+    """Payload to log conclusion outcome and retrospective feedback on an application."""
+    outcome: str = Field(..., description="Outcome: Offer, Rejected, Accepted, Declined")
+    reason_code: Optional[str] = Field(None, description="Reason code / category")
+    feedback_notes: Optional[str] = Field(None, description="Debrief and improvement notes")
 
 
 class ApplicationArchiveUpdateRequest(BaseModel):

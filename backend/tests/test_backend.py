@@ -1504,6 +1504,32 @@ class BackendTestCase(unittest.TestCase):
         res_empty = self.client.post("/api/bookmarks/bulk/delete", json={"job_ids": []})
         self.assertEqual(res_empty.status_code, 422)
 
+    def test_application_outcome_tracking(self):
+        """Test recording interview outcome and rejection reasons with audit logging."""
+        withdraw_application(self.test_job_id)
+        apply_to_job(self.test_job_id)
+
+        payload = {
+            "outcome": "Offer",
+            "reason_code": "Selected Final Candidate",
+            "feedback_notes": "Passed system design and cultural interviews with strong positive signals."
+        }
+        res = self.client.post(f"/api/applications/{self.test_job_id}/outcome", json=payload)
+        self.assertEqual(res.status_code, 200)
+        app_data = res.json()["application"]
+        self.assertEqual(app_data["outcome"], "Offer")
+        self.assertEqual(app_data["status"], "Offer")
+        self.assertEqual(app_data["rejection_reason"], "Selected Final Candidate")
+
+        # Timeline event recorded
+        timeline_res = self.client.get(f"/api/applications/{self.test_job_id}/timeline")
+        self.assertEqual(timeline_res.status_code, 200)
+        events = timeline_res.json()["timeline"]
+        self.assertTrue(any(e["event_type"] == "OUTCOME_RECORDED" for e in events))
+
+        # Clean up
+        withdraw_application(self.test_job_id)
+
 
 if __name__ == "__main__":
     unittest.main()
