@@ -57,6 +57,28 @@ class ApplicationTimelineEvent(BaseModel):
     details: str = Field(description="Human-readable description of event")
 
 
+class InterviewStageEntry(BaseModel):
+    """Logged interview round or scheduled stage for a job application."""
+    stage_id: str = Field(description="Unique identifier for the interview stage")
+    round_name: str = Field(description="Stage name (e.g. Recruiter Screen, Technical Interview, Final)")
+    scheduled_at: Optional[str] = Field(None, description="ISO timestamp or date string of scheduled interview")
+    interviewer: Optional[str] = Field(None, description="Name or title of interviewer(s)")
+    meeting_link: Optional[str] = Field(None, description="Video conferencing or meeting link")
+    notes: Optional[str] = Field(None, description="Preparation notes, questions, or post-interview feedback")
+    status: str = Field(default="Scheduled", description="Status: Scheduled, Completed, Cancelled")
+    created_at: str = Field(description="ISO timestamp when stage was logged")
+
+
+class ApplicationInterviewCreateRequest(BaseModel):
+    """Payload to log or schedule an interview round."""
+    round_name: str = Field(..., description="Stage name (e.g. Technical Round, HR Screen)")
+    scheduled_at: Optional[str] = Field(None, description="Scheduled date/time")
+    interviewer: Optional[str] = Field(None, description="Interviewer name")
+    meeting_link: Optional[str] = Field(None, description="Meeting link")
+    notes: Optional[str] = Field(None, description="Prep notes or debrief")
+    status: Optional[str] = Field("Scheduled", description="Status of round: Scheduled, Completed, Cancelled")
+
+
 class JobApplication(BaseModel):
     """Record of an applied job."""
     job_id: str = Field(description="ID of the job applied to")
@@ -68,6 +90,7 @@ class JobApplication(BaseModel):
     notes: Optional[str] = Field(default=None, description="Optional applicant cover note or remarks")
     reminder_date: Optional[str] = Field(default=None, description="Optional follow-up reminder date or deadline")
     tags: List[str] = Field(default_factory=list, description="Custom organizational tags/labels")
+    interviews: List[InterviewStageEntry] = Field(default_factory=list, description="Logged interview rounds")
     timeline: List[ApplicationTimelineEvent] = Field(default_factory=list, description="Audit log of application events")
 
 

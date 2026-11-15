@@ -1253,6 +1253,49 @@ class BackendTestCase(unittest.TestCase):
         if jobs:
             self.assertIn(jobs[0].get("freshness"), ["New", "Recent", "Archive"])
 
+    def test_application_interview_stages_lifecycle(self):
+        """Test scheduling interview rounds, retrieving stages, and timeline event recording."""
+        withdraw_application(self.test_job_id)
+        apply_to_job(self.test_job_id)
+
+        # 1. Schedule technical interview stage
+        payload = {
+            "round_name": "Technical System Design",
+            "scheduled_at": "2026-11-25 14:00:00 UTC",
+            "interviewer": "Jane Doe, Staff Eng",
+            "meeting_link": "https://meet.google.com/xyz-abc",
+            "notes": "Review distributed caching and microservices architecture",
+            "status": "Scheduled"
+        }
+        res = self.client.post(f"/api/applications/{self.test_job_id}/interviews", json=payload)
+        self.assertEqual(res.status_code, 201)
+        data = res.json()
+        self.assertEqual(data["status"], "success")
+        stage = data["interview"]
+        self.assertEqual(stage["round_name"], "Technical System Design")
+        self.assertEqual(stage["interviewer"], "Jane Doe, Staff Eng")
+        self.assertIn("stage_id", stage)
+
+        # 2. Verify interview appears on application record
+        app_res = self.client.get(f"/api/applications/{self.test_job_id}")
+        self.assertEqual(app_res.status_code, 200)
+        interviews = app_res.json().get("interviews", [])
+        self.assertEqual(len(interviews), 1)
+        self.assertEqual(interviews[0]["round_name"], "Technical System Design")
+
+        # 3. Verify timeline event logged
+        timeline_res = self.client.get(f"/api/applications/{self.test_job_id}/timeline")
+        self.assertEqual(timeline_res.status_code, 200)
+        events = timeline_res.json()["timeline"]
+        self.assertTrue(any(e["event_type"] == "INTERVIEW_SCHEDULED" for e in events))
+
+        # 4. 404 for invalid job_id
+        res_404 = self.client.post("/api/applications/invalid-job-id-999/interviews", json=payload)
+        self.assertEqual(res_404.status_code, 404)
+
+        # Clean up
+        withdraw_application(self.test_job_id)
+
 
 if __name__ == "__main__":
     unittest.main()

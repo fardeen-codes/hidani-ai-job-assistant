@@ -785,6 +785,65 @@ def update_application_tags(
     return True, msg, updated_app
 
 
+def add_application_interview(
+    job_id: str,
+    round_name: str,
+    scheduled_at: Optional[str] = None,
+    interviewer: Optional[str] = None,
+    meeting_link: Optional[str] = None,
+    notes: Optional[str] = None,
+    status: str = "Scheduled"
+) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
+    """
+    Log or schedule an interview round for an existing application.
+    Generates stage_id, records timeline audit event, and atomically saves record.
+    Returns: (success: bool, message: str, stage_record: Optional[dict])
+    """
+    clean_id = (job_id or "").strip()
+    if not clean_id:
+        return False, "Job ID cannot be empty.", None
+
+    clean_round = (round_name or "").strip()
+    if not clean_round:
+        return False, "Interview round name cannot be empty.", None
+
+    stage_id = f"stage_{int(datetime.now(timezone.utc).timestamp())}_{os.urandom(3).hex()}"
+    now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+
+    stage_entry = {
+        "stage_id": stage_id,
+        "round_name": clean_round,
+        "scheduled_at": (scheduled_at or "").strip() or None,
+        "interviewer": (interviewer or "").strip() or None,
+        "meeting_link": (meeting_link or "").strip() or None,
+        "notes": (notes or "").strip() or None,
+        "status": (status or "Scheduled").strip(),
+        "created_at": now_str
+    }
+
+    with _db_lock:
+        applications = load_applications()
+        matched = False
+        for app in applications:
+            if app.get("job_id", "").strip().lower() == clean_id.lower():
+                if "interviews" not in app:
+                    app["interviews"] = []
+                app["interviews"].append(stage_entry)
+                app["updated_date"] = now_str
+                event_detail = f"Interview '{clean_round}' scheduled" + (f" for {scheduled_at}" if scheduled_at else "")
+                _record_app_event(app, "INTERVIEW_SCHEDULED", event_detail)
+                matched = True
+                break
+
+        if not matched:
+            return False, f"No existing application found for Job ID '{clean_id}'.", None
+
+        _save_applications(applications)
+
+    logger.info(f"Logged interview stage '{clean_round}' for application {clean_id}")
+    return True, f"Interview stage '{clean_round}' has been scheduled.", stage_entry
+
+
 def get_upcoming_reminders() -> List[Dict[str, Any]]:
     """Retrieve all submitted applications that have pending follow-up reminders, sorted chronologically."""
     apps = load_applications()

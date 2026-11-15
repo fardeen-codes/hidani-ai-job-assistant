@@ -29,6 +29,7 @@ from app.config import (
 )
 from app.schemas import (
     ApplicationCreateRequest,
+    ApplicationInterviewCreateRequest,
     ApplicationNotesUpdateRequest,
     ApplicationReminderUpdateRequest,
     ApplicationStatsResponse,
@@ -54,6 +55,7 @@ from app.schemas import (
     UploadResumeResponse,
 )
 from app.services.db_service import (
+    add_application_interview,
     apply_to_job,
     bulk_update_application_status,
     check_database_health,
@@ -730,6 +732,38 @@ async def update_application_reminder_endpoint(job_id: str, payload: Application
         "status": "success",
         "message": message,
         "application": updated_app
+    }
+
+
+@app.post(
+    "/api/applications/{job_id}/interviews",
+    response_model=dict,
+    status_code=status.HTTP_201_CREATED,
+    summary="Schedule or log an interview stage for an application",
+    tags=["Applications"]
+)
+async def add_application_interview_endpoint(job_id: str, payload: ApplicationInterviewCreateRequest):
+    """Schedule or log a new interview stage or round for a submitted job application."""
+    clean_id = (job_id or "").strip()
+    if not clean_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Job ID cannot be empty.")
+    success, message, stage_entry = add_application_interview(
+        job_id=clean_id,
+        round_name=payload.round_name,
+        scheduled_at=payload.scheduled_at,
+        interviewer=payload.interviewer,
+        meeting_link=payload.meeting_link,
+        notes=payload.notes,
+        status=payload.status or "Scheduled"
+    )
+    if not success:
+        if "cannot be empty" in message:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=message)
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=message)
+    return {
+        "status": "success",
+        "message": message,
+        "interview": stage_entry
     }
 
 
