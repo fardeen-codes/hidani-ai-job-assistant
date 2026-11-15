@@ -4057,3 +4057,90 @@ def compute_database_checksums() -> Dict[str, Any]:
     }
 
 
+def _normalize_obj_recursive(obj: Any, stats: Dict[str, int]) -> Any:
+    """Helper to recursively sort dict keys and trim string fields."""
+    if isinstance(obj, dict):
+        normalized = {}
+        for k in sorted(obj.keys()):
+            stats["keys"] += 1
+            v = obj[k]
+            if isinstance(v, str):
+                v_clean = v.strip()
+                if v and not v_clean:
+                    stats["empty_pruned"] += 1
+                normalized[k] = v_clean
+            elif isinstance(v, (dict, list)):
+                normalized[k] = _normalize_obj_recursive(v, stats)
+            else:
+                normalized[k] = v
+        return normalized
+    elif isinstance(obj, list):
+        return [_normalize_obj_recursive(item, stats) for item in obj]
+    elif isinstance(obj, str):
+        return obj.strip()
+    return obj
+
+
+def vacuum_database_collections() -> Dict[str, Any]:
+    """
+    Perform deep JSON vacuuming, canonical key ordering, whitespace normalization,
+    and storage compaction across all writable database collections.
+    """
+    targets = [
+        ("applications", APPLICATIONS_FILE),
+        ("bookmarks", BOOKMARKS_FILE),
+        ("candidate_profile", PROFILE_FILE),
+        ("search_history", SEARCH_HISTORY_FILE),
+        ("saved_searches", SAVED_SEARCHES_FILE),
+    ]
+
+    collection_results = []
+    total_saved = 0
+
+    with _db_lock:
+        for name, path in targets:
+            if not path.exists():
+                continue
+
+            try:
+                bytes_before = path.stat().st_size
+                with open(path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+
+                records_count = len(data) if isinstance(data, (list, dict)) else 1
+                stats = {"keys": 0, "empty_pruned": 0}
+                normalized_data = _normalize_obj_recursive(data, stats)
+
+                _atomic_write_json(path, normalized_data)
+                bytes_after = path.stat().st_size
+                saved = max(0, bytes_before - bytes_after)
+                total_saved += saved
+
+                collection_results.append({
+                    "collection": name,
+                    "records_processed": records_count,
+                    "keys_normalized": stats["keys"],
+                    "empty_strings_pruned": stats["empty_pruned"],
+                    "bytes_before": bytes_before,
+                    "bytes_after": bytes_after,
+                    "bytes_saved": saved
+                })
+            except Exception as e:
+                logger.warning(f"Error during vacuum of {name}: {e}")
+
+        # Invalidate in-memory caches to guarantee fresh reload
+        invalidate_jobs_cache()
+        invalidate_applications_cache()
+        invalidate_bookmarks_cache()
+
+    _log_db_audit_entry("VACUUM", "database", "all", f"Vacuumed {len(collection_results)} collections, saved {total_saved} bytes")
+    return {
+        "status": "success",
+        "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
+        "total_collections_vacuumed": len(collection_results),
+        "total_bytes_saved": total_saved,
+        "collections": collection_results
+    }
+
+
+

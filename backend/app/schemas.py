@@ -1141,6 +1141,27 @@ class ApplicationRollbackResponse(BaseModel):
     snapshot_timestamp: Optional[str] = None
 
 
+class DatabaseVacuumCollectionResult(BaseModel):
+    """Vacuum optimization and normalization metrics for a single collection."""
+    collection: str
+    records_processed: int
+    keys_normalized: int
+    empty_strings_pruned: int
+    bytes_before: int
+    bytes_after: int
+    bytes_saved: int
+
+
+class DatabaseVacuumResponse(BaseModel):
+    """Result of automated JSON storage vacuuming and canonical key ordering."""
+    status: str = Field(default="success")
+    timestamp: str
+    total_collections_vacuumed: int
+    total_bytes_saved: int
+    collections: List[DatabaseVacuumCollectionResult] = Field(default_factory=list)
+
+
+
 
 
 

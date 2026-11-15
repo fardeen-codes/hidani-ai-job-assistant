@@ -2764,6 +2764,20 @@ class BackendTestCase(unittest.TestCase):
         # Clean up
         withdraw_application(self.test_job_id)
 
+    def test_database_vacuum_and_normalization(self):
+        """Test database JSON vacuuming, recursive key ordering, and whitespace cleanup."""
+        res = self.client.post("/api/admin/db/vacuum")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "success")
+        self.assertGreaterEqual(data["total_collections_vacuumed"], 1)
+        self.assertGreaterEqual(data["total_bytes_saved"], 0)
+        for col in data["collections"]:
+            self.assertIn("records_processed", col)
+            self.assertIn("keys_normalized", col)
+            self.assertIn("bytes_before", col)
+            self.assertIn("bytes_after", col)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -107,6 +107,8 @@ from app.schemas import (
     DatabaseRepairResponse,
     DatabaseRestoreResponse,
     DatabaseStorageMetricsResponse,
+    DatabaseVacuumCollectionResult,
+    DatabaseVacuumResponse,
     DisambiguationResponse,
     FollowupTemplateResponse,
     InterviewDifficultyResponse,
@@ -231,6 +233,7 @@ from app.services.db_service import (
     update_candidate_work_preferences,
     update_job_bookmark,
     update_saved_search,
+    vacuum_database_collections,
     withdraw_application,
 )
 from app.services.document_parser import (
@@ -2190,6 +2193,18 @@ async def compact_database_endpoint():
 async def compute_database_checksums_endpoint():
     """Generate SHA-256 integrity manifest and storage statistics across persistent storage files."""
     return compute_database_checksums()
+
+
+@app.post(
+    "/api/admin/db/vacuum",
+    response_model=DatabaseVacuumResponse,
+    summary="Vacuum and canonicalize JSON storage collections",
+    tags=["Database Admin"]
+)
+async def vacuum_database_endpoint():
+    """Perform recursive JSON key ordering, whitespace trimming, and space reclaiming vacuum on database files."""
+    return vacuum_database_collections()
+
 
 
 
