@@ -1131,6 +1131,17 @@ class DatabaseChecksumResponse(BaseModel):
     collections: List[CollectionChecksumItem] = Field(default_factory=list)
 
 
+class ApplicationRollbackResponse(BaseModel):
+    """Result of rolling back an application state to previous snapshot."""
+    status: str = Field(default="success")
+    job_id: str
+    message: str
+    restored_status: Optional[str] = None
+    restored_notes: Optional[str] = None
+    snapshot_timestamp: Optional[str] = None
+
+
+
 
 
 

@@ -2729,6 +2729,41 @@ class BackendTestCase(unittest.TestCase):
         self.assertEqual(len(jobs_col["sha256_checksum"]), 64)
         self.assertGreater(jobs_col["record_count"], 0)
 
+    def test_application_state_rollback(self):
+        """Test application status update and rolling back to snapshot."""
+        withdraw_application(self.test_job_id)
+        apply_to_job(self.test_job_id)
+
+        # 1. Update notes and status
+        self.client.patch(f"/api/applications/{self.test_job_id}/notes", json={"notes": "Original Notes"})
+        
+        # Verify rollback available
+        avail_res = self.client.get(f"/api/applications/{self.test_job_id}/rollback-available")
+        self.assertEqual(avail_res.status_code, 200)
+        self.assertTrue(avail_res.json()["rollback_available"])
+
+        # Change status from Applied to Interview via PATCH /api/applications/{job_id}
+        patch_res = self.client.patch(f"/api/applications/{self.test_job_id}", json={"status": "Interview"})
+        self.assertEqual(patch_res.status_code, 200)
+        
+        # Verify current status is Interview
+        app_res = self.client.get(f"/api/applications/{self.test_job_id}")
+        self.assertEqual(app_res.json()["status"], "Interview")
+
+        # 2. Rollback
+        rollback_res = self.client.post(f"/api/applications/{self.test_job_id}/rollback")
+        self.assertEqual(rollback_res.status_code, 200)
+        rb_data = rollback_res.json()
+        self.assertEqual(rb_data["status"], "success")
+        self.assertEqual(rb_data["restored_status"], "Applied")
+
+        # 3. Rollback again when buffer is empty -> 400
+        rb_empty = self.client.post(f"/api/applications/{self.test_job_id}/rollback")
+        self.assertEqual(rb_empty.status_code, 400)
+
+        # Clean up
+        withdraw_application(self.test_job_id)
+
 
 if __name__ == "__main__":
     unittest.main()

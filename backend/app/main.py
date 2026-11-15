@@ -5,6 +5,7 @@ and session state inspection.
 """
 
 import csv
+from datetime import datetime, timezone
 import io
 import logging
 from pathlib import Path
@@ -64,6 +65,7 @@ from app.schemas import (
     ApplicationPortfolioResponse,
     ApplicationPriorityUpdateRequest,
     ApplicationRejectionAnalyticsResponse,
+    ApplicationRollbackResponse,
     ApplicationReminderUpdateRequest,
     ApplicationSourceUpdateRequest,
     ApplicationStatsResponse,
@@ -202,6 +204,7 @@ from app.services.db_service import (
     get_stale_jobs,
     get_tier_salary_insights,
     get_upcoming_reminders,
+    has_rollback_snapshot,
     list_hiring_companies,
     load_applications,
     load_candidate_profile,
@@ -211,6 +214,7 @@ from app.services.db_service import (
     remove_job_bookmark,
     repair_database_records,
     restore_database_backup,
+    rollback_application_state,
     save_candidate_profile,
     save_job_bookmark,
     search_jobs,
@@ -1908,6 +1912,45 @@ async def get_application_followup_template_endpoint(
     if not success or not draft:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=message)
     return draft
+
+
+@app.get(
+    "/api/applications/{job_id}/rollback-available",
+    summary="Check if a rollback snapshot is available for an application",
+    tags=["Applications"]
+)
+async def check_rollback_available_endpoint(job_id: str):
+    """Check whether an undo/rollback snapshot exists in the transaction buffer for this application."""
+    clean_id = (job_id or "").strip()
+    return {
+        "status": "success",
+        "job_id": clean_id,
+        "rollback_available": has_rollback_snapshot(clean_id)
+    }
+
+
+@app.post(
+    "/api/applications/{job_id}/rollback",
+    response_model=ApplicationRollbackResponse,
+    summary="Rollback application state to previous snapshot",
+    tags=["Applications"]
+)
+async def rollback_application_endpoint(job_id: str):
+    """Revert the most recent status or notes mutation from the in-memory rollback buffer."""
+    clean_id = (job_id or "").strip()
+    if not clean_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Job ID cannot be empty.")
+    success, message, restored = rollback_application_state(clean_id)
+    if not success or not restored:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=message)
+    return {
+        "status": "success",
+        "job_id": clean_id,
+        "message": message,
+        "restored_status": restored.get("status"),
+        "restored_notes": restored.get("notes"),
+        "snapshot_timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    }
 
 
 @app.delete("/api/applications/{job_id}", summary="Withdraw an active job application", tags=["Applications"])

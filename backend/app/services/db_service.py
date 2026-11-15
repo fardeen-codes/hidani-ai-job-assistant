@@ -4,6 +4,7 @@ Handles reading and writing jobs.json and applications.json with deduplication,
 thread-safe atomic writes, and query filtering.
 """
 
+import copy
 import csv
 import hashlib
 import io
@@ -72,6 +73,72 @@ def _log_db_audit_entry(action: str, entity: str, entity_id: str, details: str) 
         _audit_log_entries.append(entry)
         if len(_audit_log_entries) > 1000:
             _audit_log_entries = _audit_log_entries[-1000:]
+
+
+# In-memory rollback buffer storing previous snapshot before updates
+_app_rollback_snapshots: Dict[str, Dict[str, Any]] = {}
+
+
+def _save_rollback_snapshot(app: Dict[str, Any]) -> None:
+    """Save deepcopy of application state into the rollback buffer before mutating."""
+    try:
+        jid = app.get("job_id", "").strip().lower()
+        if jid:
+            snap = copy.deepcopy(app)
+            snap["_snapshot_timestamp"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+            _app_rollback_snapshots[jid] = snap
+    except Exception as e:
+        logger.warning(f"Failed to record rollback snapshot for {app.get('job_id')}: {e}")
+
+
+def has_rollback_snapshot(job_id: str) -> bool:
+    """Check if an undo snapshot is stored for this job application."""
+    clean_id = (job_id or "").strip().lower()
+    return clean_id in _app_rollback_snapshots
+
+
+def rollback_application_state(job_id: str) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
+    """
+    Rollback an application's state to the most recent snapshot stored in the rollback buffer.
+    Returns: (success: bool, message: str, restored_app: Optional[dict])
+    """
+    clean_id = (job_id or "").strip()
+    if not clean_id:
+        return False, "Job ID cannot be empty.", None
+
+    jid_key = clean_id.lower()
+    if jid_key not in _app_rollback_snapshots:
+        return False, f"No rollback snapshot available for job '{clean_id}'.", None
+
+    snapshot = _app_rollback_snapshots.pop(jid_key)
+    snap_copy = copy.deepcopy(snapshot)
+    snap_ts = snap_copy.pop("_snapshot_timestamp", None)
+
+    with _db_lock:
+        applications = load_applications()
+        found_idx = None
+        for idx, app in enumerate(applications):
+            if app.get("job_id", "").strip().lower() == jid_key:
+                found_idx = idx
+                break
+
+        if found_idx is None:
+            return False, f"Job application for '{clean_id}' no longer exists in database.", None
+
+        # Restore snapshot and record rollback event in timeline
+        restored_app = snap_copy
+        _record_app_event(
+            restored_app,
+            "STATE_ROLLED_BACK",
+            f"Restored to snapshot from {snap_ts or 'previous transaction'}"
+        )
+        applications[found_idx] = restored_app
+        _save_applications(applications)
+        _log_db_audit_entry("ROLLBACK", "application", clean_id, f"Rolled back application state to snapshot from {snap_ts}")
+
+    logger.info(f"Successfully rolled back application state for job {clean_id}")
+    return True, f"Application state for '{clean_id}' successfully rolled back.", restored_app
+
 
 
 def invalidate_jobs_cache() -> None:
@@ -800,6 +867,7 @@ def update_application_status(job_id: str, new_status: str) -> Tuple[bool, str, 
         updated_app = None
         for app in applications:
             if app.get("job_id", "").strip().lower() == clean_id.lower():
+                _save_rollback_snapshot(app)
                 old_status = app.get("status", "Applied")
                 app["status"] = canonical_status
                 app["updated_date"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
@@ -874,6 +942,7 @@ def update_application_notes(job_id: str, notes: str) -> Tuple[bool, str, Option
         updated_app = None
         for app in applications:
             if app.get("job_id", "").strip().lower() == clean_id.lower():
+                _save_rollback_snapshot(app)
                 app["notes"] = (notes or "").strip() or None
                 app["updated_date"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
                 _record_app_event(app, "NOTES_UPDATED", "Candidate personal notes updated")
