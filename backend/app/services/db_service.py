@@ -907,6 +907,42 @@ def add_application_interview(
     return True, f"Interview stage '{clean_round}' has been scheduled.", stage_entry
 
 
+def archive_application(job_id: str, archived: bool = True) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
+    """
+    Archive or unarchive an application (soft-delete).
+    Records event in audit timeline and updates database atomically.
+    Returns: (success: bool, message: str, updated_application: Optional[dict])
+    """
+    clean_id = (job_id or "").strip()
+    if not clean_id:
+        return False, "Job ID cannot be empty.", None
+
+    now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+
+    with _db_lock:
+        applications = load_applications()
+        target_app = None
+        for app in applications:
+            if app.get("job_id", "").strip().lower() == clean_id.lower():
+                app["is_archived"] = archived
+                app["archived_date"] = now_str if archived else None
+                app["updated_date"] = now_str
+                event_type = "APPLICATION_ARCHIVED" if archived else "APPLICATION_UNARCHIVED"
+                event_detail = "Application moved to archive" if archived else "Application restored from archive"
+                _record_app_event(app, event_type, event_detail)
+                target_app = app
+                break
+
+        if not target_app:
+            return False, f"No existing application found for Job ID '{clean_id}'.", None
+
+        _save_applications(applications)
+
+    action_word = "archived" if archived else "restored"
+    logger.info(f"Application {clean_id} {action_word}")
+    return True, f"Application for Job ID '{clean_id}' has been {action_word}.", target_app
+
+
 def get_upcoming_reminders() -> List[Dict[str, Any]]:
     """Retrieve all submitted applications that have pending follow-up reminders, sorted chronologically."""
     apps = load_applications()

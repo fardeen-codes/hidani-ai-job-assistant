@@ -91,7 +91,14 @@ class JobApplication(BaseModel):
     reminder_date: Optional[str] = Field(default=None, description="Optional follow-up reminder date or deadline")
     tags: List[str] = Field(default_factory=list, description="Custom organizational tags/labels")
     interviews: List[InterviewStageEntry] = Field(default_factory=list, description="Logged interview rounds")
+    is_archived: bool = Field(default=False, description="Whether application has been archived")
+    archived_date: Optional[str] = Field(default=None, description="Timestamp of archiving")
     timeline: List[ApplicationTimelineEvent] = Field(default_factory=list, description="Audit log of application events")
+
+
+class ApplicationArchiveUpdateRequest(BaseModel):
+    """Payload to archive or unarchive an application."""
+    archived: bool = Field(default=True, description="True to archive, False to restore")
 
 
 class ApplicationTagsUpdateRequest(BaseModel):

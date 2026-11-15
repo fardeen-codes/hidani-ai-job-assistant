@@ -28,6 +28,7 @@ from app.config import (
     is_openai_configured,
 )
 from app.schemas import (
+    ApplicationArchiveUpdateRequest,
     ApplicationCreateRequest,
     ApplicationFunnelResponse,
     ApplicationInterviewCreateRequest,
@@ -59,6 +60,7 @@ from app.schemas import (
 from app.services.db_service import (
     add_application_interview,
     apply_to_job,
+    archive_application,
     bulk_update_application_status,
     check_database_health,
     clear_search_history,
@@ -460,10 +462,13 @@ async def get_similar_jobs_endpoint(
 async def get_applications_list(
     status: Optional[str] = Query(None, description="Optional status filter (e.g. Applied, Under Review)"),
     search: Optional[str] = Query(None, description="Optional search keyword matching job title or company"),
-    tag: Optional[str] = Query(None, description="Optional tag filter")
+    tag: Optional[str] = Query(None, description="Optional tag filter"),
+    include_archived: bool = Query(False, description="Whether to include archived applications")
 ):
     """List all recorded job applications from applications.json with optional status, search, and tag filters."""
     apps = load_applications()
+    if not include_archived:
+        apps = [a for a in apps if not a.get("is_archived", False)]
     if status:
         stat_clean = status.strip().lower()
         apps = [a for a in apps if (a.get("status") or "").strip().lower() == stat_clean]
@@ -805,6 +810,27 @@ async def add_application_interview_endpoint(job_id: str, payload: ApplicationIn
         "status": "success",
         "message": message,
         "interview": stage_entry
+    }
+
+
+@app.patch(
+    "/api/applications/{job_id}/archive",
+    response_model=dict,
+    summary="Archive or restore an application",
+    tags=["Applications"]
+)
+async def archive_application_endpoint(job_id: str, payload: ApplicationArchiveUpdateRequest):
+    """Move an application to archive or restore it to the active pipeline."""
+    clean_id = (job_id or "").strip()
+    if not clean_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Job ID cannot be empty.")
+    success, message, updated_app = archive_application(clean_id, archived=payload.archived)
+    if not success:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=message)
+    return {
+        "status": "success",
+        "message": message,
+        "application": updated_app
     }
 
 

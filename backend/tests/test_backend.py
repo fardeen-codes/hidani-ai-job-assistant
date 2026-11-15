@@ -1350,6 +1350,38 @@ class BackendTestCase(unittest.TestCase):
         res_404 = self.client.get("/api/jobs/invalid-job-id-99999/similar")
         self.assertEqual(res_404.status_code, 404)
 
+    def test_application_archive_and_filtering(self):
+        """Test archiving an application, exclusion from active list, and restoration."""
+        withdraw_application(self.test_job_id)
+        apply_to_job(self.test_job_id)
+
+        # 1. Archive application
+        res_arch = self.client.patch(f"/api/applications/{self.test_job_id}/archive", json={"archived": True})
+        self.assertEqual(res_arch.status_code, 200)
+        app_data = res_arch.json()["application"]
+        self.assertTrue(app_data["is_archived"])
+        self.assertIsNotNone(app_data["archived_date"])
+
+        # 2. Excluded by default from active list
+        active_res = self.client.get("/api/applications")
+        self.assertEqual(active_res.status_code, 200)
+        active_ids = [a["job_id"] for a in active_res.json()]
+        self.assertNotIn(self.test_job_id, active_ids)
+
+        # 3. Included when include_archived=true
+        all_res = self.client.get("/api/applications?include_archived=true")
+        self.assertEqual(all_res.status_code, 200)
+        all_ids = [a["job_id"] for a in all_res.json()]
+        self.assertIn(self.test_job_id, all_ids)
+
+        # 4. Unarchive
+        res_unarch = self.client.patch(f"/api/applications/{self.test_job_id}/archive", json={"archived": False})
+        self.assertEqual(res_unarch.status_code, 200)
+        self.assertFalse(res_unarch.json()["application"]["is_archived"])
+
+        # Clean up
+        withdraw_application(self.test_job_id)
+
 
 if __name__ == "__main__":
     unittest.main()
