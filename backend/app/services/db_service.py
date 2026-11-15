@@ -3713,3 +3713,63 @@ def get_remote_work_breakdown() -> Dict[str, Any]:
         "breakdown": breakdown
     }
 
+
+def get_application_channel_analytics() -> Dict[str, Any]:
+    """
+    Evaluate conversion rates and performance across different application submission sources.
+    """
+    apps = load_applications()
+    total_apps = len(apps)
+    if total_apps == 0:
+        return {
+            "status": "success",
+            "total_applications": 0,
+            "top_performing_channel": None,
+            "channels": []
+        }
+
+    channel_groups: Dict[str, List[Dict[str, Any]]] = {}
+    for app in apps:
+        src = (app.get("source") or "").strip() or "Direct / Portal"
+        if src not in channel_groups:
+            channel_groups[src] = []
+        channel_groups[src].append(app)
+
+    metrics = []
+    top_channel = None
+    best_rate = -1.0
+
+    for src, c_apps in channel_groups.items():
+        total = len(c_apps)
+        interviews = sum(
+            1 for a in c_apps
+            if len(a.get("interviews", [])) > 0 or a.get("status") in ("Interview", "Offer", "Accepted")
+        )
+        offers = sum(
+            1 for a in c_apps
+            if a.get("outcome") in ("Offer", "Accepted") or a.get("status") in ("Offer", "Accepted")
+        )
+        int_rate = round((interviews / total) * 100.0, 1) if total > 0 else 0.0
+        off_rate = round((offers / total) * 100.0, 1) if total > 0 else 0.0
+
+        if int_rate > best_rate and total >= 1:
+            best_rate = int_rate
+            top_channel = src
+
+        metrics.append({
+            "source": src,
+            "total_applications": total,
+            "interview_count": interviews,
+            "offer_count": offers,
+            "interview_rate_pct": int_rate,
+            "offer_rate_pct": off_rate
+        })
+
+    metrics.sort(key=lambda x: (-x["interview_rate_pct"], -x["total_applications"]))
+    return {
+        "status": "success",
+        "total_applications": total_apps,
+        "top_performing_channel": top_channel,
+        "channels": metrics
+    }
+

@@ -864,3 +864,21 @@ class InterviewQuestionsResponse(BaseModel):
     job_id: str = Field(description="Job ID")
     total: int = Field(description="Total recorded interview questions")
     questions: List[InterviewQuestionEntry] = Field(default_factory=list)
+
+
+class ApplicationChannelMetric(BaseModel):
+    """Effectiveness and conversion performance for an application source channel."""
+    source: str = Field(description="Submission channel (e.g. LinkedIn, Referral, Direct / Portal)")
+    total_applications: int = Field(description="Applications submitted through this channel")
+    interview_count: int = Field(description="Applications reaching interview stage")
+    offer_count: int = Field(description="Applications resulting in offer")
+    interview_rate_pct: float = Field(description="Interview conversion percentage")
+    offer_rate_pct: float = Field(description="Offer conversion percentage")
+
+
+class ApplicationChannelAnalyticsResponse(BaseModel):
+    """Channel performance breakdown comparing application conversion rates."""
+    status: str = Field(default="success")
+    total_applications: int = Field(description="Total candidate applications")
+    top_performing_channel: Optional[str] = Field(None, description="Channel with highest interview conversion rate")
+    channels: List[ApplicationChannelMetric] = Field(default_factory=list)

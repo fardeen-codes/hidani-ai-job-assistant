@@ -2370,6 +2370,24 @@ class BackendTestCase(unittest.TestCase):
         # 5. Clean up
         withdraw_application(self.test_job_id)
 
+    def test_application_channel_analytics(self):
+        """Test application submission channel effectiveness and conversion analytics."""
+        # 1. Apply to job
+        self.client.post("/api/applications", json={"job_id": self.test_job_id})
+        self.client.patch(f"/api/applications/{self.test_job_id}/source", json={"source": "Direct Referral"})
+
+        # 2. Query channel analytics -> 200 OK
+        res = self.client.get("/api/applications/analytics/channels")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "success")
+        self.assertGreater(data["total_applications"], 0)
+        self.assertIsInstance(data["channels"], list)
+        self.assertTrue(any(c["source"] == "Direct Referral" for c in data["channels"]))
+
+        # 3. Clean up
+        withdraw_application(self.test_job_id)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -33,6 +33,8 @@ from app.schemas import (
     AdvancedJobFilterResponse,
     ApplicationArchiveUpdateRequest,
     ApplicationAttachmentCreateRequest,
+    ApplicationChannelAnalyticsResponse,
+    ApplicationChannelMetric,
     ApplicationCreateRequest,
     ApplicationDeadlinesUpdateRequest,
     ATSScoreRequest,
@@ -132,6 +134,7 @@ from app.services.db_service import (
     execute_saved_search,
     export_jobs_to_csv,
     generate_followup_template,
+    get_application_channel_analytics,
     get_application_funnel_metrics,
     get_application_stats,
     get_application_status,
@@ -1109,6 +1112,17 @@ async def get_applications_velocity_endpoint():
 async def get_applications_rejections_endpoint():
     """Analyze rejection codes and qualitative feedback across candidate applications."""
     return get_rejection_analytics()
+
+
+@app.get(
+    "/api/applications/analytics/channels",
+    response_model=ApplicationChannelAnalyticsResponse,
+    summary="Get application conversion rates by submission source channel",
+    tags=["Applications"]
+)
+async def get_application_channel_analytics_endpoint():
+    """Analyze application interview and offer conversion performance grouped by channel."""
+    return get_application_channel_analytics()
 
 
 @app.get(
