@@ -436,6 +436,48 @@ def update_application_status(job_id: str, new_status: str) -> Tuple[bool, str, 
     return True, f"Application status for Job ID '{clean_id}' updated to '{canonical_status}'.", updated_app
 
 
+def bulk_update_application_status(
+    job_ids: List[str],
+    new_status: str
+) -> Tuple[bool, str, int, List[str]]:
+    """
+    Update tracking status for multiple applications atomically.
+    Returns: (success: bool, message: str, updated_count: int, updated_job_ids: List[str])
+    """
+    if not job_ids:
+        return False, "Job IDs list cannot be empty.", 0, []
+
+    status_key = (new_status or "").strip().lower()
+    canonical_status = VALID_APPLICATION_STATUSES.get(status_key)
+    if not canonical_status:
+        allowed = ", ".join(VALID_APPLICATION_STATUSES.values())
+        return False, f"Invalid status '{new_status}'. Allowed values: {allowed}.", 0, []
+
+    target_ids = {str(jid).strip().lower() for jid in job_ids if str(jid).strip()}
+    updated_ids: List[str] = []
+
+    with _db_lock:
+        applications = load_applications()
+        now_ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+
+        for app in applications:
+            curr_id = app.get("job_id", "").strip().lower()
+            if curr_id in target_ids:
+                app["status"] = canonical_status
+                app["updated_date"] = now_ts
+                updated_ids.append(app.get("job_id", ""))
+
+        if updated_ids:
+            _save_applications(applications)
+
+    if not updated_ids:
+        return False, "None of the specified Job IDs matched existing applications.", 0, []
+
+    msg = f"Successfully updated status to '{canonical_status}' for {len(updated_ids)} application(s)."
+    logger.info(msg)
+    return True, msg, len(updated_ids), updated_ids
+
+
 def update_application_notes(job_id: str, notes: str) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
     """
     Update personal applicant notes or interview remarks for a submitted application.

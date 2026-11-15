@@ -917,6 +917,51 @@ class BackendTestCase(unittest.TestCase):
         self.assertIn("Engineering", cats)
         self.assertGreater(cats["Engineering"], 0)
 
+    def test_bulk_application_status_update(self):
+        """Test bulk status update endpoint and validation."""
+        other_id = "job-00002"
+        withdraw_application(self.test_job_id)
+        withdraw_application(other_id)
+
+        # 1. Apply to two jobs
+        apply_to_job(self.test_job_id)
+        apply_to_job(other_id)
+
+        # 2. Bulk update both to "Interview"
+        res_bulk = self.client.patch(
+            "/api/applications/bulk/status",
+            json={"job_ids": [self.test_job_id, other_id], "status": "Interview"}
+        )
+        self.assertEqual(res_bulk.status_code, 200)
+        data = res_bulk.json()
+        self.assertEqual(data["updated_count"], 2)
+        self.assertIn(self.test_job_id, data["updated_job_ids"])
+        self.assertIn(other_id, data["updated_job_ids"])
+
+        # 3. Verify status in database
+        app1 = self.client.get(f"/api/applications/{self.test_job_id}").json()
+        app2 = self.client.get(f"/api/applications/{other_id}").json()
+        self.assertEqual(app1["status"], "Interview")
+        self.assertEqual(app2["status"], "Interview")
+
+        # 4. Invalid status -> 400
+        res_bad = self.client.patch(
+            "/api/applications/bulk/status",
+            json={"job_ids": [self.test_job_id], "status": "NotAValidStatus123"}
+        )
+        self.assertEqual(res_bad.status_code, 400)
+
+        # 5. Non-existent jobs -> 404
+        res_404 = self.client.patch(
+            "/api/applications/bulk/status",
+            json={"job_ids": ["non-existent-job-abc-xyz"], "status": "Offer"}
+        )
+        self.assertEqual(res_404.status_code, 404)
+
+        # Clean up
+        withdraw_application(self.test_job_id)
+        withdraw_application(other_id)
+
 
 if __name__ == "__main__":
     unittest.main()

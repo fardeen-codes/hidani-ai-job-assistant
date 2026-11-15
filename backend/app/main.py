@@ -33,6 +33,8 @@ from app.schemas import (
     ApplicationReminderUpdateRequest,
     ApplicationStatsResponse,
     ApplicationStatusUpdateRequest,
+    BulkApplicationStatusUpdateRequest,
+    BulkApplicationStatusUpdateResponse,
     ChatRequest,
     ChatResponse,
     ChatStateResponse,
@@ -45,6 +47,7 @@ from app.schemas import (
 )
 from app.services.db_service import (
     apply_to_job,
+    bulk_update_application_status,
     clear_search_history,
     get_application_stats,
     get_application_status,
@@ -472,6 +475,28 @@ async def export_applications(
 async def get_application_reminders_endpoint():
     """Retrieve all submitted job applications with pending follow-up reminders, sorted chronologically."""
     return get_upcoming_reminders()
+
+
+@app.patch(
+    "/api/applications/bulk/status",
+    response_model=BulkApplicationStatusUpdateResponse,
+    summary="Bulk update status across multiple applications",
+    tags=["Applications"]
+)
+async def bulk_update_applications_status_endpoint(payload: BulkApplicationStatusUpdateRequest):
+    """Update tracking status across multiple job applications simultaneously."""
+    success, message, count, updated_ids = bulk_update_application_status(payload.job_ids, payload.status)
+    if not success:
+        if "Invalid status" in message or "cannot be empty" in message:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=message)
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=message)
+
+    return BulkApplicationStatusUpdateResponse(
+        updated_count=count,
+        updated_job_ids=updated_ids,
+        status=payload.status,
+        message=message
+    )
 
 
 @app.get(

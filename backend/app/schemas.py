@@ -125,6 +125,20 @@ class ApplicationStatusUpdateRequest(BaseModel):
     status: str = Field(..., min_length=1, description="Updated status (Applied, Under Review, Interview, Offer, Rejected)")
 
 
+class BulkApplicationStatusUpdateRequest(BaseModel):
+    """Payload for updating status across multiple applications simultaneously."""
+    job_ids: List[str] = Field(..., min_length=1, description="List of Job IDs to update")
+    status: str = Field(..., min_length=1, description="New status to set (Applied, Under Review, Interview, Offer, Rejected)")
+
+
+class BulkApplicationStatusUpdateResponse(BaseModel):
+    """Response payload for bulk application status updates."""
+    updated_count: int = Field(description="Number of applications updated")
+    updated_job_ids: List[str] = Field(description="List of Job IDs that were updated")
+    status: str = Field(description="New status set")
+    message: str = Field(description="Status message")
+
+
 class ApplicationNotesUpdateRequest(BaseModel):
     """Payload to update personal candidate notes on a submitted job application."""
     notes: str = Field(..., max_length=2000, description="Candidate notes, interview logs, or remarks")
