@@ -1039,6 +1039,59 @@ class BackendTestCase(unittest.TestCase):
         res_del_404 = self.client.delete(f"/api/searches/saved/{search_id}")
         self.assertEqual(res_del_404.status_code, 404)
 
+    def test_saved_search_update_and_deduplication(self):
+        """Test duplicate detection and updating filter criteria on saved searches."""
+        # 1. Create original saved search
+        payload = {
+            "title": "Unique AI Researcher Alert",
+            "query": "deep learning",
+            "location": "remote",
+            "experience_level": "Mid-Level",
+            "category": "Data & Analytics"
+        }
+        res_create = self.client.post("/api/searches/saved", json=payload)
+        self.assertEqual(res_create.status_code, 201)
+        search_id = res_create.json()["search_id"]
+
+        try:
+            # 2. Duplicate title check -> 409 Conflict
+            res_dup_title = self.client.post("/api/searches/saved", json={
+                "title": "Unique AI Researcher Alert",
+                "query": "natural language processing"
+            })
+            self.assertEqual(res_dup_title.status_code, 409)
+
+            # 3. Duplicate criteria check -> 409 Conflict
+            res_dup_crit = self.client.post("/api/searches/saved", json={
+                "title": "Another Alert Name",
+                "query": "deep learning",
+                "location": "remote",
+                "experience_level": "Mid-Level",
+                "category": "Data & Analytics"
+            })
+            self.assertEqual(res_dup_crit.status_code, 409)
+
+            # 4. Update saved search criteria -> 200 OK
+            update_payload = {
+                "title": "Updated Senior AI Alert",
+                "experience_level": "Senior",
+                "category": "AI Research"
+            }
+            res_update = self.client.patch(f"/api/searches/saved/{search_id}", json=update_payload)
+            self.assertEqual(res_update.status_code, 200)
+            updated_data = res_update.json()
+            self.assertEqual(updated_data["title"], "Updated Senior AI Alert")
+            self.assertEqual(updated_data["experience_level"], "Senior")
+            self.assertEqual(updated_data["category"], "AI Research")
+            self.assertEqual(updated_data["query"], "deep learning")  # Unchanged
+            self.assertIsNotNone(updated_data.get("updated_date"))
+
+            # 5. Non-existent search update -> 404
+            res_404 = self.client.patch("/api/searches/saved/search_nonexistent_999", json={"title": "Test"})
+            self.assertEqual(res_404.status_code, 404)
+        finally:
+            self.client.delete(f"/api/searches/saved/{search_id}")
+
     def test_application_custom_tags_lifecycle(self):
         """Test adding, deduplicating, filtering, and clearing custom organization tags on job applications."""
         withdraw_application(self.test_job_id)

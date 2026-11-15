@@ -77,6 +77,7 @@ from app.schemas import (
     SavedSearch,
     SavedSearchCreateRequest,
     SavedSearchExecutionResponse,
+    SavedSearchUpdateRequest,
     SearchHistoryEntry,
     SearchSuggestionsResponse,
     SessionMetricsResponse,
@@ -140,6 +141,7 @@ from app.services.db_service import (
     update_application_status,
     update_application_tags,
     update_job_bookmark,
+    update_saved_search,
     withdraw_application,
 )
 from app.services.document_parser import (
@@ -461,7 +463,9 @@ async def create_saved_search_endpoint(payload: SavedSearchCreateRequest):
         experience_level=payload.experience_level,
         category=payload.category
     )
-    if not success or not new_search:
+    if not success:
+        if new_search:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=message)
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=message)
     return new_search
 
@@ -475,6 +479,30 @@ async def create_saved_search_endpoint(payload: SavedSearchCreateRequest):
 async def list_saved_searches_endpoint():
     """Retrieve all saved search subscriptions."""
     return load_saved_searches()
+
+
+@app.patch(
+    "/api/searches/saved/{search_id}",
+    response_model=SavedSearch,
+    summary="Update saved search criteria",
+    tags=["Searches"]
+)
+async def update_saved_search_endpoint(search_id: str, payload: SavedSearchUpdateRequest):
+    """Update saved search subscription title or filter criteria."""
+    clean_id = (search_id or "").strip()
+    if not clean_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Search ID cannot be empty.")
+    success, message, updated_s = update_saved_search(
+        clean_id,
+        title=payload.title,
+        query=payload.query,
+        location=payload.location,
+        experience_level=payload.experience_level,
+        category=payload.category
+    )
+    if not success:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=message)
+    return updated_s
 
 
 @app.delete(

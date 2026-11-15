@@ -243,6 +243,7 @@ class SavedSearch(BaseModel):
     experience_level: Optional[str] = None
     category: Optional[str] = None
     created_date: str = Field(description="Timestamp of creation")
+    updated_date: Optional[str] = Field(default=None, description="Timestamp of last criteria modification")
     last_run: Optional[str] = Field(default=None, description="Timestamp of last search execution")
     match_count: Optional[int] = Field(default=None, description="Number of matching jobs found on last run")
 
@@ -254,6 +255,15 @@ class SavedSearchExecutionResponse(BaseModel):
     total_matches: int = Field(description="Total matching jobs found")
     executed_at: str = Field(description="Timestamp when query was run")
     jobs: List[Dict[str, Any]] = Field(default_factory=list, description="Top matching job results")
+
+
+class SavedSearchUpdateRequest(BaseModel):
+    """Payload to update label or search filters on an existing saved search."""
+    title: Optional[str] = Field(None, min_length=1, max_length=100, description="Updated subscription title")
+    query: Optional[str] = Field(None, description="Updated keyword")
+    location: Optional[str] = Field(None, description="Updated location filter")
+    experience_level: Optional[str] = Field(None, description="Updated experience level")
+    category: Optional[str] = Field(None, description="Updated domain category")
 
 
 class ChatRequest(BaseModel):

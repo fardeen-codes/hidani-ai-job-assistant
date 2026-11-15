@@ -2065,26 +2065,89 @@ def create_saved_search(
     clean_exp = (experience_level or "").strip() or None
     clean_cat = (category or "").strip() or None
 
-    search_id = f"search_{int(datetime.now(timezone.utc).timestamp())}_{os.urandom(3).hex()}"
-    now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
-
-    new_search = {
-        "search_id": search_id,
-        "title": clean_title,
-        "query": clean_query,
-        "location": clean_loc,
-        "experience_level": clean_exp,
-        "category": clean_cat,
-        "created_date": now_str
-    }
-
     with _db_lock:
         searches = load_saved_searches()
+        for s in searches:
+            title_matches = (s.get("title") or "").strip().lower() == clean_title.lower()
+            has_criteria = bool(clean_query or clean_loc or clean_exp or clean_cat)
+            criteria_matches = (
+                has_criteria
+                and (s.get("query") or "").strip().lower() == (clean_query or "").strip().lower()
+                and (s.get("location") or "").strip().lower() == (clean_loc or "").strip().lower()
+                and (s.get("experience_level") or "").strip().lower() == (clean_exp or "").strip().lower()
+                and (s.get("category") or "").strip().lower() == (clean_cat or "").strip().lower()
+            )
+            if title_matches or criteria_matches:
+                return False, f"A saved search with title '{s.get('title')}' or matching criteria already exists.", s
+
+        search_id = f"search_{int(datetime.now(timezone.utc).timestamp())}_{os.urandom(3).hex()}"
+        now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+
+        new_search = {
+            "search_id": search_id,
+            "title": clean_title,
+            "query": clean_query,
+            "location": clean_loc,
+            "experience_level": clean_exp,
+            "category": clean_cat,
+            "created_date": now_str
+        }
+
         searches.append(new_search)
         _save_saved_searches(searches)
 
     logger.info(f"Created saved search '{clean_title}' ({search_id})")
     return True, f"Saved search '{clean_title}' created successfully.", new_search
+
+
+def update_saved_search(
+    search_id: str,
+    title: Optional[str] = None,
+    query: Optional[str] = None,
+    location: Optional[str] = None,
+    experience_level: Optional[str] = None,
+    category: Optional[str] = None
+) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
+    """Update title or filter criteria of an existing saved search subscription."""
+    clean_id = (search_id or "").strip()
+    if not clean_id:
+        return False, "Search ID cannot be empty.", None
+
+    with _db_lock:
+        searches = load_saved_searches()
+        target = None
+        for s in searches:
+            if s.get("search_id") == clean_id:
+                target = s
+                break
+
+        if not target:
+            return False, f"Saved search with ID '{clean_id}' was not found.", None
+
+        if title is not None:
+            clean_title = title.strip()
+            if not clean_title:
+                return False, "Title cannot be empty.", None
+            target["title"] = clean_title
+
+        if query is not None:
+            target["query"] = query.strip() or None
+
+        if location is not None:
+            target["location"] = location.strip() or None
+
+        if experience_level is not None:
+            target["experience_level"] = experience_level.strip() or None
+
+        if category is not None:
+            target["category"] = category.strip() or None
+
+        target["updated_date"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+
+        _save_saved_searches(searches)
+
+    logger.info(f"Updated saved search {clean_id} ('{target.get('title')}')")
+    return True, f"Saved search '{clean_id}' updated successfully.", target
 
 
 def delete_saved_search(search_id: str) -> Tuple[bool, str]:
