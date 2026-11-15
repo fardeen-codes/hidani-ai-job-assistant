@@ -494,3 +494,69 @@ def generate_learning_roadmap(missing_skills: List[str], target_role: Optional[s
         "roadmap": roadmap
     }
 
+
+def calculate_weighted_skill_match(
+    job_id: str,
+    candidate_skills: List[str],
+    skill_weights: Optional[Dict[str, float]] = None
+) -> Optional[Dict[str, Any]]:
+    """
+    Calculate custom weighted skill match score where candidate prioritizes specific technologies.
+    """
+    job = get_job_by_id(job_id)
+    if not job:
+        return None
+
+    raw_weights = skill_weights or {}
+    norm_weights = {}
+    for k, v in raw_weights.items():
+        if k:
+            norm_weights[_normalize_skill(str(k))] = max(float(v), 0.1)
+
+    cand_skills = [s.strip() for s in (candidate_skills or []) if s and s.strip()]
+    cand_norm_set = {_normalize_skill(s) for s in cand_skills}
+
+    job_skills = job.get("skills") or []
+    matching_skills = []
+    missing_skills = []
+
+    total_weight = 0.0
+    matched_weight = 0.0
+    applied_weights = {}
+
+    for s in job_skills:
+        clean_s = str(s).strip()
+        norm_s = _normalize_skill(clean_s)
+        w = norm_weights.get(norm_s, 1.0)
+        applied_weights[clean_s] = w
+        total_weight += w
+
+        if norm_s in cand_norm_set:
+            matching_skills.append(clean_s)
+            matched_weight += w
+        else:
+            missing_skills.append(clean_s)
+
+    # Standard unweighted lexical score
+    standard_score = _calculate_lexical_score(job, cand_skills, job.get("experience", "Mid-Level"))
+
+    # Weighted match calculation
+    if total_weight > 0:
+        weighted_ratio = matched_weight / total_weight
+        weighted_score = min(round(35.0 + (weighted_ratio * 60.0), 1), 99.0)
+    else:
+        weighted_score = standard_score
+
+    return {
+        "status": "success",
+        "job_id": job.get("job_id", job_id),
+        "job_title": job.get("title", ""),
+        "company": job.get("company", ""),
+        "standard_match_score": standard_score,
+        "weighted_match_score": weighted_score,
+        "matching_skills": matching_skills,
+        "missing_skills": missing_skills,
+        "skill_weights_applied": applied_weights
+    }
+
+

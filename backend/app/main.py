@@ -17,6 +17,7 @@ from fastapi.responses import JSONResponse, Response
 from app.agents.matcher_agent import (
     analyze_skill_gap,
     batch_score_jobs,
+    calculate_weighted_skill_match,
     generate_learning_roadmap,
 )
 from app.agents.orchestrator import (
@@ -133,6 +134,8 @@ from app.schemas import (
     StaleJobsResponse,
     TierSalaryInsightsResponse,
     UploadResumeResponse,
+    WeightedSkillScoreRequest,
+    WeightedSkillScoreResponse,
     WorkPreferencesResponse,
     WorkPreferencesUpdateRequest,
 )
@@ -1115,6 +1118,28 @@ async def generate_learning_roadmap_endpoint(payload: LearningRoadmapRequest):
         missing_skills=payload.missing_skills,
         target_role=payload.target_role
     )
+
+
+@app.post(
+    "/api/matcher/weighted-score",
+    response_model=WeightedSkillScoreResponse,
+    summary="Evaluate job match with custom candidate-weighted skill multipliers",
+    tags=["Matcher"]
+)
+async def calculate_weighted_skill_match_endpoint(payload: WeightedSkillScoreRequest):
+    """Calculate customized job compatibility score applying candidate-defined skill weights."""
+    result = calculate_weighted_skill_match(
+        job_id=payload.job_id,
+        candidate_skills=payload.candidate_skills,
+        skill_weights=payload.skill_weights
+    )
+    if not result:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Job with ID '{payload.job_id}' was not found in the database."
+        )
+    return result
+
 
 
 

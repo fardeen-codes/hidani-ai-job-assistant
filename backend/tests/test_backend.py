@@ -2636,6 +2636,32 @@ class BackendTestCase(unittest.TestCase):
         self.assertGreaterEqual(len(k8s_item["suggested_topics"]), 3)
         self.assertIn("Minikube", k8s_item["recommended_project_idea"])
 
+    def test_matcher_weighted_skill_scoring(self):
+        """Test candidate-weighted skill scoring with custom technology importance multipliers."""
+        payload = {
+            "job_id": self.test_job_id,
+            "candidate_skills": ["Python", "FastAPI", "Docker"],
+            "skill_weights": {
+                "python": 3.0,
+                "fastapi": 2.5,
+                "docker": 1.0,
+                "kubernetes": 0.5
+            }
+        }
+        res = self.client.post("/api/matcher/weighted-score", json=payload)
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "success")
+        self.assertEqual(data["job_id"], self.test_job_id)
+        self.assertIn("weighted_match_score", data)
+        self.assertIn("standard_match_score", data)
+        self.assertIn("matching_skills", data)
+        self.assertIn("skill_weights_applied", data)
+
+        # 404 test for non-existent job ID
+        res_404 = self.client.post("/api/matcher/weighted-score", json={"job_id": "job-non-existent-99999"})
+        self.assertEqual(res_404.status_code, 404)
+
 
 if __name__ == "__main__":
     unittest.main()

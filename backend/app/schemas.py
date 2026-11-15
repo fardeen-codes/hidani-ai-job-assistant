@@ -1056,3 +1056,27 @@ class LearningRoadmapResponse(BaseModel):
     roadmap: List[SkillStudyResource] = Field(default_factory=list)
 
 
+class WeightedSkillScoreRequest(BaseModel):
+    """Payload for scoring job match against candidate skills with custom importance multipliers."""
+    job_id: str = Field(..., description="Target job identifier")
+    candidate_skills: List[str] = Field(default_factory=list, description="Candidate skills")
+    skill_weights: Dict[str, float] = Field(
+        default_factory=dict,
+        description="Skill importance multipliers (e.g. {'python': 2.0, 'aws': 1.5})"
+    )
+
+
+class WeightedSkillScoreResponse(BaseModel):
+    """Job match evaluation with candidate-weighted skill scoring breakdown."""
+    status: str = Field(default="success")
+    job_id: str
+    job_title: str
+    company: str
+    standard_match_score: float
+    weighted_match_score: float
+    matching_skills: List[str] = Field(default_factory=list)
+    missing_skills: List[str] = Field(default_factory=list)
+    skill_weights_applied: Dict[str, float] = Field(default_factory=dict)
+
+
+
