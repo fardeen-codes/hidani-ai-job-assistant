@@ -73,6 +73,7 @@ from app.services.db_service import (
     get_job_by_id,
     get_job_stats,
     get_recent_searches,
+    get_similar_jobs,
     get_upcoming_reminders,
     load_applications,
     load_jobs,
@@ -428,6 +429,31 @@ async def evaluate_job_skill_gap(
             detail=f"Job with ID '{clean_id}' was not found in the database."
         )
     return analysis
+
+
+@app.get(
+    "/api/jobs/{job_id}/similar",
+    summary="Get similar and related job recommendations",
+    tags=["Jobs"]
+)
+async def get_similar_jobs_endpoint(
+    job_id: str,
+    limit: int = Query(5, ge=1, le=20, description="Max similar jobs to retrieve")
+):
+    """Recommend related jobs based on skills overlap, domain category, experience, and location."""
+    clean_id = (job_id or "").strip()
+    if not clean_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Job ID cannot be empty.")
+    job = get_job_by_id(clean_id)
+    if not job:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Job with ID '{clean_id}' was not found.")
+    similar = get_similar_jobs(clean_id, limit=limit)
+    return {
+        "job_id": clean_id,
+        "job_title": job.get("title"),
+        "total_similar": len(similar),
+        "similar_jobs": similar
+    }
 
 
 @app.get("/api/applications", summary="List all submitted applications", tags=["Applications"])

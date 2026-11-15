@@ -273,6 +273,69 @@ def get_job_by_id(job_id: str) -> Optional[Dict[str, Any]]:
         return _jobs_by_id_cache.get(clean_id)
 
 
+def get_similar_jobs(job_id: str, limit: int = 5) -> List[Dict[str, Any]]:
+    """
+    Find and rank related jobs similar to the target job by skills overlap,
+    industry category, experience tier, and work location.
+    """
+    clean_id = (job_id or "").strip().lower()
+    if not clean_id:
+        return []
+
+    target_job = get_job_by_id(clean_id)
+    if not target_job:
+        return []
+
+    all_jobs = load_jobs()
+    target_skills = {str(s).strip().lower() for s in (target_job.get("skills") or []) if s and str(s).strip()}
+    target_cat = (target_job.get("category") or "").strip().lower()
+    target_exp = (target_job.get("experience") or "").strip().lower()
+    target_loc = (target_job.get("location") or "").strip().lower()
+    target_is_remote = "remote" in target_loc
+
+    candidates = []
+    for other in all_jobs:
+        other_id = (other.get("job_id") or "").strip().lower()
+        if other_id == clean_id:
+            continue
+
+        sim_score = 0.0
+
+        # Skills overlap (up to 50 pts)
+        other_skills = {str(s).strip().lower() for s in (other.get("skills") or []) if s and str(s).strip()}
+        if target_skills and other_skills:
+            intersection = len(target_skills.intersection(other_skills))
+            union = len(target_skills.union(other_skills))
+            if union > 0:
+                sim_score += (intersection / union) * 50.0
+
+        # Category match (25 pts)
+        other_cat = (other.get("category") or "").strip().lower()
+        if target_cat and other_cat and target_cat == other_cat:
+            sim_score += 25.0
+
+        # Experience tier match (15 pts)
+        other_exp = (other.get("experience") or "").strip().lower()
+        if target_exp and other_exp and target_exp == other_exp:
+            sim_score += 15.0
+
+        # Location / remote match (10 pts)
+        other_loc = (other.get("location") or "").strip().lower()
+        if target_is_remote and "remote" in other_loc:
+            sim_score += 10.0
+        elif target_loc and target_loc == other_loc:
+            sim_score += 10.0
+
+        if sim_score > 0:
+            copy_job = dict(other)
+            copy_job["similarity_score"] = round(sim_score, 1)
+            candidates.append(copy_job)
+
+    candidates.sort(key=lambda x: x.get("similarity_score", 0), reverse=True)
+    limit = max(1, min(limit or 5, 20))
+    return candidates[:limit]
+
+
 def search_jobs(
     skills: Optional[List[str]] = None,
     designation: Optional[str] = None,

@@ -1333,6 +1333,23 @@ class BackendTestCase(unittest.TestCase):
         self.assertIn("Under Review", stage_names)
         self.assertIn("Interview", stage_names)
 
+    def test_similar_jobs_recommendation(self):
+        """Test recommending similar jobs based on skills overlap and metadata matching."""
+        res = self.client.get(f"/api/jobs/{self.test_job_id}/similar?limit=3")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["job_id"], self.test_job_id)
+        self.assertIn("similar_jobs", data)
+        self.assertTrue(len(data["similar_jobs"]) <= 3)
+        if data["similar_jobs"]:
+            first_sim = data["similar_jobs"][0]
+            self.assertIn("similarity_score", first_sim)
+            self.assertNotEqual(first_sim["job_id"], self.test_job_id)
+
+        # 404 for invalid job_id
+        res_404 = self.client.get("/api/jobs/invalid-job-id-99999/similar")
+        self.assertEqual(res_404.status_code, 404)
+
 
 if __name__ == "__main__":
     unittest.main()
