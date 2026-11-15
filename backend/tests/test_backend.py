@@ -1933,6 +1933,16 @@ class BackendTestCase(unittest.TestCase):
         # Clean up
         self.client.delete(f"/api/bookmarks/{self.test_job_id}")
 
+    def test_database_integrity_repair(self):
+        """Test database integrity repair endpoint and schema verification."""
+        res = self.client.post("/api/admin/db/repair")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "success")
+        self.assertIn("repaired_applications", data)
+        self.assertIn("repaired_bookmarks", data)
+        self.assertIn("message", data)
+
 
 if __name__ == "__main__":
     unittest.main()

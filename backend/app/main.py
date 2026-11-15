@@ -64,6 +64,7 @@ from app.schemas import (
     DatabaseBackupSnapshot,
     DatabaseCompactionResponse,
     DatabaseHealthResponse,
+    DatabaseRepairResponse,
     DatabaseRestoreResponse,
     DatabaseStorageMetricsResponse,
     FollowupTemplateResponse,
@@ -123,6 +124,7 @@ from app.services.db_service import (
     load_saved_searches,
     record_search_query,
     remove_job_bookmark,
+    repair_database_records,
     restore_database_backup,
     save_job_bookmark,
     search_jobs,
@@ -1424,6 +1426,17 @@ async def check_database_health_endpoint():
 async def compact_database_endpoint():
     """Purge orphaned bookmarks and deduplicate search history."""
     return compact_database()
+
+
+@app.post(
+    "/api/admin/db/repair",
+    response_model=DatabaseRepairResponse,
+    summary="Repair database records and enforce missing schema defaults",
+    tags=["Database Admin"]
+)
+async def repair_database_endpoint():
+    """Verify and patch missing default attributes across applications and bookmarks collections."""
+    return repair_database_records()
 
 
 @app.get(

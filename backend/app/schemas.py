@@ -602,3 +602,11 @@ class BookmarkCategoriesResponse(BaseModel):
     total_categories: int = Field(description="Number of distinct bookmark folders")
     total_bookmarks: int = Field(description="Total saved bookmarks across all folders")
     categories: List[BookmarkCategorySummary] = Field(default_factory=list, description="Category distribution")
+
+
+class DatabaseRepairResponse(BaseModel):
+    """Result of running database schema repair across collections."""
+    status: str = Field(description="Operation status: success or error")
+    repaired_applications: int = Field(description="Count of application records patched with missing default fields")
+    repaired_bookmarks: int = Field(description="Count of bookmark records patched with missing default fields")
+    message: str = Field(description="Summary message")

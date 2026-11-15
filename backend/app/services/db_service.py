@@ -2239,6 +2239,72 @@ def compact_database() -> Dict[str, Any]:
         }
 
 
+def repair_database_records() -> Dict[str, Any]:
+    """
+    Verify schema completeness across applications and bookmarks,
+    injecting missing default fields and repairing legacy structures.
+    """
+    with _db_lock:
+        repaired_apps = 0
+        apps = load_applications()
+        for a in apps:
+            modified = False
+            if "status" not in a or not a["status"]:
+                a["status"] = "Applied"
+                modified = True
+            if "tags" not in a or not isinstance(a["tags"], list):
+                a["tags"] = []
+                modified = True
+            if "interviews" not in a or not isinstance(a["interviews"], list):
+                a["interviews"] = []
+                modified = True
+            if "attachments" not in a or not isinstance(a["attachments"], list):
+                a["attachments"] = []
+                modified = True
+            if "is_archived" not in a:
+                a["is_archived"] = False
+                modified = True
+            if "priority" not in a or not a["priority"]:
+                a["priority"] = "Medium"
+                modified = True
+            if "is_favorite" not in a:
+                a["is_favorite"] = False
+                modified = True
+            if "timeline" not in a or not isinstance(a["timeline"], list):
+                a["timeline"] = []
+                modified = True
+            if modified:
+                repaired_apps += 1
+
+        if repaired_apps > 0:
+            _save_applications(apps)
+
+        repaired_bms = 0
+        bookmarks = load_bookmarks()
+        for b in bookmarks:
+            modified = False
+            if "notes" not in b:
+                b["notes"] = None
+                modified = True
+            if "category" not in b:
+                b["category"] = None
+                modified = True
+            if modified:
+                repaired_bms += 1
+
+        if repaired_bms > 0:
+            _save_bookmarks(bookmarks)
+
+        msg = f"Database repair completed: verified {len(apps)} applications ({repaired_apps} patched) and {len(bookmarks)} bookmarks ({repaired_bms} patched)."
+        logger.info(msg)
+        return {
+            "status": "success",
+            "repaired_applications": repaired_apps,
+            "repaired_bookmarks": repaired_bms,
+            "message": msg
+        }
+
+
 def list_hiring_companies(limit: int = 50) -> List[Dict[str, Any]]:
     """
     Aggregate hiring companies across all available job postings,
