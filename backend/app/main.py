@@ -19,6 +19,7 @@ from app.agents.orchestrator import (
     clear_session_state,
     evaluate_intent_confidence_and_clarification,
     export_session_transcript,
+    generate_salary_negotiation_script,
     get_session_metrics,
     get_session_preferences,
     get_session_state,
@@ -102,6 +103,8 @@ from app.schemas import (
     RemoteWorkBreakdownResponse,
     RemoteWorkPolicyMetric,
     SalaryInfo,
+    SalaryNegotiationScriptRequest,
+    SalaryNegotiationScriptResponse,
     SalaryPreferenceResponse,
     SalaryPreferenceUpdateRequest,
     SavedSearch,
@@ -535,6 +538,23 @@ async def reset_chat_session(session_id: str = "default-session"):
         "session_id": session_id,
         "cleared": cleared
     }
+
+
+@app.post(
+    "/api/chat/tools/negotiation-script",
+    response_model=SalaryNegotiationScriptResponse,
+    summary="Generate personalized salary counter-offer script",
+    tags=["Chat"]
+)
+async def generate_negotiation_script_endpoint(payload: SalaryNegotiationScriptRequest):
+    """Generate professional counter-offer email template and live phone negotiation talking points."""
+    return generate_salary_negotiation_script(
+        company=payload.company,
+        role_title=payload.role_title,
+        initial_offer=payload.initial_offer,
+        target_counter=payload.target_counter,
+        leverage_points=payload.key_leverage_points
+    )
 
 
 @app.get(

@@ -2551,6 +2551,29 @@ class BackendTestCase(unittest.TestCase):
         finally:
             self.client.post(f"/api/chat/reset/{session_id}")
 
+    def test_salary_negotiation_script_generator(self):
+        """Test generating salary counter-offer email and live phone negotiation talking points."""
+        payload = {
+            "company": "Stripe",
+            "role_title": "Staff Backend Engineer",
+            "initial_offer": 175000.0,
+            "target_counter": 195000.0,
+            "key_leverage_points": [
+                "Competing offer from top-tier fintech",
+                "Deep specialization in low-latency ledger systems"
+            ]
+        }
+        res = self.client.post("/api/chat/tools/negotiation-script", json=payload)
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "success")
+        self.assertEqual(data["counter_delta"], 20000.0)
+        self.assertGreater(data["counter_delta_pct"], 10.0)
+        self.assertIn("Staff Backend Engineer", data["email_subject"])
+        self.assertIn("Stripe", data["email_body"])
+        self.assertIn("$195,000", data["email_body"])
+        self.assertTrue(len(data["phone_script_bullet_points"]) >= 3)
+
 
 if __name__ == "__main__":
     unittest.main()

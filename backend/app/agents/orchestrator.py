@@ -1149,3 +1149,56 @@ def get_session_preferences(session_id: str) -> Dict[str, Any]:
         prefs = meta.get("preferences", {})
     return dict(prefs)
 
+
+def generate_salary_negotiation_script(
+    company: str,
+    role_title: str,
+    initial_offer: float,
+    target_counter: float,
+    leverage_points: Optional[List[str]] = None
+) -> Dict[str, Any]:
+    """
+    Generate professional email counter-offer template and live call talking points.
+    """
+    clean_company = (company or "the team").strip()
+    clean_role = (role_title or "this position").strip()
+    delta = round(max(0.0, target_counter - initial_offer), 2)
+    delta_pct = round((delta / initial_offer) * 100.0, 1) if initial_offer > 0 else 0.0
+
+    points = [p.strip() for p in (leverage_points or []) if p and p.strip()]
+    if points:
+        points_text = "\n" + "\n".join(f"- {p}" for p in points) + "\n"
+    else:
+        points_text = "- Alignment with current market benchmarks for staff-level contributions\n- Demonstrated track record of delivering high-impact system reliability and scale\n"
+
+    email_subject = f"Offer Follow-up: {clean_role} — {clean_company}"
+    email_body = f"""Dear Hiring Team,
+
+Thank you very much for extending the offer for the {clean_role} position at {clean_company}. I am genuinely excited about the team's mission and the opportunity to make meaningful contributions to your roadmap.
+
+After careful consideration of the overall package and market data for this tier of responsibility:
+{points_text}
+I would be delighted to formally accept an updated base compensation of ${target_counter:,.0f}.
+
+I am confident that my technical leadership and domain expertise will deliver tremendous value to {clean_company}. Please let me know if we can schedule a quick brief sync to finalize details.
+
+Warm regards,
+Candidate"""
+
+    phone_points = [
+        f"Express genuine gratitude and excitement for the offer at {clean_company}.",
+        f"Reiterate core value proposition and key competencies: {', '.join(points[:2]) if points else 'Proven architecture and delivery record'}.",
+        f"State counter-offer clearly: 'Based on my target scope and market rates, I am looking for ${target_counter:,.0f} base salary.'",
+        "Keep the tone collaborative: 'If we can align on this figure, I am ready to sign and get started.'",
+        "Be comfortable pausing and letting the hiring manager respond before speaking again."
+    ]
+
+    return {
+        "status": "success",
+        "email_subject": email_subject,
+        "email_body": email_body,
+        "phone_script_bullet_points": phone_points,
+        "counter_delta": delta,
+        "counter_delta_pct": delta_pct
+    }
+

@@ -993,3 +993,22 @@ class SessionPreferencesResponse(BaseModel):
     status: str = Field(default="success")
     session_id: str
     preferences: Dict[str, Any] = Field(default_factory=dict)
+
+
+class SalaryNegotiationScriptRequest(BaseModel):
+    """Payload to generate custom salary negotiation and counter-offer scripts."""
+    company: str = Field(..., description="Hiring company name")
+    role_title: str = Field(..., description="Offered role title")
+    initial_offer: float = Field(..., ge=0, description="Initial offered base salary")
+    target_counter: float = Field(..., ge=0, description="Desired counter-offer target base")
+    key_leverage_points: Optional[List[str]] = Field(default_factory=list, description="Candidate leverage points e.g. competing offers, specialized skills")
+
+
+class SalaryNegotiationScriptResponse(BaseModel):
+    """Generated email counter-offer template and live call talking points."""
+    status: str = Field(default="success")
+    email_subject: str
+    email_body: str
+    phone_script_bullet_points: List[str] = Field(default_factory=list)
+    counter_delta: float
+    counter_delta_pct: float
