@@ -1084,6 +1084,49 @@ async def bulk_delete_bookmarks_endpoint(payload: BulkBookmarkDeleteRequest):
     )
 
 
+@app.get(
+    "/api/bookmarks/export",
+    summary="Export bookmarks as JSON or CSV",
+    tags=["Bookmarks"]
+)
+async def export_bookmarks_endpoint(
+    format: str = Query("json", description="Export format: json or csv")
+):
+    """Export all saved job bookmarks in JSON or CSV format for spreadsheet tracking."""
+    fmt = (format or "json").strip().lower()
+    if fmt not in {"json", "csv"}:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid format. Supported export formats are 'json' and 'csv'."
+        )
+
+    bookmarks = get_bookmarked_jobs()
+    if fmt == "csv":
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(["Job ID", "Job Title", "Company", "Location", "Category", "Saved Date", "Notes"])
+        for bm in bookmarks:
+            writer.writerow([
+                bm.get("job_id", ""),
+                bm.get("job_title", ""),
+                bm.get("company", ""),
+                bm.get("location", ""),
+                bm.get("category", "") or "",
+                bm.get("saved_date", ""),
+                bm.get("notes") or ""
+            ])
+        return Response(
+            content=output.getvalue(),
+            media_type="text/csv",
+            headers={"Content-Disposition": "attachment; filename=job_bookmarks.csv"}
+        )
+
+    return JSONResponse(
+        content=bookmarks,
+        headers={"Content-Disposition": "attachment; filename=job_bookmarks.json"}
+    )
+
+
 @app.post("/api/bookmarks/{job_id}", status_code=status.HTTP_201_CREATED, summary="Bookmark a job posting", tags=["Bookmarks"])
 async def bookmark_job_endpoint(job_id: str):
     """Save a job posting to bookmarks for later review."""

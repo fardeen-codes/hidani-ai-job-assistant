@@ -1693,6 +1693,33 @@ class BackendTestCase(unittest.TestCase):
         # Clean up
         withdraw_application(self.test_job_id)
 
+    def test_export_bookmarks_csv_and_json(self):
+        """Test exporting bookmarks in both CSV and JSON formats."""
+        # Ensure a bookmark exists
+        self.client.post(f"/api/bookmarks/{self.test_job_id}")
+
+        # 1. Export JSON
+        res_json = self.client.get("/api/bookmarks/export?format=json")
+        self.assertEqual(res_json.status_code, 200)
+        self.assertIn("application/json", res_json.headers.get("content-type", ""))
+        bm_list = res_json.json()
+        self.assertIsInstance(bm_list, list)
+        self.assertTrue(any(b["job_id"] == self.test_job_id for b in bm_list))
+
+        # 2. Export CSV
+        res_csv = self.client.get("/api/bookmarks/export?format=csv")
+        self.assertEqual(res_csv.status_code, 200)
+        self.assertIn("text/csv", res_csv.headers.get("content-type", ""))
+        self.assertIn("Job ID,Job Title,Company", res_csv.text)
+        self.assertIn(self.test_job_id, res_csv.text)
+
+        # 3. Invalid format 400
+        res_inv = self.client.get("/api/bookmarks/export?format=xml")
+        self.assertEqual(res_inv.status_code, 400)
+
+        # Clean up
+        self.client.delete(f"/api/bookmarks/{self.test_job_id}")
+
 
 if __name__ == "__main__":
     unittest.main()
