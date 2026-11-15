@@ -1530,6 +1530,35 @@ class BackendTestCase(unittest.TestCase):
         # Clean up
         withdraw_application(self.test_job_id)
 
+    def test_execute_saved_search(self):
+        """Test running a saved search subscription query and updating match metadata."""
+        # 1. Create saved search
+        payload = {
+            "title": "Python Engineering Remote",
+            "query": "python",
+            "location": "remote",
+            "category": "Engineering"
+        }
+        res_create = self.client.post("/api/searches/saved", json=payload)
+        self.assertEqual(res_create.status_code, 201)
+        search_id = res_create.json()["search_id"]
+
+        # 2. Run saved search
+        res_run = self.client.post(f"/api/searches/saved/{search_id}/run?limit=5")
+        self.assertEqual(res_run.status_code, 200)
+        data = res_run.json()
+        self.assertEqual(data["search_id"], search_id)
+        self.assertIn("total_matches", data)
+        self.assertIn("executed_at", data)
+        self.assertIn("jobs", data)
+
+        # 3. 404 for invalid search_id
+        res_404 = self.client.post("/api/searches/saved/invalid-search-9999/run")
+        self.assertEqual(res_404.status_code, 404)
+
+        # Clean up
+        self.client.delete(f"/api/searches/saved/{search_id}")
+
 
 if __name__ == "__main__":
     unittest.main()

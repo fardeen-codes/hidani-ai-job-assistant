@@ -58,6 +58,7 @@ from app.schemas import (
     SalaryInfo,
     SavedSearch,
     SavedSearchCreateRequest,
+    SavedSearchExecutionResponse,
     SearchHistoryEntry,
     SearchSuggestionsResponse,
     SkillGapAnalysisResponse,
@@ -77,6 +78,7 @@ from app.services.db_service import (
     create_database_backup,
     create_saved_search,
     delete_saved_search,
+    execute_saved_search,
     get_application_funnel_metrics,
     get_application_stats,
     get_application_status,
@@ -390,6 +392,26 @@ async def delete_saved_search_endpoint(search_id: str):
     if not success:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=message)
     return {"status": "success", "message": message}
+
+
+@app.post(
+    "/api/searches/saved/{search_id}/run",
+    response_model=SavedSearchExecutionResponse,
+    summary="Execute a saved search subscription query",
+    tags=["Searches"]
+)
+async def execute_saved_search_endpoint(
+    search_id: str,
+    limit: int = Query(15, ge=1, le=50, description="Max job matches to return")
+):
+    """Execute a saved search criteria subscription and update match counts and execution timestamps."""
+    clean_id = (search_id or "").strip()
+    if not clean_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Search ID cannot be empty.")
+    success, message, result = execute_saved_search(clean_id, limit=limit)
+    if not success:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=message)
+    return result
 
 
 @app.get("/api/jobs/stats", response_model=JobStatsResponse, summary="Get job database statistics and market insights", tags=["Jobs"])

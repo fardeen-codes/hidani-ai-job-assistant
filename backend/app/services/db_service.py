@@ -1718,6 +1718,50 @@ def delete_saved_search(search_id: str) -> Tuple[bool, str]:
     return True, f"Saved search with ID '{clean_id}' has been deleted."
 
 
+def execute_saved_search(search_id: str, limit: int = 15) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
+    """
+    Execute a saved search subscription query, updating last_run and match_count metadata.
+    Returns: (success: bool, message: str, result_dict: Optional[dict])
+    """
+    clean_id = (search_id or "").strip()
+    if not clean_id:
+        return False, "Search ID cannot be empty.", None
+
+    with _db_lock:
+        searches = load_saved_searches()
+        target_search = None
+        for s in searches:
+            if s.get("search_id") == clean_id:
+                target_search = s
+                break
+
+        if not target_search:
+            return False, f"Saved search with ID '{clean_id}' was not found.", None
+
+        matching_jobs = search_jobs(
+            query=target_search.get("query"),
+            location=target_search.get("location"),
+            experience_level=target_search.get("experience_level"),
+            category=target_search.get("category"),
+            limit=limit
+        )
+
+        now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+        target_search["last_run"] = now_str
+        target_search["match_count"] = len(matching_jobs)
+        _save_saved_searches(searches)
+
+    result = {
+        "search_id": clean_id,
+        "title": target_search.get("title"),
+        "total_matches": len(matching_jobs),
+        "executed_at": now_str,
+        "jobs": matching_jobs
+    }
+    logger.info(f"Executed saved search '{target_search.get('title')}' ({len(matching_jobs)} matches)")
+    return True, f"Saved search '{target_search.get('title')}' executed with {len(matching_jobs)} match(es).", result
+
+
 def create_database_backup() -> Dict[str, Any]:
     """
     Generate a full structured database backup snapshot of all writable collections:

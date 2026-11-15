@@ -219,6 +219,17 @@ class SavedSearch(BaseModel):
     experience_level: Optional[str] = None
     category: Optional[str] = None
     created_date: str = Field(description="Timestamp of creation")
+    last_run: Optional[str] = Field(default=None, description="Timestamp of last search execution")
+    match_count: Optional[int] = Field(default=None, description="Number of matching jobs found on last run")
+
+
+class SavedSearchExecutionResponse(BaseModel):
+    """Result of running a saved search subscription query."""
+    search_id: str = Field(description="Unique identifier of the executed search")
+    title: str = Field(description="Saved search title")
+    total_matches: int = Field(description="Total matching jobs found")
+    executed_at: str = Field(description="Timestamp when query was run")
+    jobs: List[Dict[str, Any]] = Field(default_factory=list, description="Top matching job results")
 
 
 class ChatRequest(BaseModel):
