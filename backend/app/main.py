@@ -89,6 +89,8 @@ from app.schemas import (
     SkillSalaryInsightsResponse,
     TierSalaryInsightsResponse,
     UploadResumeResponse,
+    WorkPreferencesResponse,
+    WorkPreferencesUpdateRequest,
 )
 from app.services.db_service import (
     add_application_attachment,
@@ -116,6 +118,7 @@ from app.services.db_service import (
     get_bookmark_categories,
     get_bookmarked_jobs,
     get_candidate_salary_preferences,
+    get_candidate_work_preferences,
     get_company_profile,
     get_database_audit_log,
     get_database_storage_metrics,
@@ -150,6 +153,7 @@ from app.services.db_service import (
     update_application_status,
     update_application_tags,
     update_candidate_salary_preferences,
+    update_candidate_work_preferences,
     update_job_bookmark,
     update_saved_search,
     withdraw_application,
@@ -324,6 +328,41 @@ async def update_salary_preferences_endpoint(payload: SalaryPreferenceUpdateRequ
         "target_max_salary": prefs.get("target_max_salary"),
         "currency": prefs.get("currency", "USD"),
         "period": prefs.get("period", "year")
+    }
+
+
+@app.get(
+    "/api/profile/work-preferences",
+    response_model=WorkPreferencesResponse,
+    summary="Get candidate target work environment preferences",
+    tags=["Resume"]
+)
+async def get_work_preferences_endpoint():
+    """Retrieve candidate preferred company sizes, industry sectors, and remote flexibility."""
+    return get_candidate_work_preferences()
+
+
+@app.patch(
+    "/api/profile/work-preferences",
+    response_model=WorkPreferencesResponse,
+    summary="Update candidate target work environment preferences",
+    tags=["Resume"]
+)
+async def update_work_preferences_endpoint(payload: WorkPreferencesUpdateRequest):
+    """Update candidate target company stages, industries, or remote preference."""
+    success, message, prefs = update_candidate_work_preferences(
+        company_sizes=payload.company_sizes,
+        preferred_industries=payload.preferred_industries,
+        remote_preference=payload.remote_preference or "any"
+    )
+    if not success:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=message)
+    return {
+        "status": "success",
+        "message": message,
+        "company_sizes": prefs.get("company_sizes", []),
+        "preferred_industries": prefs.get("preferred_industries", []),
+        "remote_preference": prefs.get("remote_preference", "any")
     }
 
 

@@ -3152,3 +3152,46 @@ def get_candidate_salary_preferences() -> Dict[str, Any]:
         "period": prefs.get("period", "year")
     }
 
+
+def update_candidate_work_preferences(
+    company_sizes: Optional[List[str]] = None,
+    preferred_industries: Optional[List[str]] = None,
+    remote_preference: str = "any"
+) -> Tuple[bool, str, Dict[str, Any]]:
+    """Update and persist candidate work environment and company preferences."""
+    with _db_lock:
+        profile = load_candidate_profile()
+        prefs = profile.get("work_preferences", {})
+        if company_sizes is not None:
+            clean_sizes = [s.strip() for s in company_sizes if s and s.strip()]
+            prefs["company_sizes"] = list(dict.fromkeys(clean_sizes))
+        if preferred_industries is not None:
+            clean_industries = [ind.strip() for ind in preferred_industries if ind and ind.strip()]
+            prefs["preferred_industries"] = list(dict.fromkeys(clean_industries))
+        if remote_preference:
+            clean_rem = remote_preference.strip().lower()
+            if clean_rem in ("remote", "hybrid", "onsite", "any"):
+                prefs["remote_preference"] = clean_rem
+            else:
+                prefs["remote_preference"] = "any"
+
+        prefs["updated_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+        profile["work_preferences"] = prefs
+        save_candidate_profile(profile)
+
+    logger.info(f"Updated work preferences: {prefs}")
+    return True, "Work preferences updated successfully.", prefs
+
+
+def get_candidate_work_preferences() -> Dict[str, Any]:
+    """Retrieve candidate saved company size, industry, and remote work preferences."""
+    profile = load_candidate_profile()
+    prefs = profile.get("work_preferences", {})
+    return {
+        "status": "success",
+        "message": "Work preferences retrieved.",
+        "company_sizes": prefs.get("company_sizes", []),
+        "preferred_industries": prefs.get("preferred_industries", []),
+        "remote_preference": prefs.get("remote_preference", "any")
+    }
+

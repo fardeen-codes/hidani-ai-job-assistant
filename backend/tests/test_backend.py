@@ -2135,6 +2135,29 @@ class BackendTestCase(unittest.TestCase):
         })
         self.assertEqual(res_invalid.status_code, 400)
 
+    def test_candidate_work_preferences_lifecycle(self):
+        """Test setting and retrieving company stage, industry, and remote work preferences."""
+        # 1. Update preferences -> 200 OK
+        payload = {
+            "company_sizes": ["Startup", "Growth"],
+            "preferred_industries": ["Fintech", "AI/ML", "DevTools"],
+            "remote_preference": "remote"
+        }
+        res_patch = self.client.patch("/api/profile/work-preferences", json=payload)
+        self.assertEqual(res_patch.status_code, 200)
+        data = res_patch.json()
+        self.assertEqual(data["status"], "success")
+        self.assertEqual(data["remote_preference"], "remote")
+        self.assertIn("Fintech", data["preferred_industries"])
+        self.assertIn("Startup", data["company_sizes"])
+
+        # 2. Retrieve preferences via GET -> 200 OK
+        res_get = self.client.get("/api/profile/work-preferences")
+        self.assertEqual(res_get.status_code, 200)
+        data_get = res_get.json()
+        self.assertEqual(data_get["remote_preference"], "remote")
+        self.assertEqual(len(data_get["preferred_industries"]), 3)
+
 
 if __name__ == "__main__":
     unittest.main()

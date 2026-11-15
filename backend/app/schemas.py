@@ -697,3 +697,19 @@ class SalaryPreferenceResponse(BaseModel):
     target_max_salary: Optional[float] = None
     currency: str = Field(default="USD")
     period: str = Field(default="year")
+
+
+class WorkPreferencesUpdateRequest(BaseModel):
+    """Candidate company size, industry domain, and remote work preferences."""
+    company_sizes: Optional[List[str]] = Field(default_factory=list, description="Target company stages: Startup, Growth, Mid-Market, Enterprise")
+    preferred_industries: Optional[List[str]] = Field(default_factory=list, description="Preferred domains: Fintech, AI/ML, HealthTech, E-Commerce, DevTools")
+    remote_preference: Optional[str] = Field("any", description="'remote', 'hybrid', 'onsite', or 'any'")
+
+
+class WorkPreferencesResponse(BaseModel):
+    """Response containing candidate saved work environment preferences."""
+    status: str = Field(default="success")
+    message: str = Field(description="Status confirmation message")
+    company_sizes: List[str] = Field(default_factory=list)
+    preferred_industries: List[str] = Field(default_factory=list)
+    remote_preference: str = Field(default="any")
