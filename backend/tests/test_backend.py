@@ -2313,6 +2313,29 @@ class BackendTestCase(unittest.TestCase):
             self.assertIn("job_count", item)
             self.assertIn("percentage", item)
 
+    def test_application_source_tracking(self):
+        """Test recording and updating application submission channel / referral source."""
+        # 1. Apply to job
+        self.client.post("/api/applications", json={"job_id": self.test_job_id})
+
+        # 2. Update source
+        res_patch = self.client.patch(
+            f"/api/applications/{self.test_job_id}/source",
+            json={"source": "LinkedIn Referral"}
+        )
+        self.assertEqual(res_patch.status_code, 200)
+        app_data = res_patch.json()["application"]
+        self.assertEqual(app_data["source"], "LinkedIn Referral")
+
+        # 3. Check timeline
+        res_time = self.client.get(f"/api/applications/{self.test_job_id}/timeline")
+        self.assertEqual(res_time.status_code, 200)
+        events = res_time.json()["timeline"]
+        self.assertTrue(any(e["event_type"] == "SOURCE_UPDATED" for e in events))
+
+        # 4. Clean up
+        withdraw_application(self.test_job_id)
+
 
 if __name__ == "__main__":
     unittest.main()

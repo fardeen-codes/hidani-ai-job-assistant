@@ -45,6 +45,7 @@ from app.schemas import (
     ApplicationPriorityUpdateRequest,
     ApplicationRejectionAnalyticsResponse,
     ApplicationReminderUpdateRequest,
+    ApplicationSourceUpdateRequest,
     ApplicationStatsResponse,
     ApplicationStatusUpdateRequest,
     ApplicationTagsUpdateRequest,
@@ -172,6 +173,7 @@ from app.services.db_service import (
     update_application_outcome,
     update_application_priority,
     update_application_reminder,
+    update_application_source,
     update_application_status,
     update_application_tags,
     update_candidate_salary_preferences,
@@ -1466,6 +1468,27 @@ async def update_application_deadlines_endpoint(job_id: str, payload: Applicatio
         decision_deadline=payload.decision_deadline,
         expected_feedback_date=payload.expected_feedback_date
     )
+    if not success:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=message)
+    return {
+        "status": "success",
+        "message": message,
+        "application": updated_app
+    }
+
+
+@app.patch(
+    "/api/applications/{job_id}/source",
+    response_model=dict,
+    summary="Update application submission channel",
+    tags=["Applications"]
+)
+async def update_application_source_endpoint(job_id: str, payload: ApplicationSourceUpdateRequest):
+    """Update application submission channel or referral source."""
+    clean_id = (job_id or "").strip()
+    if not clean_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Job ID cannot be empty.")
+    success, message, updated_app = update_application_source(clean_id, payload.source)
     if not success:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=message)
     return {

@@ -1242,6 +1242,42 @@ def update_application_deadlines(
     return True, f"Deadlines updated for Job ID '{clean_id}'.", target_app
 
 
+def update_application_source(
+    job_id: str,
+    source: str
+) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
+    """
+    Update the referral or application channel source (e.g. LinkedIn, Referral, Company Site).
+    """
+    clean_id = (job_id or "").strip()
+    if not clean_id:
+        return False, "Job ID cannot be empty.", None
+
+    clean_source = (source or "").strip()
+    if not clean_source:
+        return False, "Application source cannot be empty.", None
+
+    with _db_lock:
+        applications = load_applications()
+        target_app = None
+        for app in applications:
+            if app.get("job_id") == clean_id:
+                old_source = app.get("source", "Direct / Portal")
+                app["source"] = clean_source
+                _record_app_event(app, "SOURCE_UPDATED", f"Source updated from '{old_source}' to '{clean_source}'")
+                _log_db_audit_entry("SOURCE_UPDATE", "application", clean_id, f"Source updated to '{clean_source}'")
+                target_app = app
+                break
+
+        if not target_app:
+            return False, f"No existing application found for Job ID '{clean_id}'.", None
+
+        _save_applications(applications)
+
+    logger.info(f"Updated application source for {clean_id} to '{clean_source}'")
+    return True, f"Application source updated for Job ID '{clean_id}'.", target_app
+
+
 def add_application_attachment(
     job_id: str,
     file_name: str,

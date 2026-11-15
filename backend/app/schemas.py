@@ -128,7 +128,13 @@ class JobApplication(BaseModel):
     outcome: Optional[str] = Field(default=None, description="Final outcome: Offer, Rejected, Accepted, Declined")
     rejection_reason: Optional[str] = Field(default=None, description="Reason code: Skill Gap, Compensation, Headcount, etc.")
     feedback_notes: Optional[str] = Field(default=None, description="Detailed interviewer or debrief feedback")
+    source: Optional[str] = Field(default="Direct / Portal", description="Application submission channel")
     timeline: List[ApplicationTimelineEvent] = Field(default_factory=list, description="Audit log of application events")
+
+
+class ApplicationSourceUpdateRequest(BaseModel):
+    """Payload to update the referral or submission source of an application."""
+    source: str = Field(..., min_length=2, max_length=100, description="Submission channel (e.g. LinkedIn, Referral, Careers Page, Recruiter)")
 
 
 class ApplicationOutcomeUpdateRequest(BaseModel):
