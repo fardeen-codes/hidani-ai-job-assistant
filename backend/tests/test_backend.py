@@ -1296,6 +1296,30 @@ class BackendTestCase(unittest.TestCase):
         # Clean up
         withdraw_application(self.test_job_id)
 
+    def test_bookmark_notes_and_category_update(self):
+        """Test adding notes and folder categorization to saved bookmarks."""
+        # Ensure bookmark exists
+        self.client.delete(f"/api/bookmarks/{self.test_job_id}")
+        self.client.post(f"/api/bookmarks/{self.test_job_id}")
+
+        # Update bookmark with notes and category
+        payload = {
+            "notes": "Spoke with hiring manager on LinkedIn; great culture fit.",
+            "category": "Priority Outreach"
+        }
+        res = self.client.patch(f"/api/bookmarks/{self.test_job_id}", json=payload)
+        self.assertEqual(res.status_code, 200)
+        bm_data = res.json()["bookmark"]
+        self.assertEqual(bm_data["notes"], payload["notes"])
+        self.assertEqual(bm_data["category"], "Priority Outreach")
+
+        # 404 for non-existent bookmark
+        res_404 = self.client.patch("/api/bookmarks/non-existent-bookmark-123", json=payload)
+        self.assertEqual(res_404.status_code, 404)
+
+        # Clean up
+        self.client.delete(f"/api/bookmarks/{self.test_job_id}")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -118,6 +118,14 @@ class JobBookmark(BaseModel):
     job_title: Optional[str] = Field(default=None, description="Title of the job")
     company: Optional[str] = Field(default=None, description="Company name")
     location: Optional[str] = Field(default=None, description="Work location")
+    notes: Optional[str] = Field(default=None, description="Personal candidate notes about this saved role")
+    category: Optional[str] = Field(default=None, description="User or industry category tag")
+
+
+class BookmarkUpdateRequest(BaseModel):
+    """Payload to update notes or category of a saved bookmark."""
+    notes: Optional[str] = Field(None, description="Personal notes or comments on this bookmark")
+    category: Optional[str] = Field(None, description="Categorization or folder tag")
 
 
 class SearchHistoryEntry(BaseModel):

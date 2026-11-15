@@ -36,6 +36,7 @@ from app.schemas import (
     ApplicationStatusUpdateRequest,
     ApplicationTagsUpdateRequest,
     ApplicationTimelineResponse,
+    BookmarkUpdateRequest,
     BulkApplicationStatusUpdateRequest,
     BulkApplicationStatusUpdateResponse,
     ChatRequest,
@@ -83,6 +84,7 @@ from app.services.db_service import (
     update_application_reminder,
     update_application_status,
     update_application_tags,
+    update_job_bookmark,
     withdraw_application,
 )
 from app.services.document_parser import (
@@ -847,6 +849,27 @@ async def remove_bookmark_endpoint(job_id: str):
         "status": "success",
         "message": message,
         "job_id": clean_id
+    }
+
+
+@app.patch(
+    "/api/bookmarks/{job_id}",
+    response_model=dict,
+    summary="Update notes or category on a saved bookmark",
+    tags=["Bookmarks"]
+)
+async def update_job_bookmark_endpoint(job_id: str, payload: BookmarkUpdateRequest):
+    """Update personal candidate notes or category folder for a bookmarked job posting."""
+    clean_id = (job_id or "").strip()
+    if not clean_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Job ID cannot be empty.")
+    success, message, updated_bm = update_job_bookmark(clean_id, notes=payload.notes, category=payload.category)
+    if not success:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=message)
+    return {
+        "status": "success",
+        "message": message,
+        "bookmark": updated_bm
     }
 
 

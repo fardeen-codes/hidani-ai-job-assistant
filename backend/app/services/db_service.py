@@ -1044,6 +1044,41 @@ def remove_job_bookmark(job_id: str) -> Tuple[bool, str]:
     return True, f"Job ID '{clean_id}' removed from your saved bookmarks."
 
 
+def update_job_bookmark(
+    job_id: str,
+    notes: Optional[str] = None,
+    category: Optional[str] = None
+) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
+    """
+    Update personal notes or categorization tag on an existing job bookmark.
+    Returns: (success: bool, message: str, updated_bookmark: Optional[dict])
+    """
+    clean_id = (job_id or "").strip()
+    if not clean_id:
+        return False, "Job ID cannot be empty.", None
+
+    with _db_lock:
+        bookmarks = load_bookmarks()
+        target_bm = None
+        for b in bookmarks:
+            if b.get("job_id", "").strip().lower() == clean_id.lower():
+                if notes is not None:
+                    b["notes"] = notes.strip() or None
+                if category is not None:
+                    b["category"] = category.strip() or None
+                b["updated_date"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+                target_bm = b
+                break
+
+        if not target_bm:
+            return False, f"No bookmark found for Job ID '{clean_id}'.", None
+
+        _save_bookmarks(bookmarks)
+
+    logger.info(f"Updated bookmark notes/category for job {clean_id}")
+    return True, f"Bookmark for Job ID '{clean_id}' updated successfully.", target_bm
+
+
 def _save_search_history(history: List[Dict[str, Any]]) -> None:
     """Persist search history atomically and synchronize in-memory cache."""
     global _search_history_cache, _search_history_cache_mtime
