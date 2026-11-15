@@ -19,6 +19,7 @@ from app.agents.matcher_agent import (
     batch_score_jobs,
     calculate_weighted_skill_match,
     generate_learning_roadmap,
+    score_career_transition,
 )
 from app.agents.orchestrator import (
     clear_session_state,
@@ -79,6 +80,8 @@ from app.schemas import (
     BulkApplicationStatusUpdateResponse,
     BulkBookmarkDeleteRequest,
     BulkBookmarkDeleteResponse,
+    CareerTransitionRequest,
+    CareerTransitionResponse,
     CertificationAddRequest,
     CertificationItem,
     CertificationsResponse,
@@ -1139,6 +1142,22 @@ async def calculate_weighted_skill_match_endpoint(payload: WeightedSkillScoreReq
             detail=f"Job with ID '{payload.job_id}' was not found in the database."
         )
     return result
+
+
+@app.post(
+    "/api/matcher/career-transition-score",
+    response_model=CareerTransitionResponse,
+    summary="Evaluate career trajectory leap and bridge skills between roles",
+    tags=["Matcher"]
+)
+async def score_career_transition_endpoint(payload: CareerTransitionRequest):
+    """Assess transition difficulty, similarity score, and bridge competencies between current and target titles."""
+    return score_career_transition(
+        current_title=payload.current_title,
+        target_title=payload.target_title,
+        current_experience_years=payload.current_experience_years or 3.0
+    )
+
 
 
 

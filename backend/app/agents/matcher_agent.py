@@ -8,6 +8,7 @@ Includes heuristic fallback for instantaneous offline execution.
 
 import json
 import logging
+import re
 from typing import Any, Dict, List, Optional
 
 from app.config import OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_MODEL, is_openai_configured
@@ -558,5 +559,98 @@ def calculate_weighted_skill_match(
         "missing_skills": missing_skills,
         "skill_weights_applied": applied_weights
     }
+
+
+def _get_seniority_level(title: str) -> int:
+    """Helper to detect approximate seniority tier from title."""
+    t = title.lower()
+    if any(k in t for k in ["vp", "director", "head of", "chief", "manager"]):
+        return 5
+    if any(k in t for k in ["staff", "principal", "architect", "lead"]):
+        return 4
+    if any(k in t for k in ["senior", "sr.", "sr "]):
+        return 3
+    if any(k in t for k in ["intern", "graduate", "junior", "jr.", "entry"]):
+        return 1
+    return 2 # Mid-level default
+
+
+def score_career_transition(
+    current_title: str,
+    target_title: str,
+    current_experience_years: float = 3.0
+) -> Dict[str, Any]:
+    """
+    Evaluate career transition feasibility, trajectory difficulty, and recommend bridge competencies.
+    """
+    cur_clean = (current_title or "").strip()
+    tgt_clean = (target_title or "").strip()
+
+    cur_words = set(re.findall(r"[a-zA-Z]+", cur_clean.lower()))
+    tgt_words = set(re.findall(r"[a-zA-Z]+", tgt_clean.lower()))
+
+    # Ignore generic filler words
+    stopwords = {"and", "of", "the", "in", "for", "with", "at", "to", "engineer", "specialist"}
+    cur_core = cur_words - stopwords or cur_words
+    tgt_core = tgt_words - stopwords or tgt_words
+
+    intersection = cur_core & tgt_core
+    union = cur_core | tgt_core
+    jaccard = len(intersection) / max(len(union), 1)
+
+    cur_seniority = _get_seniority_level(cur_clean)
+    tgt_seniority = _get_seniority_level(tgt_clean)
+    seniority_delta = tgt_seniority - cur_seniority
+
+    base_similarity = round(jaccard * 50.0 + 35.0, 1)
+
+    if seniority_delta > 0:
+        if jaccard >= 0.3:
+            transition_type = "Seniority Promotion"
+            if seniority_delta == 1:
+                difficulty = "Moderate"
+                base_similarity = min(base_similarity + 10.0, 92.0)
+                bridge_skills = ["System Architecture Design", "Technical Mentorship", "Cross-Functional Project Ownership"]
+                advice = f"Your background strongly positions you for a step up to {tgt_clean}. Emphasize projects where you drove technical decisions and mentored teammates."
+            else:
+                difficulty = "High"
+                base_similarity = max(base_similarity - 10.0, 45.0)
+                bridge_skills = ["Large-Scale Distributed Systems", "Staff-Level Architectural Strategy", "Executive Stakeholder Alignment"]
+                advice = f"Leaping multiple seniority tiers to {tgt_clean} requires demonstrating enterprise-scale system ownership and organization-wide influence."
+        else:
+            transition_type = "Domain Shift"
+            difficulty = "High"
+            bridge_skills = ["Core Domain Tooling", "Cross-Domain Translation", "Proof of Concept Portfolio"]
+            advice = f"Transitioning from {cur_clean} to {tgt_clean} spans both a domain pivot and higher seniority. Build high-visibility portfolio projects in the new domain."
+    elif jaccard >= 0.4:
+        transition_type = "Lateral Move"
+        difficulty = "Low"
+        base_similarity = min(base_similarity + 15.0, 95.0)
+        bridge_skills = ["Tech Stack Translation", "Domain-Specific Paradigms", "Agile Execution Adaptability"]
+        advice = f"Direct lateral alignment. Your core skillset translates naturally to {tgt_clean}."
+    elif jaccard >= 0.15:
+        transition_type = "Domain Shift"
+        difficulty = "Moderate"
+        base_similarity = min(max(base_similarity, 50.0), 75.0)
+        bridge_skills = ["Target Domain Foundations", "Hands-On Integration Projects", "Domain Terminology & RFCs"]
+        advice = f"A solid adjacent transition. Highlight foundational engineering strengths while closing specific {tgt_clean} domain nuances."
+    else:
+        transition_type = "Radical Pivot"
+        difficulty = "Very High"
+        base_similarity = min(max(base_similarity - 15.0, 20.0), 45.0)
+        bridge_skills = ["Foundational Domain Bootcamp", "End-to-End Capstone Projects", "Open-Source Contributions in New Field"]
+        advice = f"This represents a substantial career pivot. Dedicate focused study to bridge skills and develop public proof-of-work repositories."
+
+    return {
+        "status": "success",
+        "current_title": cur_clean,
+        "target_title": tgt_clean,
+        "similarity_score": round(base_similarity, 1),
+        "transition_type": transition_type,
+        "estimated_difficulty": difficulty,
+        "recommended_bridge_skills": bridge_skills,
+        "key_advice": advice
+    }
+
 
 

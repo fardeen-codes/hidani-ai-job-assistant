@@ -2662,6 +2662,36 @@ class BackendTestCase(unittest.TestCase):
         res_404 = self.client.post("/api/matcher/weighted-score", json={"job_id": "job-non-existent-99999"})
         self.assertEqual(res_404.status_code, 404)
 
+    def test_career_transition_scoring(self):
+        """Test career trajectory transition analysis between roles."""
+        # 1. Promotion transition
+        promo_payload = {
+            "current_title": "Backend Software Engineer",
+            "target_title": "Senior Backend Software Engineer",
+            "current_experience_years": 4.0
+        }
+        res_promo = self.client.post("/api/matcher/career-transition-score", json=promo_payload)
+        self.assertEqual(res_promo.status_code, 200)
+        data_promo = res_promo.json()
+        self.assertEqual(data_promo["status"], "success")
+        self.assertEqual(data_promo["transition_type"], "Seniority Promotion")
+        self.assertEqual(data_promo["estimated_difficulty"], "Moderate")
+        self.assertGreater(data_promo["similarity_score"], 60.0)
+        self.assertTrue(len(data_promo["recommended_bridge_skills"]) >= 2)
+
+        # 2. Radical pivot transition
+        pivot_payload = {
+            "current_title": "Graphic Designer",
+            "target_title": "Staff Cloud Architect",
+            "current_experience_years": 2.0
+        }
+        res_pivot = self.client.post("/api/matcher/career-transition-score", json=pivot_payload)
+        self.assertEqual(res_pivot.status_code, 200)
+        data_pivot = res_pivot.json()
+        self.assertEqual(data_pivot["transition_type"], "Domain Shift")
+        self.assertEqual(data_pivot["estimated_difficulty"], "High")
+        self.assertIn("key_advice", data_pivot)
+
 
 if __name__ == "__main__":
     unittest.main()

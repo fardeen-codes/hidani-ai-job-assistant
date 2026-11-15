@@ -1079,4 +1079,24 @@ class WeightedSkillScoreResponse(BaseModel):
     skill_weights_applied: Dict[str, float] = Field(default_factory=dict)
 
 
+class CareerTransitionRequest(BaseModel):
+    """Payload to evaluate career trajectory leap between current and target titles."""
+    current_title: str = Field(..., description="Current or previous job title")
+    target_title: str = Field(..., description="Target aspirational job title")
+    current_experience_years: Optional[float] = Field(default=3.0, ge=0, description="Candidate years of experience")
+
+
+class CareerTransitionResponse(BaseModel):
+    """Career trajectory transition similarity, difficulty level, and recommended bridge competencies."""
+    status: str = Field(default="success")
+    current_title: str
+    target_title: str
+    similarity_score: float = Field(ge=0, le=100, description="Trajectory alignment score (0-100)")
+    transition_type: str = Field(description="'Lateral Move', 'Seniority Promotion', 'Domain Shift', or 'Radical Pivot'")
+    estimated_difficulty: str = Field(description="'Low', 'Moderate', 'High', or 'Very High'")
+    recommended_bridge_skills: List[str] = Field(default_factory=list)
+    key_advice: str
+
+
+
 
