@@ -35,6 +35,7 @@ from app.schemas import (
     ApplicationInterviewCreateRequest,
     ApplicationNotesUpdateRequest,
     ApplicationOutcomeUpdateRequest,
+    ApplicationPriorityUpdateRequest,
     ApplicationReminderUpdateRequest,
     ApplicationStatsResponse,
     ApplicationStatusUpdateRequest,
@@ -111,6 +112,7 @@ from app.services.db_service import (
     search_jobs,
     update_application_notes,
     update_application_outcome,
+    update_application_priority,
     update_application_reminder,
     update_application_status,
     update_application_tags,
@@ -575,6 +577,8 @@ async def get_applications_list(
     status: Optional[str] = Query(None, description="Optional status filter (e.g. Applied, Under Review)"),
     search: Optional[str] = Query(None, description="Optional search keyword matching job title or company"),
     tag: Optional[str] = Query(None, description="Optional tag filter"),
+    priority: Optional[str] = Query(None, description="Optional priority filter (Low, Medium, High, Urgent)"),
+    is_favorite: Optional[bool] = Query(None, description="Optional filter for starred/favorite applications"),
     include_archived: bool = Query(False, description="Whether to include archived applications")
 ):
     """List all recorded job applications from applications.json with optional status, search, and tag filters."""
@@ -598,6 +602,11 @@ async def get_applications_list(
             a for a in apps
             if any(tag_clean == (t or "").strip().lower() for t in a.get("tags", []))
         ]
+    if priority:
+        prio_clean = priority.strip().lower()
+        apps = [a for a in apps if (a.get("priority") or "medium").strip().lower() == prio_clean]
+    if is_favorite is not None:
+        apps = [a for a in apps if bool(a.get("is_favorite", False)) == is_favorite]
     return apps
 
 
@@ -949,6 +958,33 @@ async def archive_application_endpoint(job_id: str, payload: ApplicationArchiveU
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Job ID cannot be empty.")
     success, message, updated_app = archive_application(clean_id, archived=payload.archived)
     if not success:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=message)
+    return {
+        "status": "success",
+        "message": message,
+        "application": updated_app
+    }
+
+
+@app.patch(
+    "/api/applications/{job_id}/priority",
+    response_model=dict,
+    summary="Update application priority level or star status",
+    tags=["Applications"]
+)
+async def update_application_priority_endpoint(job_id: str, payload: ApplicationPriorityUpdateRequest):
+    """Set application priority rating (Low, Medium, High, Urgent) or toggle starred status."""
+    clean_id = (job_id or "").strip()
+    if not clean_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Job ID cannot be empty.")
+    success, message, updated_app = update_application_priority(
+        clean_id,
+        priority=payload.priority,
+        is_favorite=payload.is_favorite
+    )
+    if not success:
+        if "Invalid priority" in message:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=message)
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=message)
     return {
         "status": "success",

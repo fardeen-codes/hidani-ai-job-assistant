@@ -1069,6 +1069,62 @@ def archive_application(job_id: str, archived: bool = True) -> Tuple[bool, str, 
     return True, f"Application for Job ID '{clean_id}' has been {action_word}.", target_app
 
 
+VALID_APPLICATION_PRIORITIES = {"low": "Low", "medium": "Medium", "high": "High", "urgent": "Urgent"}
+
+
+def update_application_priority(
+    job_id: str,
+    priority: Optional[str] = None,
+    is_favorite: Optional[bool] = None
+) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
+    """
+    Update priority rating (Low, Medium, High, Urgent) or star/favorite flag for an application.
+    Records event in audit timeline and logs audit entry.
+    Returns: (success: bool, message: str, updated_application: Optional[dict])
+    """
+    clean_id = (job_id or "").strip()
+    if not clean_id:
+        return False, "Job ID cannot be empty.", None
+
+    canonical_prio = None
+    if priority is not None:
+        clean_prio = priority.strip().lower()
+        if clean_prio not in VALID_APPLICATION_PRIORITIES:
+            allowed = ", ".join(VALID_APPLICATION_PRIORITIES.values())
+            return False, f"Invalid priority '{priority}'. Allowed values: {allowed}.", None
+        canonical_prio = VALID_APPLICATION_PRIORITIES[clean_prio]
+
+    now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+
+    with _db_lock:
+        applications = load_applications()
+        target_app = None
+        for app in applications:
+            if app.get("job_id", "").strip().lower() == clean_id.lower():
+                changes = []
+                if canonical_prio is not None:
+                    app["priority"] = canonical_prio
+                    changes.append(f"priority set to {canonical_prio}")
+                if is_favorite is not None:
+                    app["is_favorite"] = bool(is_favorite)
+                    changes.append("starred" if is_favorite else "unstarred")
+
+                app["updated_date"] = now_str
+                if changes:
+                    _record_app_event(app, "PRIORITY_UPDATED", f"Application {', '.join(changes)}")
+                    _log_db_audit_entry("PRIORITY_UPDATE", "application", clean_id, f"Application {', '.join(changes)}")
+                target_app = app
+                break
+
+        if not target_app:
+            return False, f"No existing application found for Job ID '{clean_id}'.", None
+
+        _save_applications(applications)
+
+    logger.info(f"Updated priority/favorite for application {clean_id}")
+    return True, f"Application priority/favorite updated for Job ID '{clean_id}'.", target_app
+
+
 def add_application_attachment(
     job_id: str,
     file_name: str,

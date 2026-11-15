@@ -114,6 +114,8 @@ class JobApplication(BaseModel):
     attachments: List[ApplicationAttachment] = Field(default_factory=list, description="Associated document attachments")
     is_archived: bool = Field(default=False, description="Whether application has been archived")
     archived_date: Optional[str] = Field(default=None, description="Timestamp of archiving")
+    priority: Optional[str] = Field(default="Medium", description="Application priority level: Low, Medium, High, Urgent")
+    is_favorite: Optional[bool] = Field(default=False, description="Candidate starred / favorited flag")
     outcome: Optional[str] = Field(default=None, description="Final outcome: Offer, Rejected, Accepted, Declined")
     rejection_reason: Optional[str] = Field(default=None, description="Reason code: Skill Gap, Compensation, Headcount, etc.")
     feedback_notes: Optional[str] = Field(default=None, description="Detailed interviewer or debrief feedback")
@@ -135,6 +137,12 @@ class ApplicationArchiveUpdateRequest(BaseModel):
 class ApplicationTagsUpdateRequest(BaseModel):
     """Payload to update custom organization tags on an application."""
     tags: List[str] = Field(..., max_length=15, description="List of custom tags (max 15)")
+
+
+class ApplicationPriorityUpdateRequest(BaseModel):
+    """Payload to update application priority level or starred status."""
+    priority: Optional[str] = Field(None, description="Priority rating: Low, Medium, High, Urgent")
+    is_favorite: Optional[bool] = Field(None, description="Star or favorite indicator")
 
 
 class ApplicationTimelineResponse(BaseModel):

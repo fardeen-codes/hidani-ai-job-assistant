@@ -1720,6 +1720,37 @@ class BackendTestCase(unittest.TestCase):
         # Clean up
         self.client.delete(f"/api/bookmarks/{self.test_job_id}")
 
+    def test_application_priority_and_favorite_lifecycle(self):
+        """Test setting application priority level, starring as favorite, and filtering."""
+        # 1. Apply to job
+        self.client.post("/api/applications", json={"job_id": self.test_job_id, "notes": "Priority test"})
+
+        # 2. Update priority to High and star as favorite
+        res_prio = self.client.patch(
+            f"/api/applications/{self.test_job_id}/priority",
+            json={"priority": "High", "is_favorite": True}
+        )
+        self.assertEqual(res_prio.status_code, 200)
+        app_data = res_prio.json()["application"]
+        self.assertEqual(app_data["priority"], "High")
+        self.assertTrue(app_data["is_favorite"])
+
+        # 3. Filter applications by priority and favorite
+        res_filter = self.client.get("/api/applications?priority=High&is_favorite=true")
+        self.assertEqual(res_filter.status_code, 200)
+        apps = res_filter.json()
+        self.assertTrue(any(a["job_id"] == self.test_job_id for a in apps))
+
+        # 4. Invalid priority returns 400
+        res_inv = self.client.patch(
+            f"/api/applications/{self.test_job_id}/priority",
+            json={"priority": "SuperCriticalMega"}
+        )
+        self.assertEqual(res_inv.status_code, 400)
+
+        # Clean up
+        withdraw_application(self.test_job_id)
+
 
 if __name__ == "__main__":
     unittest.main()
