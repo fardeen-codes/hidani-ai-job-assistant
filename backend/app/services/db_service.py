@@ -3552,3 +3552,66 @@ def get_skill_correlations(skill: str, limit: int = 10) -> Dict[str, Any]:
         "correlated_skills": correlated
     }
 
+
+def get_remote_work_breakdown() -> Dict[str, Any]:
+    """
+    Compute market distribution across workplace arrangements (Fully Remote, Hybrid, Onsite).
+    """
+    jobs = load_jobs()
+    total_jobs = len(jobs)
+    if total_jobs == 0:
+        return {
+            "status": "success",
+            "total_jobs_analyzed": 0,
+            "breakdown": []
+        }
+
+    groups: Dict[str, List[Dict[str, Any]]] = {
+        "Fully Remote": [],
+        "Hybrid": [],
+        "Onsite": [],
+        "Unspecified": []
+    }
+
+    for job in jobs:
+        loc = (job.get("location") or "").lower()
+        if not loc:
+            groups["Unspecified"].append(job)
+        elif "hybrid" in loc or "flexible" in loc:
+            groups["Hybrid"].append(job)
+        elif "remote" in loc or "anywhere" in loc or "worldwide" in loc:
+            groups["Fully Remote"].append(job)
+        else:
+            groups["Onsite"].append(job)
+
+    breakdown = []
+    for policy, p_jobs in groups.items():
+        count = len(p_jobs)
+        pct = round((count / total_jobs) * 100.0, 1)
+        salaries = []
+        for j in p_jobs:
+            sal = j.get("salary")
+            if isinstance(sal, dict):
+                max_s = sal.get("max_salary") or sal.get("min_salary")
+                if max_s and max_s > 0:
+                    p = sal.get("period", "year")
+                    if p == "hour":
+                        max_s *= 2000.0
+                    elif p == "month":
+                        max_s *= 12.0
+                    salaries.append(max_s)
+        avg_max_sal = round(sum(salaries) / len(salaries), 2) if salaries else None
+        breakdown.append({
+            "workplace_type": policy,
+            "job_count": count,
+            "percentage": pct,
+            "avg_max_salary": avg_max_sal
+        })
+
+    breakdown.sort(key=lambda x: -x["job_count"])
+    return {
+        "status": "success",
+        "total_jobs_analyzed": total_jobs,
+        "breakdown": breakdown
+    }
+

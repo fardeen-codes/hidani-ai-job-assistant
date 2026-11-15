@@ -2297,6 +2297,22 @@ class BackendTestCase(unittest.TestCase):
             self.assertGreater(item["affinity_score"], 0.0)
             self.assertLessEqual(item["affinity_score"], 1.0)
 
+    def test_remote_work_breakdown_analytics(self):
+        """Test market breakdown across remote, hybrid, and onsite workplace arrangements."""
+        res = self.client.get("/api/jobs/analytics/remote-breakdown")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "success")
+        self.assertGreater(data["total_jobs_analyzed"], 0)
+        self.assertIsInstance(data["breakdown"], list)
+        self.assertTrue(len(data["breakdown"]) >= 3)
+        types = [b["workplace_type"] for b in data["breakdown"]]
+        self.assertIn("Fully Remote", types)
+        self.assertIn("Onsite", types)
+        for item in data["breakdown"]:
+            self.assertIn("job_count", item)
+            self.assertIn("percentage", item)
+
 
 if __name__ == "__main__":
     unittest.main()

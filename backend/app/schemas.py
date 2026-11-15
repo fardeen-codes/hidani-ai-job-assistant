@@ -816,3 +816,18 @@ class SkillCorrelationResponse(BaseModel):
     target_skill: str = Field(description="Queried anchor skill")
     total_jobs_with_skill: int = Field(description="Total jobs containing the anchor skill")
     correlated_skills: List[SkillCoOccurrenceItem] = Field(default_factory=list)
+
+
+class RemoteWorkPolicyMetric(BaseModel):
+    """Distribution metrics for workplace flexibility arrangement."""
+    workplace_type: str = Field(description="Policy: 'Fully Remote', 'Hybrid', 'Onsite', or 'Unspecified'")
+    job_count: int = Field(description="Total jobs offering this work arrangement")
+    percentage: float = Field(description="Percentage share of total job market")
+    avg_max_salary: Optional[float] = Field(None, description="Average maximum annualized salary in this group")
+
+
+class RemoteWorkBreakdownResponse(BaseModel):
+    """Market breakdown across remote, hybrid, and onsite job opportunities."""
+    status: str = Field(default="success")
+    total_jobs_analyzed: int = Field(description="Total analyzed listings")
+    breakdown: List[RemoteWorkPolicyMetric] = Field(default_factory=list)

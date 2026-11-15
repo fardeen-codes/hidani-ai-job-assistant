@@ -82,6 +82,8 @@ from app.schemas import (
     JobStatsResponse,
     JobTagCloudResponse,
     ProfileCompletenessResponse,
+    RemoteWorkBreakdownResponse,
+    RemoteWorkPolicyMetric,
     SalaryInfo,
     SalaryPreferenceResponse,
     SalaryPreferenceUpdateRequest,
@@ -144,6 +146,7 @@ from app.services.db_service import (
     get_job_tag_cloud,
     get_recent_searches,
     get_rejection_analytics,
+    get_remote_work_breakdown,
     get_search_suggestions,
     get_similar_jobs,
     get_skill_correlations,
@@ -857,6 +860,17 @@ async def get_skill_correlations_endpoint(
 ):
     """Identify companion skills most frequently demanded alongside a target technical skill."""
     return get_skill_correlations(skill=skill, limit=limit)
+
+
+@app.get(
+    "/api/jobs/analytics/remote-breakdown",
+    response_model=RemoteWorkBreakdownResponse,
+    summary="Get remote vs hybrid vs onsite market breakdown",
+    tags=["Jobs"]
+)
+async def get_remote_work_breakdown_endpoint():
+    """Analyze the distribution of remote, hybrid, and onsite job listings with average salary benchmarks."""
+    return get_remote_work_breakdown()
 
 
 @app.get("/api/jobs/export/csv", summary="Export jobs as CSV", tags=["Jobs"])
