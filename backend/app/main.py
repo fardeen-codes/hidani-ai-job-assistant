@@ -35,6 +35,8 @@ from app.schemas import (
     ApplicationAttachmentCreateRequest,
     ApplicationCreateRequest,
     ApplicationDeadlinesUpdateRequest,
+    ATSScoreRequest,
+    ATSScoreResponse,
     ApplicationFunnelResponse,
     ApplicationInterviewCreateRequest,
     InterviewStageUpdateRequest,
@@ -100,6 +102,7 @@ from app.services.db_service import (
     add_application_interview,
     add_candidate_certification,
     advanced_filter_jobs,
+    analyze_resume_ats_readability,
     apply_to_job,
     archive_application,
     benchmark_database_performance,
@@ -252,6 +255,17 @@ async def upload_resume(file: UploadFile = File(...)):
     except Exception as exc:
         logger.error(f"Unexpected error handling resume upload: {exc}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to process resume: {str(exc)}")
+
+
+@app.post(
+    "/api/resume/ats-score",
+    response_model=ATSScoreResponse,
+    summary="Analyze resume ATS compatibility and keyword density",
+    tags=["Resume"]
+)
+async def analyze_ats_score_endpoint(payload: ATSScoreRequest):
+    """Analyze resume plain text for ATS keyword density, formatting, and structural completeness."""
+    return analyze_resume_ats_readability(payload.resume_text, target_category=payload.target_category)
 
 
 @app.get(

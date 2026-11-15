@@ -2190,6 +2190,48 @@ class BackendTestCase(unittest.TestCase):
         res_del_404 = self.client.delete(f"/api/profile/certifications/{cert_id}")
         self.assertEqual(res_del_404.status_code, 404)
 
+    def test_resume_ats_readability_analysis(self):
+        """Test resume ATS scoring, section recognition, keyword density, and advice generation."""
+        # 1. Short text validation error -> 422
+        res_short = self.client.post("/api/resume/ats-score", json={"resume_text": "Too brief"})
+        self.assertEqual(res_short.status_code, 422)
+
+        # 2. Comprehensive resume evaluation -> 200 OK
+        sample_resume = """
+        Alex Chen - Senior Distributed Systems Engineer
+        Email: alex.chen@example.com | Phone: +1-555-0182 | LinkedIn: linkedin.com/in/alexchen
+
+        Summary:
+        Accomplished software engineer with 6+ years of experience designing, deploying, and scaling
+        cloud-native microservices, automated CI/CD pipelines, and high-performance database architectures.
+
+        Work Experience:
+        Senior Software Engineer - CloudScale Systems (2021 - Present)
+        - Architected and developed event-driven message broker handling 50k requests per second.
+        - Optimized distributed database query performance, decreasing p99 latency by 45%.
+        - Led cross-functional team of 6 engineers to deploy secure Kubernetes infrastructure.
+
+        Technical Skills:
+        Python, Go, FastAPI, Docker, Kubernetes, PostgreSQL, Redis, AWS, System Architecture, Testing.
+
+        Education:
+        B.S. in Computer Science - Stanford University, 2018
+
+        Projects:
+        Open Source Async Query Engine: Built high-throughput data streamer in Go.
+        """
+        res = self.client.post("/api/resume/ats-score", json={"resume_text": sample_resume})
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "success")
+        self.assertGreaterEqual(data["ats_score"], 70)
+        self.assertIn(data["readability_grade"], ["Medium", "High"])
+        self.assertGreater(data["word_count"], 100)
+        self.assertIn("Work Experience", data["detected_sections"])
+        self.assertIn("Technical Skills", data["detected_sections"])
+        self.assertTrue(len(data["keyword_density"]) >= 3)
+        self.assertTrue(len(data["sections_breakdown"]) >= 5)
+
 
 if __name__ == "__main__":
     unittest.main()

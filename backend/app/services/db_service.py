@@ -3257,3 +3257,102 @@ def get_candidate_certifications() -> List[Dict[str, Any]]:
     profile = load_candidate_profile()
     return profile.get("certifications", [])
 
+
+def analyze_resume_ats_readability(
+    resume_text: str,
+    target_category: Optional[str] = "Engineering"
+) -> Dict[str, Any]:
+    """
+    Evaluate resume ATS readability, section header recognition, keyword density, and actionable advice.
+    """
+    text = (resume_text or "").strip()
+    words = re.findall(r"\b[A-Za-z0-9+#.-]+\b", text)
+    word_count = len(words)
+    lower_text = text.lower()
+
+    # Standard section detection
+    standard_sections = [
+        ("Contact Information", [r"\bemail\b", r"\bphone\b", r"\bcontact\b", r"\blinkedin\b", r"\bgithub\b"]),
+        ("Professional Summary", [r"\bsummary\b", r"\bprofile\b", r"\babout\b", r"\bobjective\b"]),
+        ("Work Experience", [r"\bexperience\b", r"\bemployment\b", r"\bwork history\b", r"\bcareer\b"]),
+        ("Technical Skills", [r"\bskills\b", r"\btechnologies\b", r"\btech stack\b", r"\bproficiencies\b"]),
+        ("Education", [r"\beducation\b", r"\bdegree\b", r"\buniversity\b", r"\bcollege\b", r"\bacademics\b"]),
+        ("Projects", [r"\bprojects\b", r"\bportfolio\b", r"\bkey achievements\b"]),
+    ]
+
+    detected_sections = []
+    missing_sections = []
+    sections_breakdown = []
+    section_score = 0
+
+    for sec_name, patterns in standard_sections:
+        found = any(re.search(pat, lower_text) for pat in patterns)
+        if found:
+            detected_sections.append(sec_name)
+            section_score += 10
+            sections_breakdown.append({
+                "section": sec_name,
+                "detected": True,
+                "word_count": max(15, word_count // len(standard_sections)),
+                "quality_rating": "Good"
+            })
+        else:
+            missing_sections.append(sec_name)
+            sections_breakdown.append({
+                "section": sec_name,
+                "detected": False,
+                "word_count": 0,
+                "quality_rating": "Missing"
+            })
+
+    # High impact action/industry keywords
+    action_keywords = [
+        "lead", "develop", "architect", "design", "deploy", "optimize", "scale",
+        "manage", "collaborate", "test", "build", "api", "database", "cloud",
+        "performance", "security", "automated", "pipeline", "distributed", "engineer"
+    ]
+    keyword_counts = Counter(w.lower() for w in words if w.lower() in action_keywords)
+    top_keywords = dict(keyword_counts.most_common(10))
+
+    # Length & readability scoring
+    length_score = 20
+    if word_count < 100:
+        length_score = 5
+    elif word_count < 200:
+        length_score = 12
+    elif word_count > 1200:
+        length_score = 15
+
+    keyword_score = min(20, len(keyword_counts) * 2)
+
+    total_score = min(100, max(10, section_score + length_score + keyword_score))
+
+    if total_score >= 80:
+        readability_grade = "High"
+    elif total_score >= 60:
+        readability_grade = "Medium"
+    else:
+        readability_grade = "Low"
+
+    actionable_tips = []
+    if missing_sections:
+        actionable_tips.append(f"Add standard ATS section headers for: {', '.join(missing_sections)}.")
+    if word_count < 250:
+        actionable_tips.append("Your resume is brief (under 250 words). Expand your accomplishments with quantified impact metrics.")
+    if len(keyword_counts) < 5:
+        actionable_tips.append("Incorporate more active action verbs (e.g. designed, architected, optimized, deployed).")
+    if "Contact Information" in missing_sections:
+        actionable_tips.append("Ensure your email and LinkedIn profile URL are clearly stated in a dedicated header block.")
+
+    return {
+        "status": "success",
+        "ats_score": total_score,
+        "word_count": word_count,
+        "readability_grade": readability_grade,
+        "detected_sections": detected_sections,
+        "missing_recommended_sections": missing_sections,
+        "keyword_density": top_keywords,
+        "actionable_tips": actionable_tips,
+        "sections_breakdown": sections_breakdown
+    }
+

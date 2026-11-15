@@ -739,3 +739,30 @@ class CertificationsResponse(BaseModel):
     status: str = Field(default="success")
     total: int = Field(description="Total candidate certifications")
     certifications: List[CertificationItem] = Field(default_factory=list)
+
+
+class ATSSectionAnalysis(BaseModel):
+    """Audit metric for an individual resume section."""
+    section: str = Field(description="Section name (e.g. Summary, Experience, Education, Skills, Projects)")
+    detected: bool = Field(description="Whether standard header was recognized by ATS scanner")
+    word_count: int = Field(description="Word volume in this section")
+    quality_rating: str = Field(description="'Good', 'Too Short', or 'Missing'")
+
+
+class ATSScoreRequest(BaseModel):
+    """Payload to perform ATS readability and keyword analysis."""
+    resume_text: str = Field(..., min_length=20, description="Raw plain text of candidate resume")
+    target_category: Optional[str] = Field("Engineering", description="Target job industry/domain")
+
+
+class ATSScoreResponse(BaseModel):
+    """ATS readability, keyword density, and optimization recommendations."""
+    status: str = Field(default="success")
+    ats_score: int = Field(description="Overall ATS compatibility score from 0 to 100")
+    word_count: int = Field(description="Total word volume")
+    readability_grade: str = Field(description="'High', 'Medium', or 'Low'")
+    detected_sections: List[str] = Field(default_factory=list)
+    missing_recommended_sections: List[str] = Field(default_factory=list)
+    keyword_density: Dict[str, int] = Field(default_factory=dict, description="Top detected high-impact keywords")
+    actionable_tips: List[str] = Field(default_factory=list)
+    sections_breakdown: List[ATSSectionAnalysis] = Field(default_factory=list)
