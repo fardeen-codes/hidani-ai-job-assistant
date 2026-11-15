@@ -630,6 +630,22 @@ class DatabaseRepairResponse(BaseModel):
     message: str = Field(description="Summary message")
 
 
+class CollectionBenchmarkMetric(BaseModel):
+    """Latency and size benchmark metrics for a single JSON collection."""
+    collection: str = Field(description="Name of the collection file / table")
+    read_latency_ms: float = Field(description="Read latency in milliseconds")
+    record_count: int = Field(description="Total count of records parsed")
+    file_size_bytes: int = Field(description="On-disk storage size in bytes")
+
+
+class DatabaseBenchmarkResponse(BaseModel):
+    """Database read benchmark and latency performance report."""
+    status: str = Field(default="success", description="Status of the benchmark run")
+    timestamp: str = Field(description="Timestamp when benchmark was executed")
+    total_read_time_ms: float = Field(description="Aggregate read latency across all collections in milliseconds")
+    collections: List[CollectionBenchmarkMetric] = Field(default_factory=list, description="Collection benchmark breakdown")
+
+
 class TierSalaryInsight(BaseModel):
     """Compensation statistics broken down by standardized experience tier."""
     tier: str = Field(description="Career tier: Entry-Level, Mid-Level, Senior, Lead")

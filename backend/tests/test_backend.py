@@ -2038,6 +2038,29 @@ class BackendTestCase(unittest.TestCase):
             self.assertIn("median_max_salary", insight)
             self.assertGreater(insight["avg_max_salary"], 0)
 
+    def test_database_benchmark_profiler(self):
+        """Test database read latency benchmarking across JSON collections."""
+        res = self.client.get("/api/admin/db/benchmark")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "success")
+        self.assertIn("timestamp", data)
+        self.assertIn("total_read_time_ms", data)
+        self.assertGreaterEqual(data["total_read_time_ms"], 0.0)
+        self.assertIsInstance(data["collections"], list)
+        self.assertEqual(len(data["collections"]), 5)
+        collection_names = [c["collection"] for c in data["collections"]]
+        self.assertIn("jobs", collection_names)
+        self.assertIn("applications", collection_names)
+        self.assertIn("bookmarks", collection_names)
+        self.assertIn("saved_searches", collection_names)
+        self.assertIn("search_history", collection_names)
+        for metric in data["collections"]:
+            self.assertIn("read_latency_ms", metric)
+            self.assertIn("record_count", metric)
+            self.assertIn("file_size_bytes", metric)
+            self.assertGreaterEqual(metric["read_latency_ms"], 0.0)
+
 
 if __name__ == "__main__":
     unittest.main()

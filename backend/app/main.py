@@ -63,6 +63,7 @@ from app.schemas import (
     CompanyProfile,
     DatabaseAuditLogResponse,
     DatabaseBackupSnapshot,
+    DatabaseBenchmarkResponse,
     DatabaseCompactionResponse,
     DatabaseHealthResponse,
     DatabaseRepairResponse,
@@ -92,6 +93,7 @@ from app.services.db_service import (
     advanced_filter_jobs,
     apply_to_job,
     archive_application,
+    benchmark_database_performance,
     bulk_remove_bookmarks,
     bulk_update_application_status,
     check_database_health,
@@ -1530,6 +1532,17 @@ async def get_database_audit_log_endpoint(
 async def get_database_storage_metrics_endpoint():
     """Compute disk storage size, record counts, and density metrics across all collections."""
     return get_database_storage_metrics()
+
+
+@app.get(
+    "/api/admin/db/benchmark",
+    response_model=DatabaseBenchmarkResponse,
+    summary="Benchmark database read latencies and collection performance",
+    tags=["Database Admin"]
+)
+async def benchmark_database_endpoint():
+    """Execute high-precision read latency benchmarks across all JSON database collections."""
+    return benchmark_database_performance()
 
 
 # Static Frontend Delivery

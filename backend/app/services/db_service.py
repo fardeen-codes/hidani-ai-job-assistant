@@ -10,6 +10,7 @@ import os
 import re
 import tempfile
 import threading
+import time
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
@@ -2467,6 +2468,46 @@ def repair_database_records() -> Dict[str, Any]:
             "repaired_bookmarks": repaired_bms,
             "message": msg
         }
+
+
+def benchmark_database_performance() -> Dict[str, Any]:
+    """
+    Measure read latency and storage footprint across all primary JSON collections.
+    Returns: Dict conforming to DatabaseBenchmarkResponse schema.
+    """
+    collections_to_test = [
+        ("jobs", JOBS_FILE, load_jobs),
+        ("applications", APPLICATIONS_FILE, load_applications),
+        ("bookmarks", BOOKMARKS_FILE, load_bookmarks),
+        ("saved_searches", SAVED_SEARCHES_FILE, load_saved_searches),
+        ("search_history", SEARCH_HISTORY_FILE, load_search_history),
+    ]
+
+    metrics = []
+    total_latency_ms = 0.0
+
+    with _db_lock:
+        for name, file_path, loader_func in collections_to_test:
+            file_size = file_path.stat().st_size if file_path.exists() else 0
+            t0 = time.perf_counter()
+            data = loader_func()
+            t1 = time.perf_counter()
+            latency_ms = round((t1 - t0) * 1000.0, 3)
+            total_latency_ms += latency_ms
+            metrics.append({
+                "collection": name,
+                "read_latency_ms": latency_ms,
+                "record_count": len(data) if isinstance(data, list) else 0,
+                "file_size_bytes": file_size,
+            })
+
+    now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    return {
+        "status": "success",
+        "timestamp": now_str,
+        "total_read_time_ms": round(total_latency_ms, 3),
+        "collections": metrics,
+    }
 
 
 def list_hiring_companies(limit: int = 50) -> List[Dict[str, Any]]:
