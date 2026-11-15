@@ -94,6 +94,8 @@ from app.schemas import (
     SessionMetricsResponse,
     SkillGapAnalysisResponse,
     SkillSalaryInsightsResponse,
+    StaleJobItem,
+    StaleJobsResponse,
     TierSalaryInsightsResponse,
     UploadResumeResponse,
     WorkPreferencesResponse,
@@ -143,6 +145,7 @@ from app.services.db_service import (
     get_search_suggestions,
     get_similar_jobs,
     get_skill_salary_insights,
+    get_stale_jobs,
     get_tier_salary_insights,
     get_upcoming_reminders,
     list_hiring_companies,
@@ -823,6 +826,20 @@ async def get_tier_salary_insights_endpoint():
 async def get_company_hiring_surges_endpoint(limit: int = Query(10, ge=1, le=50)):
     """Analyze company hiring velocity, department expansion patterns, and recent job surges."""
     return get_company_hiring_surges(limit=limit)
+
+
+@app.get(
+    "/api/jobs/analytics/stale",
+    response_model=StaleJobsResponse,
+    summary="Detect stale and aging job postings",
+    tags=["Jobs"]
+)
+async def get_stale_jobs_endpoint(
+    threshold_days: int = Query(45, ge=7, le=180, description="Minimum age in days to consider a posting stale"),
+    limit: int = Query(50, ge=1, le=100, description="Max stale jobs to return")
+):
+    """Scan the job database to surface older listings that may be expired or no longer actively hiring."""
+    return get_stale_jobs(threshold_days=threshold_days, limit=limit)
 
 
 @app.get("/api/jobs/export/csv", summary="Export jobs as CSV", tags=["Jobs"])

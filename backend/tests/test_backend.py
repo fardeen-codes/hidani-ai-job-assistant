@@ -2268,6 +2268,20 @@ class BackendTestCase(unittest.TestCase):
             self.assertIn(item["growth_indicator"], ["Rapid Hiring", "Steady Hiring", "Moderate"])
             self.assertIsInstance(item["sample_roles"], list)
 
+    def test_stale_jobs_detection(self):
+        """Test scanning job database for aging/stale postings exceeding threshold."""
+        res = self.client.get("/api/jobs/analytics/stale?threshold_days=30&limit=10")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "success")
+        self.assertEqual(data["threshold_days"], 30)
+        self.assertIn("total_stale_jobs", data)
+        self.assertIsInstance(data["jobs"], list)
+        for item in data["jobs"]:
+            self.assertIn("job_id", item)
+            self.assertGreaterEqual(item["age_days"], 30)
+            self.assertIn(item["status"], ["stale", "expired"])
+
 
 if __name__ == "__main__":
     unittest.main()

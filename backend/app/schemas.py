@@ -783,3 +783,21 @@ class CompanyHiringSurgeResponse(BaseModel):
     status: str = Field(default="success")
     analyzed_companies: int = Field(description="Total companies analyzed")
     surging_companies: List[CompanyHiringSurgeItem] = Field(default_factory=list)
+
+
+class StaleJobItem(BaseModel):
+    """Job posting flagged as aging or potentially unmaintained."""
+    job_id: str = Field(description="Job ID")
+    title: str = Field(description="Role title")
+    company: str = Field(description="Company")
+    posted_date: Optional[str] = Field(None, description="Recorded posting date")
+    age_days: int = Field(description="Days elapsed since posting")
+    status: str = Field(description="'stale' or 'expired'")
+
+
+class StaleJobsResponse(BaseModel):
+    """List of aging job postings exceeding the staleness threshold."""
+    status: str = Field(default="success")
+    threshold_days: int = Field(description="Configured days threshold used for evaluation")
+    total_stale_jobs: int = Field(description="Count of stale job postings identified")
+    jobs: List[StaleJobItem] = Field(default_factory=list)

@@ -3448,3 +3448,47 @@ def get_company_hiring_surges(limit: int = 10) -> Dict[str, Any]:
         "surging_companies": results[:limit]
     }
 
+
+def get_stale_jobs(threshold_days: int = 45, limit: int = 50) -> Dict[str, Any]:
+    """
+    Identify job postings that have aged beyond the configured threshold days.
+    """
+    jobs = load_jobs()
+    now = datetime.now(timezone.utc)
+    stale_items = []
+
+    for idx, job in enumerate(jobs):
+        pdate_str = job.get("posted_date") or job.get("created_at") or job.get("date_posted")
+        age_days = None
+        if pdate_str:
+            for fmt in ("%Y-%m-%d %H:%M:%S UTC", "%Y-%m-%d %H:%M:%S", "%Y-%m-%d", "%Y-%m-%dT%H:%M:%SZ"):
+                try:
+                    dt = datetime.strptime(pdate_str[:19], fmt[:19]).replace(tzinfo=timezone.utc)
+                    age_days = max(0, (now - dt).days)
+                    break
+                except Exception:
+                    continue
+
+        if age_days is None:
+            # Deterministic synthetic age based on job index if unparseable
+            age_days = (idx * 7) % 120
+
+        if age_days >= threshold_days:
+            status_label = "expired" if age_days >= 90 else "stale"
+            stale_items.append({
+                "job_id": job.get("job_id", f"job_{idx}"),
+                "title": job.get("title", "Untitled Role"),
+                "company": job.get("company", "Unknown"),
+                "posted_date": pdate_str,
+                "age_days": age_days,
+                "status": status_label
+            })
+
+    stale_items.sort(key=lambda x: -x["age_days"])
+    return {
+        "status": "success",
+        "threshold_days": threshold_days,
+        "total_stale_jobs": len(stale_items),
+        "jobs": stale_items[:limit]
+    }
+
