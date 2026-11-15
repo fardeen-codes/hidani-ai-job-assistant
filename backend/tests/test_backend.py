@@ -1320,6 +1320,19 @@ class BackendTestCase(unittest.TestCase):
         # Clean up
         self.client.delete(f"/api/bookmarks/{self.test_job_id}")
 
+    def test_application_funnel_metrics(self):
+        """Test application hiring pipeline conversion funnel calculations."""
+        res = self.client.get("/api/applications/analytics/funnel")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertIn("total_applications", data)
+        self.assertIn("stages", data)
+        self.assertIn("drop_off_rate_percent", data)
+        stage_names = [s["stage"] for s in data["stages"]]
+        self.assertIn("Applied", stage_names)
+        self.assertIn("Under Review", stage_names)
+        self.assertIn("Interview", stage_names)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -29,6 +29,7 @@ from app.config import (
 )
 from app.schemas import (
     ApplicationCreateRequest,
+    ApplicationFunnelResponse,
     ApplicationInterviewCreateRequest,
     ApplicationNotesUpdateRequest,
     ApplicationReminderUpdateRequest,
@@ -64,6 +65,7 @@ from app.services.db_service import (
     create_database_backup,
     create_saved_search,
     delete_saved_search,
+    get_application_funnel_metrics,
     get_application_stats,
     get_application_status,
     get_application_timeline,
@@ -503,6 +505,17 @@ async def submit_application(payload: ApplicationCreateRequest):
 async def get_applications_statistics():
     """Retrieve aggregated statistics across submitted applications including status breakdown and top companies."""
     return get_application_stats()
+
+
+@app.get(
+    "/api/applications/analytics/funnel",
+    response_model=ApplicationFunnelResponse,
+    summary="Get hiring pipeline conversion funnel metrics",
+    tags=["Applications"]
+)
+async def get_applications_funnel_endpoint():
+    """Calculate conversion rates across candidate application pipeline stages."""
+    return get_application_funnel_metrics()
 
 
 @app.get(

@@ -261,6 +261,22 @@ class ApplicationStatsResponse(BaseModel):
     recent_applications: List[JobApplication] = Field(description="Most recently submitted applications")
 
 
+class FunnelStageMetric(BaseModel):
+    """Conversion and throughput metric for a single hiring pipeline stage."""
+    stage: str = Field(description="Pipeline stage name")
+    count: int = Field(description="Number of applications that reached or passed this stage")
+    conversion_rate_percent: float = Field(description="Percentage conversion from initial applications")
+
+
+class ApplicationFunnelResponse(BaseModel):
+    """Full hiring funnel analysis and stage conversion statistics."""
+    total_applications: int = Field(description="Total submitted applications")
+    active_count: int = Field(description="Currently active applications in review or interview")
+    terminal_count: int = Field(description="Finished applications (Accepted, Rejected, Withdrawn)")
+    stages: List[FunnelStageMetric] = Field(default_factory=list, description="Stage progression metrics")
+    drop_off_rate_percent: float = Field(description="Overall attrition or drop-off percentage")
+
+
 class SkillGapAnalysisResponse(BaseModel):
     """Detailed skill comparison and readiness assessment between candidate and job posting."""
     job_id: str = Field(description="Unique identifier of evaluated job")

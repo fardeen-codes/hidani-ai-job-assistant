@@ -944,6 +944,92 @@ def get_application_stats() -> Dict[str, Any]:
     }
 
 
+def get_application_funnel_metrics() -> Dict[str, Any]:
+    """
+    Calculate progressive hiring funnel stages and conversion metrics across submitted applications.
+    Stages: Applied -> Under Review -> Interview -> Offer -> Accepted.
+    """
+    apps = load_applications()
+    total = len(apps)
+    if total == 0:
+        return {
+            "total_applications": 0,
+            "active_count": 0,
+            "terminal_count": 0,
+            "stages": [
+                {"stage": "Applied", "count": 0, "conversion_rate_percent": 0.0},
+                {"stage": "Under Review", "count": 0, "conversion_rate_percent": 0.0},
+                {"stage": "Interview", "count": 0, "conversion_rate_percent": 0.0},
+                {"stage": "Offer", "count": 0, "conversion_rate_percent": 0.0},
+                {"stage": "Accepted", "count": 0, "conversion_rate_percent": 0.0},
+            ],
+            "drop_off_rate_percent": 0.0
+        }
+
+    status_ranks = {
+        "applied": 1,
+        "under review": 2,
+        "review": 2,
+        "screening": 2,
+        "interview": 3,
+        "interviewing": 3,
+        "technical interview": 3,
+        "offer": 4,
+        "accepted": 5,
+        "rejected": 1,
+        "withdrawn": 1
+    }
+
+    stage_definitions = [
+        ("Applied", 1),
+        ("Under Review", 2),
+        ("Interview", 3),
+        ("Offer", 4),
+        ("Accepted", 5),
+    ]
+
+    active_count = 0
+    terminal_count = 0
+    stage_counts = {name: 0 for name, _ in stage_definitions}
+
+    for app in apps:
+        stat_raw = (app.get("status") or "Applied").strip().lower()
+        has_interviews = bool(app.get("interviews"))
+        rank = status_ranks.get(stat_raw, 1)
+        if has_interviews and rank < 3:
+            rank = 3
+
+        if stat_raw in {"accepted", "rejected", "withdrawn"}:
+            terminal_count += 1
+        else:
+            active_count += 1
+
+        for name, threshold in stage_definitions:
+            if rank >= threshold:
+                stage_counts[name] += 1
+
+    stages_metrics = []
+    for name, _ in stage_definitions:
+        cnt = stage_counts[name]
+        rate = round((cnt / total) * 100.0, 1)
+        stages_metrics.append({
+            "stage": name,
+            "count": cnt,
+            "conversion_rate_percent": rate
+        })
+
+    accepted_or_offer = stage_counts.get("Offer", 0)
+    drop_off = round(((total - accepted_or_offer) / total) * 100.0, 1)
+
+    return {
+        "total_applications": total,
+        "active_count": active_count,
+        "terminal_count": terminal_count,
+        "stages": stages_metrics,
+        "drop_off_rate_percent": drop_off
+    }
+
+
 def _save_bookmarks(bookmarks: List[Dict[str, Any]]) -> None:
     """Persist bookmarks atomically and synchronize the in-memory cache."""
     global _bookmarks_cache, _bookmarks_cache_mtime
