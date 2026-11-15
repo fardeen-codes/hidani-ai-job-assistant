@@ -2476,6 +2476,37 @@ class BackendTestCase(unittest.TestCase):
         # 3. Clean up
         withdraw_application(self.test_job_id)
 
+    def test_chat_session_transcript_export(self):
+        """Test exporting conversation session transcript in markdown and plain text formats."""
+        session_id = "test-export-transcript-session"
+        try:
+            # 1. Send chat message
+            res_chat = self.client.post("/api/chat", json={
+                "message": "Hello, show me software engineering jobs",
+                "session_id": session_id
+            })
+            self.assertEqual(res_chat.status_code, 200)
+
+            # 2. Export markdown transcript -> 200 OK
+            res_md = self.client.get(f"/api/chat/session/{session_id}/export?format=markdown")
+            self.assertEqual(res_md.status_code, 200)
+            self.assertIn("text/markdown", res_md.headers["content-type"])
+            self.assertIn(f'filename="transcript_{session_id}.md"', res_md.headers["content-disposition"])
+            self.assertIn(f"# Chat Transcript — Session `{session_id}`", res_md.text)
+            self.assertIn("Hello, show me software engineering jobs", res_md.text)
+
+            # 3. Export text transcript -> 200 OK
+            res_txt = self.client.get(f"/api/chat/session/{session_id}/export?format=text")
+            self.assertEqual(res_txt.status_code, 200)
+            self.assertIn("text/plain", res_txt.headers["content-type"])
+            self.assertIn(f"[USER]: Hello, show me software engineering jobs", res_txt.text)
+
+            # 4. Non-existent session -> 404 Not Found
+            res_404 = self.client.get("/api/chat/session/non-existent-session-9999/export")
+            self.assertEqual(res_404.status_code, 404)
+        finally:
+            self.client.post(f"/api/chat/reset/{session_id}")
+
 
 if __name__ == "__main__":
     unittest.main()

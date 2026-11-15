@@ -985,3 +985,61 @@ def clear_session_state(session_id: str) -> bool:
         _session_metadata.pop(session_id, None)
         return had_state
 
+
+def export_session_transcript(session_id: str, format: str = "markdown") -> Tuple[bool, str, str]:
+    """
+    Format and export conversation history for a chat session in markdown or plain text.
+    """
+    clean_id = (session_id or "").strip()
+    if not clean_id:
+        return False, "Session ID cannot be empty.", ""
+
+    with _session_lock:
+        history = list(_session_histories.get(clean_id, []))
+        meta = _session_metadata.get(clean_id, {})
+
+    if not history:
+        return False, f"No conversation history found for session '{clean_id}'.", ""
+
+    fmt = (format or "markdown").strip().lower()
+    created_at = meta.get("created_at", "N/A")
+
+    def _extract_msg(m: Any) -> Tuple[str, str]:
+        if isinstance(m, dict):
+            r = m.get("role") or "assistant"
+            c = m.get("content") or ""
+        else:
+            r = getattr(m, "role", "assistant") or "assistant"
+            c = getattr(m, "content", "") or ""
+        return str(r), str(c)
+
+    if fmt == "markdown":
+        lines = [
+            f"# Chat Transcript — Session `{clean_id}`",
+            f"*Created:* {created_at} | *Total Messages:* {len(history)}",
+            "",
+            "---",
+            ""
+        ]
+        for msg in history:
+            role, content = _extract_msg(msg)
+            if not content.strip():
+                continue
+            lines.append(f"### **{role.capitalize()}**")
+            lines.append(f"{content}")
+            lines.append("")
+        return True, "Transcript formatted successfully.", "\n".join(lines)
+    else:
+        lines = [
+            f"=== Chat Transcript: {clean_id} ===",
+            f"Created: {created_at} | Messages: {len(history)}",
+            "=====================================",
+            ""
+        ]
+        for msg in history:
+            role, content = _extract_msg(msg)
+            if not content.strip():
+                continue
+            lines.append(f"[{role.upper()}]: {content}\n")
+        return True, "Transcript formatted successfully.", "\n".join(lines)
+

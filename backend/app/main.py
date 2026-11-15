@@ -17,6 +17,7 @@ from fastapi.responses import JSONResponse, Response
 from app.agents.matcher_agent import analyze_skill_gap, batch_score_jobs
 from app.agents.orchestrator import (
     clear_session_state,
+    export_session_transcript,
     get_session_metrics,
     get_session_state,
     run_orchestrator,
@@ -556,6 +557,31 @@ async def get_state(session_id: str = "default-session"):
 async def get_session_metrics_endpoint(session_id: str):
     """Retrieve detailed interaction metrics, turns count, and activity timestamps for a chat session."""
     return get_session_metrics(session_id)
+
+
+@app.get(
+    "/api/chat/session/{session_id}/export",
+    summary="Export chat conversation transcript",
+    tags=["Chat"]
+)
+async def export_chat_transcript_endpoint(
+    session_id: str,
+    format: str = Query("markdown", description="Format: 'markdown' or 'text'")
+):
+    """Export formatted conversation transcript for candidate review or offline storage."""
+    clean_id = (session_id or "").strip()
+    if not clean_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Session ID cannot be empty.")
+    success, message, transcript = export_session_transcript(clean_id, format=format)
+    if not success:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=message)
+    ext = "md" if format == "markdown" else "txt"
+    media_type = "text/markdown" if format == "markdown" else "text/plain"
+    return Response(
+        content=transcript,
+        media_type=media_type,
+        headers={"Content-Disposition": f'attachment; filename="transcript_{clean_id}.{ext}"'}
+    )
 
 
 @app.get("/api/jobs", summary="Browse available jobs", tags=["Jobs"])
