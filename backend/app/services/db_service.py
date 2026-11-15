@@ -20,6 +20,7 @@ from app.config import (
     APPLICATIONS_FILE,
     BOOKMARKS_FILE,
     JOBS_FILE,
+    PROFILE_FILE,
     SAVED_SEARCHES_FILE,
     SEARCH_HISTORY_FILE,
 )
@@ -2846,5 +2847,261 @@ def advanced_filter_jobs(
         "limit": limit,
         "offset": offset,
         "jobs": paged
+    }
+
+
+_profile_cache: Optional[Dict[str, Any]] = None
+_profile_cache_mtime: Optional[float] = None
+
+
+def load_candidate_profile() -> Dict[str, Any]:
+    """Load persistent candidate profile data from JSON storage."""
+    global _profile_cache, _profile_cache_mtime
+    with _db_lock:
+        if not PROFILE_FILE.exists():
+            return {}
+        try:
+            current_mtime = PROFILE_FILE.stat().st_mtime
+            if _profile_cache is not None and _profile_cache_mtime == current_mtime:
+                return dict(_profile_cache)
+
+            with open(PROFILE_FILE, "r", encoding="utf-8") as f:
+                content = f.read().strip()
+                if not content:
+                    _profile_cache = {}
+                    _profile_cache_mtime = current_mtime
+                    return {}
+                data = json.loads(content)
+                _profile_cache = dict(data) if isinstance(data, dict) else {}
+                _profile_cache_mtime = current_mtime
+                return dict(_profile_cache)
+        except Exception as exc:
+            logger.error(f"Error loading candidate profile: {exc}")
+            return dict(_profile_cache) if _profile_cache is not None else {}
+
+
+def save_candidate_profile(profile_data: Dict[str, Any]) -> None:
+    """Persist candidate profile data atomically with thread safety."""
+    global _profile_cache, _profile_cache_mtime
+    with _db_lock:
+        _atomic_write_json(PROFILE_FILE, profile_data)
+        _profile_cache = dict(profile_data)
+        try:
+            _profile_cache_mtime = PROFILE_FILE.stat().st_mtime
+        except Exception:
+            _profile_cache_mtime = None
+
+
+def calculate_profile_completeness(profile: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """
+    Evaluate profile completeness percentage and generate section-by-section audit with feedback.
+    """
+    if profile is None:
+        profile = load_candidate_profile()
+
+    sections: List[Dict[str, Any]] = []
+    completed_sections: List[str] = []
+    missing_sections: List[str] = []
+    improvement_suggestions: List[str] = []
+
+    # 1. Contact Information (weight: 15)
+    name = (profile.get("name") or "").strip()
+    email = (profile.get("email") or "").strip()
+    phone = (profile.get("phone") or "").strip()
+    contact = (profile.get("contact") or "").strip()
+    has_name = bool(name and name.lower() != "candidate")
+    has_contact = bool(email or phone or contact)
+    if has_name and has_contact:
+        c_score = 15
+        c_status = "complete"
+        c_fb = "Contact information is complete."
+        completed_sections.append("Contact Information")
+    elif has_name or has_contact:
+        c_score = 8
+        c_status = "partial"
+        c_fb = "Add your direct email and phone number so employers can reach you."
+        missing_sections.append("Contact Information")
+        improvement_suggestions.append("Provide full email and phone contact details.")
+    else:
+        c_score = 0
+        c_status = "missing"
+        c_fb = "Candidate name and contact information are missing."
+        missing_sections.append("Contact Information")
+        improvement_suggestions.append("Add your full name, email, and contact number.")
+    sections.append({
+        "section": "Contact Information",
+        "status": c_status,
+        "score": c_score,
+        "weight": 15,
+        "feedback": c_fb
+    })
+
+    # 2. Professional Summary (weight: 15)
+    summary = (profile.get("summary") or "").strip()
+    if len(summary) >= 40:
+        s_score = 15
+        s_status = "complete"
+        s_fb = "Strong professional summary highlights your core value proposition."
+        completed_sections.append("Professional Summary")
+    elif len(summary) > 0:
+        s_score = 8
+        s_status = "partial"
+        s_fb = "Expand your summary to at least 40 characters describing your expertise."
+        missing_sections.append("Professional Summary")
+        improvement_suggestions.append("Flesh out your executive summary with your key strengths and career trajectory.")
+    else:
+        s_score = 0
+        s_status = "missing"
+        s_fb = "Professional summary is missing."
+        missing_sections.append("Professional Summary")
+        improvement_suggestions.append("Add a concise professional summary highlighting your career achievements.")
+    sections.append({
+        "section": "Professional Summary",
+        "status": s_status,
+        "score": s_score,
+        "weight": 15,
+        "feedback": s_fb
+    })
+
+    # 3. Technical & Domain Skills (weight: 25)
+    skills = profile.get("skills") or []
+    if len(skills) >= 5:
+        sk_score = 25
+        sk_status = "complete"
+        sk_fb = f"Well-rounded skill profile ({len(skills)} skills listed)."
+        completed_sections.append("Skills")
+    elif len(skills) >= 1:
+        sk_score = 12
+        sk_status = "partial"
+        sk_fb = f"{len(skills)} skills found. Adding at least 5 skills improves job matching accuracy."
+        missing_sections.append("Skills")
+        improvement_suggestions.append("Add at least 5 core technical and industry skills.")
+    else:
+        sk_score = 0
+        sk_status = "missing"
+        sk_fb = "No skills listed on candidate profile."
+        missing_sections.append("Skills")
+        improvement_suggestions.append("List key programming languages, frameworks, and domain expertise.")
+    sections.append({
+        "section": "Skills",
+        "status": sk_status,
+        "score": sk_score,
+        "weight": 25,
+        "feedback": sk_fb
+    })
+
+    # 4. Work Experience (weight: 20)
+    exp = (profile.get("experience") or "").strip()
+    exp_years = (profile.get("experience_years") or "").strip()
+    has_substantive_exp = len(exp) >= 20 or bool(exp_years and exp_years != "1-3 years")
+    if has_substantive_exp:
+        exp_score = 20
+        exp_status = "complete"
+        exp_fb = "Experience background is well documented."
+        completed_sections.append("Work Experience")
+    elif exp:
+        exp_score = 10
+        exp_status = "partial"
+        exp_fb = "Add more detail on past job responsibilities and achievements."
+        missing_sections.append("Work Experience")
+        improvement_suggestions.append("Detail previous work experience with quantitative impact.")
+    else:
+        exp_score = 0
+        exp_status = "missing"
+        exp_fb = "Work experience section is missing."
+        missing_sections.append("Work Experience")
+        improvement_suggestions.append("Add work experience detailing past roles and achievements.")
+    sections.append({
+        "section": "Work Experience",
+        "status": exp_status,
+        "score": exp_score,
+        "weight": 20,
+        "feedback": exp_fb
+    })
+
+    # 5. Education & Credentials (weight: 10)
+    edu = profile.get("education") or []
+    if len(edu) >= 1:
+        edu_score = 10
+        edu_status = "complete"
+        edu_fb = "Academic credentials verified."
+        completed_sections.append("Education")
+    else:
+        edu_score = 0
+        edu_status = "missing"
+        edu_fb = "No academic degrees or educational background listed."
+        missing_sections.append("Education")
+        improvement_suggestions.append("Add degree, university name, or field of study.")
+    sections.append({
+        "section": "Education",
+        "status": edu_status,
+        "score": edu_score,
+        "weight": 10,
+        "feedback": edu_fb
+    })
+
+    # 6. Key Projects (weight: 10)
+    projects = profile.get("projects") or []
+    if len(projects) >= 1:
+        p_score = 10
+        p_status = "complete"
+        p_fb = f"{len(projects)} featured project(s) showcased."
+        completed_sections.append("Projects")
+    else:
+        p_score = 0
+        p_status = "missing"
+        p_fb = "No portfolio projects listed."
+        missing_sections.append("Projects")
+        improvement_suggestions.append("Add 1 or more featured portfolio projects demonstrating applied skills.")
+    sections.append({
+        "section": "Projects",
+        "status": p_status,
+        "score": p_score,
+        "weight": 10,
+        "feedback": p_fb
+    })
+
+    # 7. Preferred Target Roles (weight: 5)
+    preferred_roles = profile.get("preferred_roles") or []
+    if len(preferred_roles) >= 1:
+        r_score = 5
+        r_status = "complete"
+        r_fb = f"Target roles specified: {', '.join(preferred_roles[:3])}."
+        completed_sections.append("Target Roles")
+    else:
+        r_score = 0
+        r_status = "missing"
+        r_fb = "No target roles specified."
+        missing_sections.append("Target Roles")
+        improvement_suggestions.append("Specify your target job titles (e.g. Senior Backend Engineer).")
+    sections.append({
+        "section": "Target Roles",
+        "status": r_status,
+        "score": r_score,
+        "weight": 5,
+        "feedback": r_fb
+    })
+
+    total_score = sum(s["score"] for s in sections)
+    completeness_percentage = min(100, max(0, total_score))
+
+    if completeness_percentage >= 90:
+        rating = "All-Star"
+    elif completeness_percentage >= 75:
+        rating = "Strong"
+    elif completeness_percentage >= 50:
+        rating = "Good"
+    elif completeness_percentage >= 30:
+        rating = "Fair"
+    else:
+        rating = "Poor"
+
+    return {
+        "completeness_percentage": completeness_percentage,
+        "rating": rating,
+        "completed_sections": completed_sections,
+        "missing_sections": missing_sections,
+        "improvement_suggestions": improvement_suggestions,
+        "sections": sections
     }
 

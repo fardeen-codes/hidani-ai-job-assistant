@@ -8,7 +8,7 @@ import csv
 import io
 import logging
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI, File, HTTPException, Query, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -74,6 +74,7 @@ from app.schemas import (
     JobBookmark,
     JobStatsResponse,
     JobTagCloudResponse,
+    ProfileCompletenessResponse,
     SalaryInfo,
     SavedSearch,
     SavedSearchCreateRequest,
@@ -96,6 +97,7 @@ from app.services.db_service import (
     benchmark_database_performance,
     bulk_remove_bookmarks,
     bulk_update_application_status,
+    calculate_profile_completeness,
     check_database_health,
     clear_search_history,
     compact_database,
@@ -126,12 +128,14 @@ from app.services.db_service import (
     get_upcoming_reminders,
     list_hiring_companies,
     load_applications,
+    load_candidate_profile,
     load_jobs,
     load_saved_searches,
     record_search_query,
     remove_job_bookmark,
     repair_database_records,
     restore_database_backup,
+    save_candidate_profile,
     save_job_bookmark,
     search_jobs,
     update_application_deadlines,
@@ -217,6 +221,7 @@ async def upload_resume(file: UploadFile = File(...)):
         
         # Sub-Agent 1: Parse candidate profile with LLM
         candidate_profile = parse_resume_with_llm(extracted_text)
+        save_candidate_profile(candidate_profile.model_dump())
 
         logger.info(f"Resume parsed successfully for candidate '{candidate_profile.name}' ({len(candidate_profile.skills)} skills found)")
 
@@ -233,6 +238,52 @@ async def upload_resume(file: UploadFile = File(...)):
     except Exception as exc:
         logger.error(f"Unexpected error handling resume upload: {exc}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to process resume: {str(exc)}")
+
+
+@app.get(
+    "/api/profile",
+    response_model=Dict[str, Any],
+    summary="Get active candidate profile",
+    tags=["Resume"]
+)
+async def get_candidate_profile_endpoint():
+    """Retrieve currently stored candidate resume profile."""
+    return load_candidate_profile()
+
+
+@app.post(
+    "/api/profile",
+    response_model=Dict[str, Any],
+    summary="Save or update candidate profile",
+    tags=["Resume"]
+)
+async def save_candidate_profile_endpoint(profile: Dict[str, Any]):
+    """Update and persist candidate profile data."""
+    save_candidate_profile(profile)
+    return {"status": "success", "message": "Candidate profile saved successfully.", "profile": profile}
+
+
+@app.get(
+    "/api/profile/completeness",
+    response_model=ProfileCompletenessResponse,
+    summary="Audit candidate profile completeness and strength",
+    tags=["Resume"]
+)
+async def get_profile_completeness_endpoint():
+    """Evaluate profile completeness score (0-100) and identify missing sections for currently loaded profile."""
+    profile = load_candidate_profile()
+    return calculate_profile_completeness(profile)
+
+
+@app.post(
+    "/api/profile/completeness",
+    response_model=ProfileCompletenessResponse,
+    summary="Audit completeness of provided profile payload",
+    tags=["Resume"]
+)
+async def evaluate_profile_completeness_endpoint(profile: Dict[str, Any]):
+    """Evaluate profile completeness score and identify missing sections for an arbitrary profile."""
+    return calculate_profile_completeness(profile)
 
 
 @app.post(

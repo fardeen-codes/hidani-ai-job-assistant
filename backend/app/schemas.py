@@ -660,3 +660,22 @@ class TierSalaryInsightsResponse(BaseModel):
     """Hiring salary distribution across experience tiers."""
     total_tiers: int = Field(description="Number of analyzed experience tiers")
     insights: List[TierSalaryInsight] = Field(default_factory=list, description="Tier compensation insights")
+
+
+class ProfileSectionScore(BaseModel):
+    """Score breakdown for a specific section of the candidate profile."""
+    section: str = Field(description="Profile section name")
+    status: str = Field(description="'complete', 'partial', or 'missing'")
+    score: int = Field(description="Earned points for section")
+    weight: int = Field(description="Max points available for section")
+    feedback: str = Field(description="Actionable suggestion for improvement")
+
+
+class ProfileCompletenessResponse(BaseModel):
+    """Overall candidate profile completeness rating and section breakdown."""
+    completeness_percentage: int = Field(description="Overall profile strength score from 0 to 100")
+    rating: str = Field(description="'Poor', 'Fair', 'Good', 'Strong', or 'All-Star'")
+    completed_sections: List[str] = Field(default_factory=list, description="List of complete sections")
+    missing_sections: List[str] = Field(default_factory=list, description="List of incomplete sections")
+    improvement_suggestions: List[str] = Field(default_factory=list, description="Recommendations to boost score")
+    sections: List[ProfileSectionScore] = Field(default_factory=list, description="Section-by-section audit")

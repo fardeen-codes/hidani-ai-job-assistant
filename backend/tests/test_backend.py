@@ -2061,6 +2061,49 @@ class BackendTestCase(unittest.TestCase):
             self.assertIn("file_size_bytes", metric)
             self.assertGreaterEqual(metric["read_latency_ms"], 0.0)
 
+    def test_candidate_profile_completeness_and_scoring(self):
+        """Test candidate profile completeness auditing, rating tiers, and improvement suggestions."""
+        # 1. Evaluate empty profile -> Poor rating
+        res_empty = self.client.post("/api/profile/completeness", json={})
+        self.assertEqual(res_empty.status_code, 200)
+        data_empty = res_empty.json()
+        self.assertEqual(data_empty["completeness_percentage"], 0)
+        self.assertEqual(data_empty["rating"], "Poor")
+        self.assertTrue(len(data_empty["missing_sections"]) >= 5)
+        self.assertTrue(len(data_empty["improvement_suggestions"]) >= 5)
+
+        # 2. Evaluate comprehensive profile -> All-Star rating
+        full_profile = {
+            "name": "Jane Doe",
+            "email": "jane.doe@example.com",
+            "phone": "+1-555-0199",
+            "summary": "Experienced full-stack software engineer with a track record of scaling high-throughput distributed architectures.",
+            "skills": ["Python", "FastAPI", "React", "Docker", "PostgreSQL", "AWS"],
+            "experience": "Senior Software Engineer at TechCorp for 5 years developing cloud services.",
+            "experience_years": "5+ years",
+            "education": ["B.S. in Computer Science, University of California, 2019"],
+            "projects": ["Distributed Job Crawler in Go and Redis"],
+            "preferred_roles": ["Staff Backend Engineer", "Lead Developer"]
+        }
+        res_full = self.client.post("/api/profile/completeness", json=full_profile)
+        self.assertEqual(res_full.status_code, 200)
+        data_full = res_full.json()
+        self.assertEqual(data_full["completeness_percentage"], 100)
+        self.assertEqual(data_full["rating"], "All-Star")
+        self.assertEqual(len(data_full["missing_sections"]), 0)
+
+        # 3. Save profile and retrieve via GET
+        res_save = self.client.post("/api/profile", json=full_profile)
+        self.assertEqual(res_save.status_code, 200)
+
+        res_get = self.client.get("/api/profile")
+        self.assertEqual(res_get.status_code, 200)
+        self.assertEqual(res_get.json().get("name"), "Jane Doe")
+
+        res_comp_get = self.client.get("/api/profile/completeness")
+        self.assertEqual(res_comp_get.status_code, 200)
+        self.assertEqual(res_comp_get.json()["rating"], "All-Star")
+
 
 if __name__ == "__main__":
     unittest.main()
