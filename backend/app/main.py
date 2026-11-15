@@ -82,6 +82,7 @@ from app.schemas import (
     SessionMetricsResponse,
     SkillGapAnalysisResponse,
     SkillSalaryInsightsResponse,
+    TierSalaryInsightsResponse,
     UploadResumeResponse,
 )
 from app.services.db_service import (
@@ -118,6 +119,7 @@ from app.services.db_service import (
     get_search_suggestions,
     get_similar_jobs,
     get_skill_salary_insights,
+    get_tier_salary_insights,
     get_upcoming_reminders,
     list_hiring_companies,
     load_applications,
@@ -561,6 +563,17 @@ async def get_job_tag_cloud_endpoint(
 ):
     """Retrieve top technical keywords and skills tag cloud with occurrence counts."""
     return get_job_tag_cloud(category=category, limit=limit)
+
+
+@app.get(
+    "/api/jobs/analytics/tier-salaries",
+    response_model=TierSalaryInsightsResponse,
+    summary="Get compensation benchmarks across career tiers",
+    tags=["Jobs"]
+)
+async def get_tier_salary_insights_endpoint():
+    """Retrieve compensation benchmarks and distributions across career tiers (Entry-Level, Mid-Level, Senior, Lead)."""
+    return get_tier_salary_insights()
 
 
 @app.get("/api/jobs/{job_id}", summary="Get job details by ID", tags=["Jobs"])

@@ -618,3 +618,19 @@ class DatabaseRepairResponse(BaseModel):
     repaired_applications: int = Field(description="Count of application records patched with missing default fields")
     repaired_bookmarks: int = Field(description="Count of bookmark records patched with missing default fields")
     message: str = Field(description="Summary message")
+
+
+class TierSalaryInsight(BaseModel):
+    """Compensation statistics broken down by standardized experience tier."""
+    tier: str = Field(description="Career tier: Entry-Level, Mid-Level, Senior, Lead")
+    job_count: int = Field(description="Total jobs with disclosed salary in this tier")
+    avg_min_salary: float = Field(description="Average annualized minimum salary")
+    avg_max_salary: float = Field(description="Average annualized maximum salary")
+    median_max_salary: float = Field(description="Median annualized maximum salary")
+    currency: str = Field(default="USD", description="Currency denominator")
+
+
+class TierSalaryInsightsResponse(BaseModel):
+    """Hiring salary distribution across experience tiers."""
+    total_tiers: int = Field(description="Number of analyzed experience tiers")
+    insights: List[TierSalaryInsight] = Field(default_factory=list, description="Tier compensation insights")

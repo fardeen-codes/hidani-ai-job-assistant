@@ -1969,6 +1969,22 @@ class BackendTestCase(unittest.TestCase):
         # Clean up
         withdraw_application(self.test_job_id)
 
+    def test_tier_salary_analytics(self):
+        """Test tier-level compensation metrics (min, max, median) across career tiers."""
+        res = self.client.get("/api/jobs/analytics/tier-salaries")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertIn("total_tiers", data)
+        self.assertIn("insights", data)
+        self.assertGreater(data["total_tiers"], 0)
+        for insight in data["insights"]:
+            self.assertIn("tier", insight)
+            self.assertIn("job_count", insight)
+            self.assertIn("avg_min_salary", insight)
+            self.assertIn("avg_max_salary", insight)
+            self.assertIn("median_max_salary", insight)
+            self.assertGreater(insight["avg_max_salary"], 0)
+
 
 if __name__ == "__main__":
     unittest.main()
