@@ -56,6 +56,8 @@ from app.schemas import (
     ApplicationTagsUpdateRequest,
     ApplicationTimelineResponse,
     ApplicationVelocityResponse,
+    AutoFollowupRequest,
+    AutoFollowupResponse,
     BatchScoreRequest,
     BatchScoreResponse,
     BookmarkCategoriesResponse,
@@ -125,6 +127,7 @@ from app.services.db_service import (
     benchmark_database_performance,
     bulk_remove_bookmarks,
     bulk_update_application_status,
+    calculate_and_set_auto_followup,
     calculate_profile_completeness,
     check_database_health,
     clear_search_history,
@@ -1576,6 +1579,33 @@ async def update_application_source_endpoint(job_id: str, payload: ApplicationSo
         "message": message,
         "application": updated_app
     }
+
+
+@app.post(
+    "/api/applications/{job_id}/auto-followup",
+    response_model=AutoFollowupResponse,
+    summary="Automatically schedule optimal application follow-up date",
+    tags=["Applications"]
+)
+async def auto_followup_endpoint(job_id: str, payload: AutoFollowupRequest):
+    """Compute future business day milestone and update application reminder deadline."""
+    clean_id = (job_id or "").strip()
+    if not clean_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Job ID cannot be empty.")
+    success, message, date_str, target_app = calculate_and_set_auto_followup(
+        job_id=clean_id,
+        business_days_ahead=payload.business_days_ahead or 5,
+        reason=payload.reason
+    )
+    if not success or not target_app or not date_str:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=message)
+    return AutoFollowupResponse(
+        status="success",
+        message=message,
+        job_id=clean_id,
+        calculated_followup_date=date_str,
+        application=target_app
+    )
 
 
 @app.post(

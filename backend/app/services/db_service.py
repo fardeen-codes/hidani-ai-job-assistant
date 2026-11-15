@@ -14,7 +14,7 @@ import tempfile
 import threading
 import time
 from collections import Counter
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -1338,6 +1338,50 @@ def update_application_source(
 
     logger.info(f"Updated application source for {clean_id} to '{clean_source}'")
     return True, f"Application source updated for Job ID '{clean_id}'.", target_app
+
+
+def calculate_and_set_auto_followup(
+    job_id: str,
+    business_days_ahead: int = 5,
+    reason: Optional[str] = None
+) -> Tuple[bool, str, Optional[str], Optional[Dict[str, Any]]]:
+    """
+    Automatically calculate a future business day date and set as the follow-up reminder.
+    Skips weekends (Saturday, Sunday).
+    """
+    clean_id = (job_id or "").strip()
+    if not clean_id:
+        return False, "Job ID cannot be empty.", None, None
+
+    days_to_add = max(1, min(30, business_days_ahead))
+    current = datetime.now(timezone.utc)
+    added = 0
+    while added < days_to_add:
+        current += timedelta(days=1)
+        if current.weekday() < 5:
+            added += 1
+
+    target_date_str = current.strftime("%Y-%m-%d")
+    note = (reason or "Automated status follow-up").strip()
+
+    with _db_lock:
+        applications = load_applications()
+        target_app = None
+        for app in applications:
+            if app.get("job_id") == clean_id:
+                app["reminder_date"] = target_date_str
+                _record_app_event(app, "REMINDER_SCHEDULED", f"Auto follow-up set for {target_date_str}: {note}")
+                _log_db_audit_entry("REMINDER_UPDATE", "application", clean_id, f"Auto follow-up scheduled for {target_date_str}")
+                target_app = app
+                break
+
+        if not target_app:
+            return False, f"No existing application found for Job ID '{clean_id}'.", None, None
+
+        _save_applications(applications)
+
+    logger.info(f"Scheduled auto follow-up on {target_date_str} for application {clean_id}")
+    return True, f"Follow-up reminder scheduled for {target_date_str}.", target_date_str, target_app
 
 
 def add_application_attachment(

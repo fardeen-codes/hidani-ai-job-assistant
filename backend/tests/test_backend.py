@@ -2430,6 +2430,30 @@ class BackendTestCase(unittest.TestCase):
         self.assertTrue(data["offers"][0]["is_highest_comp"])
         self.assertEqual(data["offers"][1]["rank"], 2)
 
+    def test_application_auto_followup_scheduling(self):
+        """Test business-day forward calculation and automatic reminder scheduling."""
+        # 1. Apply to job
+        self.client.post("/api/applications", json={"job_id": self.test_job_id})
+
+        # 2. Schedule auto follow-up (3 business days ahead)
+        res = self.client.post(
+            f"/api/applications/{self.test_job_id}/auto-followup",
+            json={"business_days_ahead": 3, "reason": "Follow up with talent recruiter"}
+        )
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "success")
+        self.assertIn("calculated_followup_date", data)
+        self.assertEqual(data["application"]["reminder_date"], data["calculated_followup_date"])
+
+        # 3. Verify in timeline
+        res_time = self.client.get(f"/api/applications/{self.test_job_id}/timeline")
+        self.assertEqual(res_time.status_code, 200)
+        self.assertTrue(any(e["event_type"] == "REMINDER_SCHEDULED" for e in res_time.json()["timeline"]))
+
+        # 4. Clean up
+        withdraw_application(self.test_job_id)
+
 
 if __name__ == "__main__":
     unittest.main()

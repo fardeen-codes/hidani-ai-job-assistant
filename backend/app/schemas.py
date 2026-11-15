@@ -919,3 +919,18 @@ class OfferComparisonResponse(BaseModel):
     total_offers_evaluated: int
     highest_paying_company: str
     offers: List[OfferComparisonSummaryItem] = Field(default_factory=list)
+
+
+class AutoFollowupRequest(BaseModel):
+    """Payload to automatically calculate and set next optimal application follow-up date."""
+    business_days_ahead: Optional[int] = Field(5, ge=1, le=30, description="Business days ahead to project")
+    reason: Optional[str] = Field("Status follow-up check", description="Reminder reason or note")
+
+
+class AutoFollowupResponse(BaseModel):
+    """Confirmation of calculated and scheduled application follow-up date."""
+    status: str = Field(default="success")
+    message: str = Field(description="Confirmation message")
+    job_id: str
+    calculated_followup_date: str = Field(description="Calculated reminder date YYYY-MM-DD")
+    application: Dict[str, Any]
