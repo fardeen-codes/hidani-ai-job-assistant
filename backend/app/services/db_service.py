@@ -3195,3 +3195,65 @@ def get_candidate_work_preferences() -> Dict[str, Any]:
         "remote_preference": prefs.get("remote_preference", "any")
     }
 
+
+def add_candidate_certification(
+    name: str,
+    issuer: str,
+    issue_date: Optional[str] = None,
+    expiration_date: Optional[str] = None,
+    credential_url: Optional[str] = None
+) -> Tuple[bool, str, Dict[str, Any]]:
+    """Add a professional certification or credential to candidate profile."""
+    clean_name = (name or "").strip()
+    clean_issuer = (issuer or "").strip()
+    if not clean_name or not clean_issuer:
+        return False, "Certification name and issuer cannot be empty.", {}
+
+    cert_id = f"cert_{int(datetime.now(timezone.utc).timestamp())}_{os.urandom(3).hex()}"
+    new_cert = {
+        "cert_id": cert_id,
+        "name": clean_name,
+        "issuer": clean_issuer,
+        "issue_date": (issue_date or "").strip() or None,
+        "expiration_date": (expiration_date or "").strip() or None,
+        "credential_url": (credential_url or "").strip() or None,
+        "created_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    }
+
+    with _db_lock:
+        profile = load_candidate_profile()
+        certs = profile.get("certifications", [])
+        certs.append(new_cert)
+        profile["certifications"] = certs
+        save_candidate_profile(profile)
+
+    logger.info(f"Added certification '{clean_name}' ({cert_id})")
+    return True, f"Certification '{clean_name}' added successfully.", new_cert
+
+
+def delete_candidate_certification(cert_id: str) -> Tuple[bool, str]:
+    """Remove a certification by its unique cert_id."""
+    clean_id = (cert_id or "").strip()
+    if not clean_id:
+        return False, "Certification ID cannot be empty."
+
+    with _db_lock:
+        profile = load_candidate_profile()
+        certs = profile.get("certifications", [])
+        initial_len = len(certs)
+        remaining = [c for c in certs if c.get("cert_id") != clean_id]
+        if len(remaining) == initial_len:
+            return False, f"Certification with ID '{clean_id}' was not found."
+
+        profile["certifications"] = remaining
+        save_candidate_profile(profile)
+
+    logger.info(f"Deleted certification {clean_id}")
+    return True, f"Certification '{clean_id}' deleted successfully."
+
+
+def get_candidate_certifications() -> List[Dict[str, Any]]:
+    """Retrieve all candidate certifications."""
+    profile = load_candidate_profile()
+    return profile.get("certifications", [])
+

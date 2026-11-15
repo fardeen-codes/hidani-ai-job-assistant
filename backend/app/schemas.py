@@ -713,3 +713,29 @@ class WorkPreferencesResponse(BaseModel):
     company_sizes: List[str] = Field(default_factory=list)
     preferred_industries: List[str] = Field(default_factory=list)
     remote_preference: str = Field(default="any")
+
+
+class CertificationItem(BaseModel):
+    """Candidate professional certification or license record."""
+    cert_id: str = Field(description="Unique credential ID")
+    name: str = Field(description="Certification title")
+    issuer: str = Field(description="Issuing organization")
+    issue_date: Optional[str] = Field(None, description="Issue date (YYYY-MM)")
+    expiration_date: Optional[str] = Field(None, description="Expiration date (YYYY-MM) or 'Never'")
+    credential_url: Optional[str] = Field(None, description="Verification badge URL")
+
+
+class CertificationAddRequest(BaseModel):
+    """Payload to add a new professional certification."""
+    name: str = Field(..., min_length=2, max_length=150, description="Certification title")
+    issuer: str = Field(..., min_length=2, max_length=100, description="Issuing organization")
+    issue_date: Optional[str] = Field(None, description="Issue date (YYYY-MM)")
+    expiration_date: Optional[str] = Field(None, description="Expiration date (YYYY-MM)")
+    credential_url: Optional[str] = Field(None, description="Verification URL")
+
+
+class CertificationsResponse(BaseModel):
+    """List of candidate professional certifications."""
+    status: str = Field(default="success")
+    total: int = Field(description="Total candidate certifications")
+    certifications: List[CertificationItem] = Field(default_factory=list)

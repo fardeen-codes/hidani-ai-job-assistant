@@ -2158,6 +2158,38 @@ class BackendTestCase(unittest.TestCase):
         self.assertEqual(data_get["remote_preference"], "remote")
         self.assertEqual(len(data_get["preferred_industries"]), 3)
 
+    def test_candidate_certifications_management(self):
+        """Test adding, listing, and deleting candidate professional certifications."""
+        # 1. Add certification -> 201 Created
+        payload = {
+            "name": "AWS Certified Solutions Architect",
+            "issuer": "Amazon Web Services",
+            "issue_date": "2024-05",
+            "expiration_date": "2027-05",
+            "credential_url": "https://aws.amazon.com/verify/12345"
+        }
+        res_post = self.client.post("/api/profile/certifications", json=payload)
+        self.assertEqual(res_post.status_code, 201)
+        cert = res_post.json()
+        cert_id = cert["cert_id"]
+        self.assertEqual(cert["name"], "AWS Certified Solutions Architect")
+        self.assertEqual(cert["issuer"], "Amazon Web Services")
+
+        # 2. List certifications -> includes new cert
+        res_list = self.client.get("/api/profile/certifications")
+        self.assertEqual(res_list.status_code, 200)
+        list_data = res_list.json()
+        self.assertGreaterEqual(list_data["total"], 1)
+        self.assertTrue(any(c["cert_id"] == cert_id for c in list_data["certifications"]))
+
+        # 3. Delete certification -> 200 OK
+        res_del = self.client.delete(f"/api/profile/certifications/{cert_id}")
+        self.assertEqual(res_del.status_code, 200)
+
+        # 4. Delete non-existent cert -> 404 Not Found
+        res_del_404 = self.client.delete(f"/api/profile/certifications/{cert_id}")
+        self.assertEqual(res_del_404.status_code, 404)
+
 
 if __name__ == "__main__":
     unittest.main()

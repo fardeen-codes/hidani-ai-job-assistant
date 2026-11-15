@@ -56,6 +56,9 @@ from app.schemas import (
     BulkApplicationStatusUpdateResponse,
     BulkBookmarkDeleteRequest,
     BulkBookmarkDeleteResponse,
+    CertificationAddRequest,
+    CertificationItem,
+    CertificationsResponse,
     ChatRequest,
     ChatResponse,
     ChatStateResponse,
@@ -95,6 +98,7 @@ from app.schemas import (
 from app.services.db_service import (
     add_application_attachment,
     add_application_interview,
+    add_candidate_certification,
     advanced_filter_jobs,
     apply_to_job,
     archive_application,
@@ -107,6 +111,7 @@ from app.services.db_service import (
     compact_database,
     create_database_backup,
     create_saved_search,
+    delete_candidate_certification,
     delete_saved_search,
     execute_saved_search,
     generate_followup_template,
@@ -117,6 +122,7 @@ from app.services.db_service import (
     get_application_velocity_metrics,
     get_bookmark_categories,
     get_bookmarked_jobs,
+    get_candidate_certifications,
     get_candidate_salary_preferences,
     get_candidate_work_preferences,
     get_company_profile,
@@ -364,6 +370,59 @@ async def update_work_preferences_endpoint(payload: WorkPreferencesUpdateRequest
         "preferred_industries": prefs.get("preferred_industries", []),
         "remote_preference": prefs.get("remote_preference", "any")
     }
+
+
+@app.get(
+    "/api/profile/certifications",
+    response_model=CertificationsResponse,
+    summary="List candidate certifications and credentials",
+    tags=["Resume"]
+)
+async def list_certifications_endpoint():
+    """Retrieve all verified professional certifications on candidate profile."""
+    certs = get_candidate_certifications()
+    return CertificationsResponse(
+        status="success",
+        total=len(certs),
+        certifications=certs
+    )
+
+
+@app.post(
+    "/api/profile/certifications",
+    response_model=CertificationItem,
+    status_code=status.HTTP_201_CREATED,
+    summary="Add a professional certification",
+    tags=["Resume"]
+)
+async def add_certification_endpoint(payload: CertificationAddRequest):
+    """Add a new credential or certification to candidate profile."""
+    success, message, new_cert = add_candidate_certification(
+        name=payload.name,
+        issuer=payload.issuer,
+        issue_date=payload.issue_date,
+        expiration_date=payload.expiration_date,
+        credential_url=payload.credential_url
+    )
+    if not success or not new_cert:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=message)
+    return new_cert
+
+
+@app.delete(
+    "/api/profile/certifications/{cert_id}",
+    summary="Delete a candidate certification",
+    tags=["Resume"]
+)
+async def delete_certification_endpoint(cert_id: str):
+    """Delete a professional certification by its unique cert_id."""
+    clean_id = (cert_id or "").strip()
+    if not clean_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Certification ID cannot be empty.")
+    success, message = delete_candidate_certification(clean_id)
+    if not success:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=message)
+    return {"status": "success", "message": message}
 
 
 @app.post(
