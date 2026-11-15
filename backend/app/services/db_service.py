@@ -1105,6 +1105,68 @@ def update_application_interview(
     return True, f"Interview stage '{clean_stage}' updated successfully.", target_stage
 
 
+def add_interview_question(
+    job_id: str,
+    question: str,
+    answer_notes: Optional[str] = None,
+    difficulty: str = "Medium",
+    round_type: str = "Technical"
+) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
+    """
+    Log an interview practice question, discussion prompt, or debrief note.
+    """
+    clean_id = (job_id or "").strip()
+    clean_q = (question or "").strip()
+    if not clean_id or not clean_q:
+        return False, "Job ID and question text cannot be empty.", None
+
+    q_id = f"q_{int(datetime.now(timezone.utc).timestamp())}_{os.urandom(3).hex()}"
+    q_entry = {
+        "question_id": q_id,
+        "question": clean_q,
+        "answer_notes": (answer_notes or "").strip() or None,
+        "difficulty": difficulty or "Medium",
+        "round_type": round_type or "Technical",
+        "created_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    }
+
+    with _db_lock:
+        applications = load_applications()
+        matched = False
+        for app in applications:
+            if app.get("job_id") == clean_id:
+                if "interview_questions" not in app or not isinstance(app["interview_questions"], list):
+                    app["interview_questions"] = []
+                app["interview_questions"].append(q_entry)
+                _record_app_event(app, "INTERVIEW_QUESTION_LOGGED", f"Logged {round_type} question: '{clean_q[:50]}...'")
+                _log_db_audit_entry("INTERVIEW_QUESTION", "application", clean_id, f"Logged question {q_id}")
+                matched = True
+                break
+
+        if not matched:
+            return False, f"No existing application found for Job ID '{clean_id}'.", None
+
+        _save_applications(applications)
+
+    logger.info(f"Logged interview question {q_id} for application {clean_id}")
+    return True, "Interview question logged successfully.", q_entry
+
+
+def get_interview_questions(job_id: str) -> Tuple[bool, str, List[Dict[str, Any]]]:
+    """Retrieve all logged interview questions for an application."""
+    clean_id = (job_id or "").strip()
+    if not clean_id:
+        return False, "Job ID cannot be empty.", []
+
+    with _db_lock:
+        applications = load_applications()
+        for app in applications:
+            if app.get("job_id") == clean_id:
+                return True, "Questions retrieved.", app.get("interview_questions", [])
+
+    return False, f"Application for Job ID '{clean_id}' was not found.", []
+
+
 def archive_application(job_id: str, archived: bool = True) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
     """
     Archive or unarchive an application (soft-delete).

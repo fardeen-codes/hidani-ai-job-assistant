@@ -40,6 +40,9 @@ from app.schemas import (
     ApplicationFunnelResponse,
     ApplicationInterviewCreateRequest,
     InterviewStageUpdateRequest,
+    InterviewQuestionCreateRequest,
+    InterviewQuestionEntry,
+    InterviewQuestionsResponse,
     ApplicationNotesUpdateRequest,
     ApplicationOutcomeUpdateRequest,
     ApplicationPriorityUpdateRequest,
@@ -110,6 +113,7 @@ from app.services.db_service import (
     add_application_attachment,
     add_application_interview,
     add_candidate_certification,
+    add_interview_question,
     advanced_filter_jobs,
     analyze_resume_ats_readability,
     apply_to_job,
@@ -142,6 +146,7 @@ from app.services.db_service import (
     get_company_profile,
     get_database_audit_log,
     get_database_storage_metrics,
+    get_interview_questions,
     get_job_by_id,
     get_job_stats,
     get_job_tag_cloud,
@@ -1402,6 +1407,52 @@ async def update_application_interview_endpoint(
         "message": message,
         "interview": stage_entry
     }
+
+
+@app.post(
+    "/api/applications/{job_id}/interview-questions",
+    response_model=InterviewQuestionEntry,
+    status_code=status.HTTP_201_CREATED,
+    summary="Log an interview preparation question",
+    tags=["Applications"]
+)
+async def add_interview_question_endpoint(job_id: str, payload: InterviewQuestionCreateRequest):
+    """Record an interview question, answer outline, and round difficulty."""
+    clean_id = (job_id or "").strip()
+    if not clean_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Job ID cannot be empty.")
+    success, message, entry = add_interview_question(
+        job_id=clean_id,
+        question=payload.question,
+        answer_notes=payload.answer_notes,
+        difficulty=payload.difficulty or "Medium",
+        round_type=payload.round_type or "Technical"
+    )
+    if not success or not entry:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=message)
+    return entry
+
+
+@app.get(
+    "/api/applications/{job_id}/interview-questions",
+    response_model=InterviewQuestionsResponse,
+    summary="Get logged interview questions for an application",
+    tags=["Applications"]
+)
+async def get_interview_questions_endpoint(job_id: str):
+    """Retrieve all interview questions logged for this application."""
+    clean_id = (job_id or "").strip()
+    if not clean_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Job ID cannot be empty.")
+    success, message, questions = get_interview_questions(clean_id)
+    if not success:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=message)
+    return InterviewQuestionsResponse(
+        status="success",
+        job_id=clean_id,
+        total=len(questions),
+        questions=questions
+    )
 
 
 @app.patch(

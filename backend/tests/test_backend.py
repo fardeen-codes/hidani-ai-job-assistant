@@ -2336,6 +2336,40 @@ class BackendTestCase(unittest.TestCase):
         # 4. Clean up
         withdraw_application(self.test_job_id)
 
+    def test_application_interview_question_bank(self):
+        """Test logging and retrieving interview questions and answers per application."""
+        # 1. Apply to job
+        self.client.post("/api/applications", json={"job_id": self.test_job_id})
+
+        # 2. Log question -> 201 Created
+        payload = {
+            "question": "How do you design an idempotent payment processing webhook?",
+            "answer_notes": "Use unique idempotency keys in Redis with short TTL and database unique constraints.",
+            "difficulty": "Hard",
+            "round_type": "System Design"
+        }
+        res_post = self.client.post(f"/api/applications/{self.test_job_id}/interview-questions", json=payload)
+        self.assertEqual(res_post.status_code, 201)
+        q_data = res_post.json()
+        self.assertIn("question_id", q_data)
+        self.assertEqual(q_data["difficulty"], "Hard")
+        self.assertEqual(q_data["round_type"], "System Design")
+
+        # 3. Retrieve question bank -> 200 OK
+        res_get = self.client.get(f"/api/applications/{self.test_job_id}/interview-questions")
+        self.assertEqual(res_get.status_code, 200)
+        list_data = res_get.json()
+        self.assertEqual(list_data["total"], 1)
+        self.assertEqual(list_data["questions"][0]["question_id"], q_data["question_id"])
+
+        # 4. Verify in timeline
+        res_time = self.client.get(f"/api/applications/{self.test_job_id}/timeline")
+        self.assertEqual(res_time.status_code, 200)
+        self.assertTrue(any(e["event_type"] == "INTERVIEW_QUESTION_LOGGED" for e in res_time.json()["timeline"]))
+
+        # 5. Clean up
+        withdraw_application(self.test_job_id)
+
 
 if __name__ == "__main__":
     unittest.main()

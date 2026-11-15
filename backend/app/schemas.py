@@ -129,6 +129,7 @@ class JobApplication(BaseModel):
     rejection_reason: Optional[str] = Field(default=None, description="Reason code: Skill Gap, Compensation, Headcount, etc.")
     feedback_notes: Optional[str] = Field(default=None, description="Detailed interviewer or debrief feedback")
     source: Optional[str] = Field(default="Direct / Portal", description="Application submission channel")
+    interview_questions: List[Dict[str, Any]] = Field(default_factory=list, description="Logged interview preparation questions")
     timeline: List[ApplicationTimelineEvent] = Field(default_factory=list, description="Audit log of application events")
 
 
@@ -837,3 +838,29 @@ class RemoteWorkBreakdownResponse(BaseModel):
     status: str = Field(default="success")
     total_jobs_analyzed: int = Field(description="Total analyzed listings")
     breakdown: List[RemoteWorkPolicyMetric] = Field(default_factory=list)
+
+
+class InterviewQuestionEntry(BaseModel):
+    """Interview question, preparation notes, and round metadata."""
+    question_id: str = Field(description="Unique ID for question record")
+    question: str = Field(description="Interview question asked or prepared")
+    answer_notes: Optional[str] = Field(None, description="Candidate response notes or outline")
+    difficulty: str = Field(default="Medium", description="'Easy', 'Medium', or 'Hard'")
+    round_type: Optional[str] = Field(None, description="Round: Technical, Behavioral, System Design, HR")
+    created_at: str = Field(description="Timestamp recorded")
+
+
+class InterviewQuestionCreateRequest(BaseModel):
+    """Payload to log an interview question to an application."""
+    question: str = Field(..., min_length=5, max_length=500, description="Question text")
+    answer_notes: Optional[str] = Field(None, description="Notes on answer or STAR formulation")
+    difficulty: Optional[str] = Field("Medium", description="'Easy', 'Medium', or 'Hard'")
+    round_type: Optional[str] = Field("Technical", description="Round category")
+
+
+class InterviewQuestionsResponse(BaseModel):
+    """List of interview questions recorded for an application."""
+    status: str = Field(default="success")
+    job_id: str = Field(description="Job ID")
+    total: int = Field(description="Total recorded interview questions")
+    questions: List[InterviewQuestionEntry] = Field(default_factory=list)
