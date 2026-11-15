@@ -1000,6 +1000,60 @@ def archive_application(job_id: str, archived: bool = True) -> Tuple[bool, str, 
     return True, f"Application for Job ID '{clean_id}' has been {action_word}.", target_app
 
 
+def add_application_attachment(
+    job_id: str,
+    file_name: str,
+    file_type: str = "pdf",
+    file_size_bytes: int = 0,
+    notes: Optional[str] = None
+) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
+    """
+    Associate document attachment metadata (e.g. customized resume, cover letter) with an application.
+    Generates attachment_id and records an event in the audit timeline.
+    Returns: (success: bool, message: str, attachment_record: Optional[dict])
+    """
+    clean_id = (job_id or "").strip()
+    if not clean_id:
+        return False, "Job ID cannot be empty.", None
+
+    clean_file = (file_name or "").strip()
+    if not clean_file:
+        return False, "Attachment file name cannot be empty.", None
+
+    attachment_id = f"att_{int(datetime.now(timezone.utc).timestamp())}_{os.urandom(3).hex()}"
+    now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+
+    att_entry = {
+        "attachment_id": attachment_id,
+        "file_name": clean_file,
+        "file_type": (file_type or "pdf").strip().lower(),
+        "file_size_bytes": max(0, file_size_bytes),
+        "uploaded_at": now_str,
+        "notes": (notes or "").strip() or None
+    }
+
+    with _db_lock:
+        applications = load_applications()
+        matched = False
+        for app in applications:
+            if app.get("job_id", "").strip().lower() == clean_id.lower():
+                if "attachments" not in app:
+                    app["attachments"] = []
+                app["attachments"].append(att_entry)
+                app["updated_date"] = now_str
+                _record_app_event(app, "ATTACHMENT_ADDED", f"Attached document: {clean_file}")
+                matched = True
+                break
+
+        if not matched:
+            return False, f"No existing application found for Job ID '{clean_id}'.", None
+
+        _save_applications(applications)
+
+    logger.info(f"Added attachment {clean_file} to application {clean_id}")
+    return True, f"Attachment '{clean_file}' has been added to the application.", att_entry
+
+
 def get_upcoming_reminders() -> List[Dict[str, Any]]:
     """Retrieve all submitted applications that have pending follow-up reminders, sorted chronologically."""
     apps = load_applications()

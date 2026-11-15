@@ -29,6 +29,7 @@ from app.config import (
 )
 from app.schemas import (
     ApplicationArchiveUpdateRequest,
+    ApplicationAttachmentCreateRequest,
     ApplicationCreateRequest,
     ApplicationFunnelResponse,
     ApplicationInterviewCreateRequest,
@@ -60,6 +61,7 @@ from app.schemas import (
     UploadResumeResponse,
 )
 from app.services.db_service import (
+    add_application_attachment,
     add_application_interview,
     apply_to_job,
     archive_application,
@@ -854,6 +856,36 @@ async def archive_application_endpoint(job_id: str, payload: ApplicationArchiveU
         "status": "success",
         "message": message,
         "application": updated_app
+    }
+
+
+@app.post(
+    "/api/applications/{job_id}/attachments",
+    response_model=dict,
+    status_code=status.HTTP_201_CREATED,
+    summary="Add document attachment metadata to an application",
+    tags=["Applications"]
+)
+async def add_application_attachment_endpoint(job_id: str, payload: ApplicationAttachmentCreateRequest):
+    """Associate document attachment metadata with an existing job application."""
+    clean_id = (job_id or "").strip()
+    if not clean_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Job ID cannot be empty.")
+    success, message, att_entry = add_application_attachment(
+        job_id=clean_id,
+        file_name=payload.file_name,
+        file_type=payload.file_type,
+        file_size_bytes=payload.file_size_bytes,
+        notes=payload.notes
+    )
+    if not success:
+        if "cannot be empty" in message:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=message)
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=message)
+    return {
+        "status": "success",
+        "message": message,
+        "attachment": att_entry
     }
 
 

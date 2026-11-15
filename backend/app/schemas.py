@@ -79,6 +79,24 @@ class ApplicationInterviewCreateRequest(BaseModel):
     status: Optional[str] = Field("Scheduled", description="Status of round: Scheduled, Completed, Cancelled")
 
 
+class ApplicationAttachment(BaseModel):
+    """Document attachment metadata attached to an application."""
+    attachment_id: str = Field(description="Unique identifier for the attachment")
+    file_name: str = Field(description="Original uploaded file name (e.g. Resume_Google.pdf)")
+    file_type: str = Field(description="MIME or file extension type (e.g. pdf, docx)")
+    file_size_bytes: int = Field(description="Size of the attachment in bytes")
+    uploaded_at: str = Field(description="ISO timestamp when attached")
+    notes: Optional[str] = Field(None, description="Notes on this specific version/attachment")
+
+
+class ApplicationAttachmentCreateRequest(BaseModel):
+    """Payload to associate a document attachment metadata to an application."""
+    file_name: str = Field(..., min_length=1, description="Attachment file name")
+    file_type: str = Field(default="pdf", description="File extension or MIME type")
+    file_size_bytes: int = Field(default=0, ge=0, description="Size of file in bytes")
+    notes: Optional[str] = Field(None, description="Notes or document variant description")
+
+
 class JobApplication(BaseModel):
     """Record of an applied job."""
     job_id: str = Field(description="ID of the job applied to")
@@ -91,6 +109,7 @@ class JobApplication(BaseModel):
     reminder_date: Optional[str] = Field(default=None, description="Optional follow-up reminder date or deadline")
     tags: List[str] = Field(default_factory=list, description="Custom organizational tags/labels")
     interviews: List[InterviewStageEntry] = Field(default_factory=list, description="Logged interview rounds")
+    attachments: List[ApplicationAttachment] = Field(default_factory=list, description="Associated document attachments")
     is_archived: bool = Field(default=False, description="Whether application has been archived")
     archived_date: Optional[str] = Field(default=None, description="Timestamp of archiving")
     timeline: List[ApplicationTimelineEvent] = Field(default_factory=list, description="Audit log of application events")

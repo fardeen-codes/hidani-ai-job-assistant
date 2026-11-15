@@ -1408,6 +1408,42 @@ class BackendTestCase(unittest.TestCase):
         self.assertIn("deduplicated_history", data)
         self.assertIn("total_compacted_files", data)
 
+    def test_application_attachments_lifecycle(self):
+        """Test attaching document metadata to application and timeline logging."""
+        withdraw_application(self.test_job_id)
+        apply_to_job(self.test_job_id)
+
+        # 1. Attach customized resume
+        payload = {
+            "file_name": "Tailored_Backend_Resume_V2.pdf",
+            "file_type": "pdf",
+            "file_size_bytes": 1048576,
+            "notes": "Customized for microservices emphasis"
+        }
+        res = self.client.post(f"/api/applications/{self.test_job_id}/attachments", json=payload)
+        self.assertEqual(res.status_code, 201)
+        data = res.json()
+        self.assertEqual(data["status"], "success")
+        att = data["attachment"]
+        self.assertEqual(att["file_name"], payload["file_name"])
+        self.assertIn("attachment_id", att)
+
+        # 2. Verify attachment appears in application model
+        app_res = self.client.get(f"/api/applications/{self.test_job_id}")
+        self.assertEqual(app_res.status_code, 200)
+        attachments = app_res.json().get("attachments", [])
+        self.assertEqual(len(attachments), 1)
+        self.assertEqual(attachments[0]["file_name"], payload["file_name"])
+
+        # 3. Timeline event logged
+        timeline_res = self.client.get(f"/api/applications/{self.test_job_id}/timeline")
+        self.assertEqual(timeline_res.status_code, 200)
+        events = timeline_res.json()["timeline"]
+        self.assertTrue(any(e["event_type"] == "ATTACHMENT_ADDED" for e in events))
+
+        # 4. Clean up
+        withdraw_application(self.test_job_id)
+
 
 if __name__ == "__main__":
     unittest.main()
