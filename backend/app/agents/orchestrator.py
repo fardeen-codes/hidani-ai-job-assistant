@@ -39,6 +39,7 @@ _session_lock = threading.RLock()
 _session_histories: Dict[str, List[Dict[str, Any]]] = {}
 _session_profiles: Dict[str, Dict[str, Any]] = {}
 _session_last_recommendations: Dict[str, List[Dict[str, Any]]] = {}
+_session_metadata: Dict[str, Dict[str, Any]] = {}
 
 # Tool Definitions for OpenAI Function Calling
 ORCHESTRATOR_TOOLS = [
@@ -843,6 +844,16 @@ def run_orchestrator(
                 "content": _build_system_prompt(active_profile)
             }
 
+        now_ts = datetime.now(timezone.utc).isoformat()
+        if session_id not in _session_metadata:
+            _session_metadata[session_id] = {
+                "created_at": now_ts,
+                "turns_count": 0,
+                "last_active": now_ts
+            }
+        _session_metadata[session_id]["turns_count"] += 1
+        _session_metadata[session_id]["last_active"] = now_ts
+
     # If OpenAI API is not configured, run deterministic intent orchestrator
     if not is_openai_configured():
         logger.info("OPENAI_API_KEY is not configured. Running fallback intent orchestrator.")
@@ -938,11 +949,39 @@ def get_session_state(session_id: str) -> Dict[str, Any]:
     }
 
 
-def clear_session_state(session_id: str) -> bool:
-    """Clear conversation history and cached recommendations for a given session."""
+def get_session_metrics(session_id: str) -> Dict[str, Any]:
+    """Retrieve detailed interaction and engagement metrics for a chat session."""
     with _session_lock:
-        had_state = session_id in _session_histories or session_id in _session_last_recommendations
+        history = list(_session_histories.get(session_id, []))
+        profile = _session_profiles.get(session_id)
+        recs = list(_session_last_recommendations.get(session_id, []))
+        meta = _session_metadata.get(session_id, {})
+        now_ts = datetime.now(timezone.utc).isoformat()
+        created_at = meta.get("created_at", now_ts)
+        last_active = meta.get("last_active", now_ts)
+        turns = meta.get("turns_count", 0)
+
+    return {
+        "session_id": session_id,
+        "message_count": len(history),
+        "turns_count": turns,
+        "last_active": last_active,
+        "has_active_profile": profile is not None,
+        "cached_recommendations_count": len(recs),
+        "created_at": created_at
+    }
+
+
+def clear_session_state(session_id: str) -> bool:
+    """Clear conversation history, cached recommendations, and metadata for a given session."""
+    with _session_lock:
+        had_state = (
+            session_id in _session_histories
+            or session_id in _session_last_recommendations
+            or session_id in _session_metadata
+        )
         _session_histories.pop(session_id, None)
         _session_last_recommendations.pop(session_id, None)
+        _session_metadata.pop(session_id, None)
         return had_state
 

@@ -17,6 +17,7 @@ from fastapi.responses import JSONResponse, Response
 from app.agents.matcher_agent import analyze_skill_gap
 from app.agents.orchestrator import (
     clear_session_state,
+    get_session_metrics,
     get_session_state,
     run_orchestrator,
 )
@@ -70,6 +71,7 @@ from app.schemas import (
     SavedSearchExecutionResponse,
     SearchHistoryEntry,
     SearchSuggestionsResponse,
+    SessionMetricsResponse,
     SkillGapAnalysisResponse,
     SkillSalaryInsightsResponse,
     UploadResumeResponse,
@@ -288,6 +290,17 @@ async def get_state(session_id: str = "default-session"):
         message_count=session_data.get("message_count", 0),
         openai_configured=is_openai_configured()
     )
+
+
+@app.get(
+    "/api/chat/session/{session_id}/metrics",
+    response_model=SessionMetricsResponse,
+    summary="Get conversation session activity and turn metrics",
+    tags=["Chat"]
+)
+async def get_session_metrics_endpoint(session_id: str):
+    """Retrieve detailed interaction metrics, turns count, and activity timestamps for a chat session."""
+    return get_session_metrics(session_id)
 
 
 @app.get("/api/jobs", summary="Browse available jobs", tags=["Jobs"])

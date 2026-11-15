@@ -527,3 +527,14 @@ class ApplicationRejectionAnalyticsResponse(BaseModel):
     rejection_rate_percent: float = Field(description="Rejection rate percentage")
     reason_breakdown: List[RejectionReasonSummary] = Field(default_factory=list, description="Reason code distribution")
     sample_feedback_notes: List[str] = Field(default_factory=list, description="Recent feedback notes for retrospectives")
+
+
+class SessionMetricsResponse(BaseModel):
+    """Detailed activity and engagement metrics for an active chat session."""
+    session_id: str = Field(description="Unique conversation session identifier")
+    message_count: int = Field(description="Total exchanged conversation messages")
+    turns_count: int = Field(description="Total conversational turns executed")
+    last_active: Optional[str] = Field(None, description="ISO timestamp of last activity")
+    has_active_profile: bool = Field(description="Whether a candidate profile is loaded in memory")
+    cached_recommendations_count: int = Field(description="Number of cached job recommendations")
+    created_at: str = Field(description="ISO timestamp of session initialization")

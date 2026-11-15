@@ -1820,6 +1820,27 @@ class BackendTestCase(unittest.TestCase):
         # Clean up
         withdraw_application(self.test_job_id)
 
+    def test_session_metrics_endpoint(self):
+        """Test retrieving conversational session activity, message counts, and turns metrics."""
+        test_sess = "metrics-test-session"
+        # 1. Trigger conversation turn
+        chat_res = self.client.post("/api/chat", json={"message": "hello assistant", "session_id": test_sess})
+        self.assertEqual(chat_res.status_code, 200)
+
+        # 2. Query session metrics
+        res = self.client.get(f"/api/chat/session/{test_sess}/metrics")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["session_id"], test_sess)
+        self.assertGreaterEqual(data["turns_count"], 1)
+        self.assertGreaterEqual(data["message_count"], 2)  # system + user + assistant
+        self.assertIn("last_active", data)
+        self.assertIn("created_at", data)
+        self.assertIn("cached_recommendations_count", data)
+
+        # Clean up session
+        self.client.post(f"/api/chat/reset/{test_sess}")
+
 
 if __name__ == "__main__":
     unittest.main()
