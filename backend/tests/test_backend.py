@@ -1791,6 +1791,35 @@ class BackendTestCase(unittest.TestCase):
         self.assertEqual(data_cat["category"], "Engineering")
         self.assertTrue(len(data_cat["tags"]) <= 10)
 
+    def test_application_rejection_analytics(self):
+        """Test aggregation of rejection codes, rates, and candidate debrief notes."""
+        # 1. Apply to job and record rejection outcome
+        self.client.post("/api/applications", json={"job_id": self.test_job_id, "notes": "Rejection test"})
+        self.client.post(
+            f"/api/applications/{self.test_job_id}/outcome",
+            json={
+                "outcome": "Rejected",
+                "reason_code": "Skill Gap",
+                "feedback_notes": "Needs deeper experience with distributed caches."
+            }
+        )
+
+        # 2. Get rejection analytics
+        res = self.client.get("/api/applications/analytics/rejections")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertIn("total_applications", data)
+        self.assertIn("total_rejections", data)
+        self.assertIn("rejection_rate_percent", data)
+        self.assertIn("reason_breakdown", data)
+        self.assertIn("sample_feedback_notes", data)
+        self.assertGreater(data["total_rejections"], 0)
+        self.assertTrue(any(r["reason_code"] == "Skill Gap" for r in data["reason_breakdown"]))
+        self.assertTrue(any("distributed caches" in note for note in data["sample_feedback_notes"]))
+
+        # Clean up
+        withdraw_application(self.test_job_id)
+
 
 if __name__ == "__main__":
     unittest.main()

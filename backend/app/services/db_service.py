@@ -1522,6 +1522,48 @@ def get_application_velocity_metrics() -> Dict[str, Any]:
     }
 
 
+def get_rejection_analytics() -> Dict[str, Any]:
+    """
+    Aggregate rejection reasons and candidate retrospective feedback across all rejected applications.
+    """
+    apps = load_applications()
+    total = len(apps)
+    rejections = [
+        a for a in apps
+        if (a.get("status") or "").strip().lower() == "rejected"
+        or (a.get("outcome") or "").strip().lower() == "rejected"
+    ]
+    rejection_count = len(rejections)
+    rejection_rate = round((rejection_count / total * 100.0), 1) if total > 0 else 0.0
+
+    reason_counter: Counter = Counter()
+    feedback_notes = []
+
+    for app in rejections:
+        reason = (app.get("rejection_reason") or "").strip() or "Unspecified"
+        reason_counter[reason] += 1
+        fb = (app.get("feedback_notes") or "").strip()
+        if fb and fb not in feedback_notes:
+            feedback_notes.append(fb)
+
+    breakdown = [
+        {
+            "reason_code": r,
+            "count": c,
+            "percentage": round((c / rejection_count * 100.0), 1) if rejection_count > 0 else 0.0
+        }
+        for r, c in reason_counter.most_common()
+    ]
+
+    return {
+        "total_applications": total,
+        "total_rejections": rejection_count,
+        "rejection_rate_percent": rejection_rate,
+        "reason_breakdown": breakdown,
+        "sample_feedback_notes": feedback_notes[:10]
+    }
+
+
 def _save_bookmarks(bookmarks: List[Dict[str, Any]]) -> None:
     """Persist bookmarks atomically and synchronize the in-memory cache."""
     global _bookmarks_cache, _bookmarks_cache_mtime

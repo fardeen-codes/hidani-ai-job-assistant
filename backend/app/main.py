@@ -36,6 +36,7 @@ from app.schemas import (
     ApplicationNotesUpdateRequest,
     ApplicationOutcomeUpdateRequest,
     ApplicationPriorityUpdateRequest,
+    ApplicationRejectionAnalyticsResponse,
     ApplicationReminderUpdateRequest,
     ApplicationStatsResponse,
     ApplicationStatusUpdateRequest,
@@ -101,6 +102,7 @@ from app.services.db_service import (
     get_job_stats,
     get_job_tag_cloud,
     get_recent_searches,
+    get_rejection_analytics,
     get_search_suggestions,
     get_similar_jobs,
     get_skill_salary_insights,
@@ -697,6 +699,17 @@ async def get_applications_funnel_endpoint():
 async def get_applications_velocity_endpoint():
     """Retrieve application submission rate across 7-day and 30-day windows."""
     return get_application_velocity_metrics()
+
+
+@app.get(
+    "/api/applications/analytics/rejections",
+    response_model=ApplicationRejectionAnalyticsResponse,
+    summary="Get rejection reasons and debrief feedback analytics",
+    tags=["Applications"]
+)
+async def get_applications_rejections_endpoint():
+    """Analyze rejection codes and qualitative feedback across candidate applications."""
+    return get_rejection_analytics()
 
 
 @app.get(

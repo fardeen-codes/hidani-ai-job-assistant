@@ -511,3 +511,19 @@ class JobTagCloudResponse(BaseModel):
     total_tags: int = Field(description="Total unique tags evaluated")
     category: Optional[str] = Field(None, description="Applied category filter")
     tags: List[JobTagCloudItem] = Field(default_factory=list, description="Top keyword tags")
+
+
+class RejectionReasonSummary(BaseModel):
+    """Aggregated rejection reason code frequency."""
+    reason_code: str = Field(description="Rejection reason category or code")
+    count: int = Field(description="Number of applications with this rejection code")
+    percentage: float = Field(description="Percentage share of total rejected applications")
+
+
+class ApplicationRejectionAnalyticsResponse(BaseModel):
+    """Analytics on rejected applications and interview feedback debriefs."""
+    total_applications: int = Field(description="Total submitted applications")
+    total_rejections: int = Field(description="Total rejected applications")
+    rejection_rate_percent: float = Field(description="Rejection rate percentage")
+    reason_breakdown: List[RejectionReasonSummary] = Field(default_factory=list, description="Reason code distribution")
+    sample_feedback_notes: List[str] = Field(default_factory=list, description="Recent feedback notes for retrospectives")
