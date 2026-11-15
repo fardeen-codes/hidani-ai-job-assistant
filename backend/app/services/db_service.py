@@ -1142,3 +1142,74 @@ def delete_saved_search(search_id: str) -> Tuple[bool, str]:
     logger.info(f"Deleted saved search {clean_id}")
     return True, f"Saved search with ID '{clean_id}' has been deleted."
 
+
+def create_database_backup() -> Dict[str, Any]:
+    """
+    Generate a full structured database backup snapshot of all writable collections:
+    applications, bookmarks, saved_searches, and search_history.
+    """
+    with _db_lock:
+        apps = load_applications()
+        bookmarks = load_bookmarks()
+        saved_searches = load_saved_searches()
+        search_history = load_search_history()
+
+        now_str = datetime.now(timezone.utc).isoformat()
+        snapshot = {
+            "timestamp": now_str,
+            "version": "1.0",
+            "applications": [dict(a) for a in apps],
+            "bookmarks": [dict(b) for b in bookmarks],
+            "saved_searches": [dict(s) for s in saved_searches],
+            "search_history": [dict(h) for h in search_history],
+        }
+        logger.info(
+            f"Created database backup snapshot: {len(apps)} apps, "
+            f"{len(bookmarks)} bookmarks, {len(saved_searches)} saved searches, "
+            f"{len(search_history)} history entries."
+        )
+        return snapshot
+
+
+def restore_database_backup(snapshot: Dict[str, Any]) -> Tuple[bool, str, Dict[str, int]]:
+    """
+    Restore database collections from a structured backup snapshot.
+    Validates payload format and atomically updates storage files and in-memory caches.
+    Returns: (success: bool, message: str, restored_counts: Dict[str, int])
+    """
+    if not isinstance(snapshot, dict):
+        return False, "Invalid snapshot: root must be a JSON object.", {}
+
+    if "applications" not in snapshot or not isinstance(snapshot["applications"], list):
+        return False, "Invalid snapshot: missing or invalid 'applications' list.", {}
+
+    if "bookmarks" not in snapshot or not isinstance(snapshot["bookmarks"], list):
+        return False, "Invalid snapshot: missing or invalid 'bookmarks' list.", {}
+
+    if "saved_searches" not in snapshot or not isinstance(snapshot["saved_searches"], list):
+        return False, "Invalid snapshot: missing or invalid 'saved_searches' list.", {}
+
+    if "search_history" not in snapshot or not isinstance(snapshot["search_history"], list):
+        return False, "Invalid snapshot: missing or invalid 'search_history' list.", {}
+
+    apps = [dict(a) for a in snapshot["applications"]]
+    bookmarks = [dict(b) for b in snapshot["bookmarks"]]
+    saved_searches = [dict(s) for s in snapshot["saved_searches"]]
+    search_history = [dict(h) for h in snapshot["search_history"]]
+
+    with _db_lock:
+        _save_applications(apps)
+        _save_bookmarks(bookmarks)
+        _save_saved_searches(saved_searches)
+        _save_search_history(search_history)
+
+    counts = {
+        "applications": len(apps),
+        "bookmarks": len(bookmarks),
+        "saved_searches": len(saved_searches),
+        "search_history": len(search_history),
+    }
+
+    logger.info(f"Database successfully restored from snapshot ({counts})")
+    return True, "Database successfully restored from backup snapshot.", counts
+

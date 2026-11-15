@@ -239,3 +239,20 @@ class SkillGapAnalysisResponse(BaseModel):
     missing_skills: List[str] = Field(default_factory=list, description="Required skills candidate lacks")
     readiness: str = Field(description="Assessment category: High Readiness, Moderate Readiness, or Needs Preparation")
     recommendation: str = Field(description="Actionable career advice or study recommendations")
+
+
+class DatabaseBackupSnapshot(BaseModel):
+    """Structured snapshot containing full database state across all collections."""
+    timestamp: str = Field(description="ISO timestamp when the backup snapshot was generated")
+    version: str = Field(default="1.0", description="Backup format schema version")
+    applications: List[Dict[str, Any]] = Field(default_factory=list, description="Applications data records")
+    bookmarks: List[Dict[str, Any]] = Field(default_factory=list, description="Bookmarks data records")
+    saved_searches: List[Dict[str, Any]] = Field(default_factory=list, description="Saved searches data records")
+    search_history: List[Dict[str, Any]] = Field(default_factory=list, description="Recent search queries history")
+
+
+class DatabaseRestoreResponse(BaseModel):
+    """Response payload after restoring a database snapshot."""
+    status: str = Field(description="Operation result status: success or error")
+    message: str = Field(description="Human-readable result summary")
+    restored_counts: Dict[str, int] = Field(description="Count of restored records per collection")

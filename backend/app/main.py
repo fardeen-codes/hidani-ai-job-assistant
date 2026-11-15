@@ -40,6 +40,8 @@ from app.schemas import (
     ChatRequest,
     ChatResponse,
     ChatStateResponse,
+    DatabaseBackupSnapshot,
+    DatabaseRestoreResponse,
     JobApplication,
     JobBookmark,
     JobStatsResponse,
@@ -54,6 +56,7 @@ from app.services.db_service import (
     apply_to_job,
     bulk_update_application_status,
     clear_search_history,
+    create_database_backup,
     create_saved_search,
     delete_saved_search,
     get_application_stats,
@@ -69,6 +72,7 @@ from app.services.db_service import (
     load_saved_searches,
     record_search_query,
     remove_job_bookmark,
+    restore_database_backup,
     save_job_bookmark,
     search_jobs,
     update_application_notes,
@@ -805,6 +809,35 @@ async def remove_bookmark_endpoint(job_id: str):
         "message": message,
         "job_id": clean_id
     }
+
+
+@app.get(
+    "/api/admin/backup",
+    response_model=DatabaseBackupSnapshot,
+    summary="Export a complete database snapshot backup",
+    tags=["Database Admin"]
+)
+async def create_database_backup_endpoint():
+    """Export a complete structured backup snapshot across all collections."""
+    return create_database_backup()
+
+
+@app.post(
+    "/api/admin/restore",
+    response_model=DatabaseRestoreResponse,
+    summary="Restore database collections from a snapshot backup",
+    tags=["Database Admin"]
+)
+async def restore_database_backup_endpoint(payload: DatabaseBackupSnapshot):
+    """Restore database collections atomically from an uploaded backup snapshot."""
+    success, message, counts = restore_database_backup(payload.model_dump())
+    if not success:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=message)
+    return DatabaseRestoreResponse(
+        status="success",
+        message=message,
+        restored_counts=counts
+    )
 
 
 # Static Frontend Delivery

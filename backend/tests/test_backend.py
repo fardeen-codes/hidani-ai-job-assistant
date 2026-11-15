@@ -1165,6 +1165,48 @@ class BackendTestCase(unittest.TestCase):
         # Verify schema serialization has salary key
         self.assertIn("salary", jobs_data[0])
 
+    def test_database_backup_and_restore_lifecycle(self):
+        """Test creating database backup snapshot, modifying collections, and restoring previous state."""
+        # 1. Generate full backup snapshot
+        res_backup = self.client.get("/api/admin/backup")
+        self.assertEqual(res_backup.status_code, 200)
+        snapshot = res_backup.json()
+        self.assertEqual(snapshot["version"], "1.0")
+        self.assertIn("timestamp", snapshot)
+        self.assertIn("applications", snapshot)
+        self.assertIn("bookmarks", snapshot)
+        self.assertIn("saved_searches", snapshot)
+        self.assertIn("search_history", snapshot)
+
+        # 2. Modify database collections
+        self.client.post(f"/api/bookmarks/{self.test_job_id}")
+        res_search = self.client.post("/api/searches/saved", json={"title": "Snapshot Test Query"})
+        self.assertEqual(res_search.status_code, 201)
+        created_search_id = res_search.json()["search_id"]
+
+        # Verify items exist
+        bms_before = self.client.get("/api/bookmarks").json()
+        self.assertTrue(any(b["job_id"] == self.test_job_id for b in bms_before))
+        searches_before = self.client.get("/api/searches/saved").json()
+        self.assertTrue(any(s["search_id"] == created_search_id for s in searches_before))
+
+        # 3. Restore from backup snapshot
+        res_restore = self.client.post("/api/admin/restore", json=snapshot)
+        self.assertEqual(res_restore.status_code, 200)
+        restore_data = res_restore.json()
+        self.assertEqual(restore_data["status"], "success")
+        self.assertIn("restored_counts", restore_data)
+
+        # 4. Verify test items are restored away
+        bms_after = self.client.get("/api/bookmarks").json()
+        self.assertEqual(len(bms_after), len(snapshot["bookmarks"]))
+        searches_after = self.client.get("/api/searches/saved").json()
+        self.assertEqual(len(searches_after), len(snapshot["saved_searches"]))
+
+        # 5. Invalid restore payload -> 422 Unprocessable Entity
+        res_invalid = self.client.post("/api/admin/restore", json={"bad_field": 123})
+        self.assertEqual(res_invalid.status_code, 422)
+
 
 if __name__ == "__main__":
     unittest.main()
