@@ -272,6 +272,21 @@ class SkillCount(BaseModel):
     count: int
 
 
+class SkillSalaryInsight(BaseModel):
+    """Average compensation benchmarks for a specific technical skill."""
+    skill: str = Field(description="Skill name")
+    job_count: int = Field(description="Number of jobs requiring this skill with disclosed salary")
+    avg_min_salary: float = Field(description="Average base or minimum salary")
+    avg_max_salary: float = Field(description="Average ceiling or maximum salary")
+    currency: str = Field(default="USD", description="Dominant currency representation")
+
+
+class SkillSalaryInsightsResponse(BaseModel):
+    """Aggregated skill-to-compensation benchmarks across job postings."""
+    total_evaluated_skills: int = Field(description="Number of analyzed skills with salary data")
+    insights: List[SkillSalaryInsight] = Field(default_factory=list, description="Top skill salary benchmarks")
+
+
 class LocationCount(BaseModel):
     location: str
     count: int

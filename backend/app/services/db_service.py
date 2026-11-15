@@ -1138,6 +1138,68 @@ def get_job_stats() -> Dict[str, Any]:
     }
 
 
+def get_skill_salary_insights(limit: int = 15) -> Dict[str, Any]:
+    """
+    Compute skill-to-compensation benchmarks across job listings that include extracted salary info.
+    Returns average minimum and maximum compensation per skill.
+    """
+    jobs = load_jobs()
+    limit = max(1, min(limit or 15, 50))
+
+    skill_mins: Dict[str, List[float]] = {}
+    skill_maxs: Dict[str, List[float]] = {}
+    skill_currencies: Dict[str, Counter] = {}
+
+    for job in jobs:
+        sal = job.get("salary")
+        if not sal or not isinstance(sal, dict):
+            continue
+
+        min_s = sal.get("min_salary")
+        max_s = sal.get("max_salary")
+        if not min_s and not max_s:
+            continue
+
+        period = sal.get("period", "year")
+        multiplier = 2000.0 if period == "hour" else (12.0 if period == "month" else 1.0)
+        eff_min = (min_s or max_s or 0.0) * multiplier
+        eff_max = (max_s or min_s or 0.0) * multiplier
+        curr = sal.get("currency") or "USD"
+
+        for s in (job.get("skills") or []):
+            clean_s = str(s).strip()
+            if not clean_s:
+                continue
+            if clean_s not in skill_mins:
+                skill_mins[clean_s] = []
+                skill_maxs[clean_s] = []
+                skill_currencies[clean_s] = Counter()
+            skill_mins[clean_s].append(eff_min)
+            skill_maxs[clean_s].append(eff_max)
+            skill_currencies[clean_s][curr] += 1
+
+    insights = []
+    for skill, mins in skill_mins.items():
+        maxs = skill_maxs[skill]
+        count = len(mins)
+        avg_min = round(sum(mins) / count, 0)
+        avg_max = round(sum(maxs) / count, 0)
+        curr = skill_currencies[skill].most_common(1)[0][0] if skill_currencies[skill] else "USD"
+        insights.append({
+            "skill": skill,
+            "job_count": count,
+            "avg_min_salary": avg_min,
+            "avg_max_salary": avg_max,
+            "currency": curr
+        })
+
+    insights.sort(key=lambda x: (x["avg_max_salary"], x["job_count"]), reverse=True)
+    return {
+        "total_evaluated_skills": len(insights),
+        "insights": insights[:limit]
+    }
+
+
 def get_application_stats() -> Dict[str, Any]:
     """
     Compute summary analytics for submitted job applications,

@@ -58,6 +58,7 @@ from app.schemas import (
     SearchHistoryEntry,
     SearchSuggestionsResponse,
     SkillGapAnalysisResponse,
+    SkillSalaryInsightsResponse,
     UploadResumeResponse,
 )
 from app.services.db_service import (
@@ -82,6 +83,7 @@ from app.services.db_service import (
     get_recent_searches,
     get_search_suggestions,
     get_similar_jobs,
+    get_skill_salary_insights,
     get_upcoming_reminders,
     load_applications,
     load_jobs,
@@ -408,6 +410,19 @@ async def get_search_suggestions_endpoint(
         prefix=clean_prefix,
         suggestions=suggestions
     )
+
+
+@app.get(
+    "/api/jobs/analytics/skill-salaries",
+    response_model=SkillSalaryInsightsResponse,
+    summary="Get skill-to-compensation benchmarks",
+    tags=["Jobs"]
+)
+async def get_skill_salary_insights_endpoint(
+    limit: int = Query(15, ge=1, le=50, description="Max skills to evaluate")
+):
+    """Retrieve average compensation benchmarks associated with in-demand technical skills."""
+    return get_skill_salary_insights(limit=limit)
 
 
 @app.get("/api/jobs/{job_id}", summary="Get job details by ID", tags=["Jobs"])

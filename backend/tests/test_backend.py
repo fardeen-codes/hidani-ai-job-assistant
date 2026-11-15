@@ -1474,6 +1474,20 @@ class BackendTestCase(unittest.TestCase):
         for j in jobs:
             self.assertEqual(j.get("work_mode"), "Remote")
 
+    def test_skill_salary_analytics(self):
+        """Test skill demand and salary correlation statistics calculation."""
+        res = self.client.get("/api/jobs/analytics/skill-salaries?limit=5")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertIn("total_evaluated_skills", data)
+        self.assertIn("insights", data)
+        self.assertTrue(len(data["insights"]) <= 5)
+        for item in data["insights"]:
+            self.assertIn("skill", item)
+            self.assertIn("avg_min_salary", item)
+            self.assertIn("avg_max_salary", item)
+            self.assertTrue(item["avg_max_salary"] >= item["avg_min_salary"])
+
 
 if __name__ == "__main__":
     unittest.main()
