@@ -76,6 +76,8 @@ from app.schemas import (
     JobTagCloudResponse,
     ProfileCompletenessResponse,
     SalaryInfo,
+    SalaryPreferenceResponse,
+    SalaryPreferenceUpdateRequest,
     SavedSearch,
     SavedSearchCreateRequest,
     SavedSearchExecutionResponse,
@@ -113,6 +115,7 @@ from app.services.db_service import (
     get_application_velocity_metrics,
     get_bookmark_categories,
     get_bookmarked_jobs,
+    get_candidate_salary_preferences,
     get_company_profile,
     get_database_audit_log,
     get_database_storage_metrics,
@@ -146,6 +149,7 @@ from app.services.db_service import (
     update_application_reminder,
     update_application_status,
     update_application_tags,
+    update_candidate_salary_preferences,
     update_job_bookmark,
     update_saved_search,
     withdraw_application,
@@ -284,6 +288,43 @@ async def get_profile_completeness_endpoint():
 async def evaluate_profile_completeness_endpoint(profile: Dict[str, Any]):
     """Evaluate profile completeness score and identify missing sections for an arbitrary profile."""
     return calculate_profile_completeness(profile)
+
+
+@app.get(
+    "/api/profile/salary-preferences",
+    response_model=SalaryPreferenceResponse,
+    summary="Get candidate target salary preferences",
+    tags=["Resume"]
+)
+async def get_salary_preferences_endpoint():
+    """Retrieve candidate target salary range, currency, and payment frequency."""
+    return get_candidate_salary_preferences()
+
+
+@app.patch(
+    "/api/profile/salary-preferences",
+    response_model=SalaryPreferenceResponse,
+    summary="Update candidate target salary preferences",
+    tags=["Resume"]
+)
+async def update_salary_preferences_endpoint(payload: SalaryPreferenceUpdateRequest):
+    """Update candidate target salary min/max, currency, or period."""
+    success, message, prefs = update_candidate_salary_preferences(
+        target_min_salary=payload.target_min_salary,
+        target_max_salary=payload.target_max_salary,
+        currency=payload.currency or "USD",
+        period=payload.period or "year"
+    )
+    if not success:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=message)
+    return {
+        "status": "success",
+        "message": message,
+        "target_min_salary": prefs.get("target_min_salary"),
+        "target_max_salary": prefs.get("target_max_salary"),
+        "currency": prefs.get("currency", "USD"),
+        "period": prefs.get("period", "year")
+    }
 
 
 @app.post(

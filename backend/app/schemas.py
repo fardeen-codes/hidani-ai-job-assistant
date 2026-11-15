@@ -679,3 +679,21 @@ class ProfileCompletenessResponse(BaseModel):
     missing_sections: List[str] = Field(default_factory=list, description="List of incomplete sections")
     improvement_suggestions: List[str] = Field(default_factory=list, description="Recommendations to boost score")
     sections: List[ProfileSectionScore] = Field(default_factory=list, description="Section-by-section audit")
+
+
+class SalaryPreferenceUpdateRequest(BaseModel):
+    """Candidate target salary compensation expectation and currency preference."""
+    target_min_salary: Optional[float] = Field(None, ge=0, description="Minimum expected salary")
+    target_max_salary: Optional[float] = Field(None, ge=0, description="Target desirable salary")
+    currency: Optional[str] = Field("USD", description="Currency code (e.g. USD, EUR, GBP, CAD, AUD, INR)")
+    period: Optional[str] = Field("year", description="Frequency: year, month, or hour")
+
+
+class SalaryPreferenceResponse(BaseModel):
+    """Response containing candidate saved salary preferences."""
+    status: str = Field(default="success")
+    message: str = Field(description="Status confirmation message")
+    target_min_salary: Optional[float] = None
+    target_max_salary: Optional[float] = None
+    currency: str = Field(default="USD")
+    period: str = Field(default="year")

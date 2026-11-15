@@ -2104,6 +2104,37 @@ class BackendTestCase(unittest.TestCase):
         self.assertEqual(res_comp_get.status_code, 200)
         self.assertEqual(res_comp_get.json()["rating"], "All-Star")
 
+    def test_candidate_salary_preferences_lifecycle(self):
+        """Test setting, validating, and retrieving candidate target salary preferences."""
+        # 1. Valid salary preferences update -> 200 OK
+        payload = {
+            "target_min_salary": 130000.0,
+            "target_max_salary": 170000.0,
+            "currency": "EUR",
+            "period": "year"
+        }
+        res_patch = self.client.patch("/api/profile/salary-preferences", json=payload)
+        self.assertEqual(res_patch.status_code, 200)
+        data = res_patch.json()
+        self.assertEqual(data["status"], "success")
+        self.assertEqual(data["target_min_salary"], 130000.0)
+        self.assertEqual(data["target_max_salary"], 170000.0)
+        self.assertEqual(data["currency"], "EUR")
+
+        # 2. Retrieve preferences via GET -> 200 OK
+        res_get = self.client.get("/api/profile/salary-preferences")
+        self.assertEqual(res_get.status_code, 200)
+        data_get = res_get.json()
+        self.assertEqual(data_get["target_min_salary"], 130000.0)
+        self.assertEqual(data_get["currency"], "EUR")
+
+        # 3. Invalid salary range (min > max) -> 400 Bad Request
+        res_invalid = self.client.patch("/api/profile/salary-preferences", json={
+            "target_min_salary": 200000.0,
+            "target_max_salary": 100000.0
+        })
+        self.assertEqual(res_invalid.status_code, 400)
+
 
 if __name__ == "__main__":
     unittest.main()

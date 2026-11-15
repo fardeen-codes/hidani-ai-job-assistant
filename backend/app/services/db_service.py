@@ -3105,3 +3105,50 @@ def calculate_profile_completeness(profile: Optional[Dict[str, Any]] = None) -> 
         "sections": sections
     }
 
+
+def update_candidate_salary_preferences(
+    target_min_salary: Optional[float] = None,
+    target_max_salary: Optional[float] = None,
+    currency: str = "USD",
+    period: str = "year"
+) -> Tuple[bool, str, Dict[str, Any]]:
+    """
+    Update and persist candidate target compensation expectations.
+    """
+    if target_min_salary is not None and target_max_salary is not None:
+        if target_min_salary > target_max_salary:
+            return False, "Minimum salary cannot exceed maximum salary.", {}
+
+    with _db_lock:
+        profile = load_candidate_profile()
+        prefs = profile.get("salary_preferences", {})
+        if target_min_salary is not None:
+            prefs["target_min_salary"] = target_min_salary
+        if target_max_salary is not None:
+            prefs["target_max_salary"] = target_max_salary
+        if currency:
+            prefs["currency"] = currency.strip().upper()
+        if period:
+            prefs["period"] = period.strip().lower()
+
+        prefs["updated_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+        profile["salary_preferences"] = prefs
+        save_candidate_profile(profile)
+
+    logger.info(f"Updated salary preferences: min={prefs.get('target_min_salary')}, max={prefs.get('target_max_salary')}, curr={prefs.get('currency')}")
+    return True, "Salary preferences updated successfully.", prefs
+
+
+def get_candidate_salary_preferences() -> Dict[str, Any]:
+    """Retrieve saved candidate compensation preferences."""
+    profile = load_candidate_profile()
+    prefs = profile.get("salary_preferences", {})
+    return {
+        "status": "success",
+        "message": "Salary preferences retrieved.",
+        "target_min_salary": prefs.get("target_min_salary"),
+        "target_max_salary": prefs.get("target_max_salary"),
+        "currency": prefs.get("currency", "USD"),
+        "period": prefs.get("period", "year")
+    }
+
