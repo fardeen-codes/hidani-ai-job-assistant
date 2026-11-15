@@ -2454,6 +2454,28 @@ class BackendTestCase(unittest.TestCase):
         # 4. Clean up
         withdraw_application(self.test_job_id)
 
+    def test_application_portfolio_export(self):
+        """Test compiling complete application portfolio history with interview and timeline metrics."""
+        # 1. Apply to job
+        self.client.post("/api/applications", json={"job_id": self.test_job_id})
+
+        # 2. Export portfolio -> 200 OK
+        res = self.client.get("/api/applications/export/portfolio")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "success")
+        self.assertGreater(data["total_applications"], 0)
+        self.assertIn("candidate_name", data)
+        self.assertIsInstance(data["applications"], list)
+        app_item = next((a for a in data["applications"] if a["job_id"] == self.test_job_id), None)
+        self.assertIsNotNone(app_item)
+        self.assertIn("total_interviews", app_item)
+        self.assertIn("total_questions_logged", app_item)
+        self.assertIn("timeline_events_count", app_item)
+
+        # 3. Clean up
+        withdraw_application(self.test_job_id)
+
 
 if __name__ == "__main__":
     unittest.main()

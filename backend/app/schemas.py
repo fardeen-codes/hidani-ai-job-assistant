@@ -934,3 +934,31 @@ class AutoFollowupResponse(BaseModel):
     job_id: str
     calculated_followup_date: str = Field(description="Calculated reminder date YYYY-MM-DD")
     application: Dict[str, Any]
+
+
+class ApplicationPortfolioItem(BaseModel):
+    """Compact structured summary of a job application for portfolio export."""
+    job_id: str
+    title: str
+    company: str
+    location: str
+    status: str
+    applied_date: str
+    source: Optional[str] = None
+    total_interviews: int = 0
+    total_questions_logged: int = 0
+    timeline_events_count: int = 0
+    notes: Optional[str] = None
+    outcome: Optional[str] = None
+
+
+class ApplicationPortfolioResponse(BaseModel):
+    """Candidate job search portfolio archive and career application history."""
+    status: str = Field(default="success")
+    export_timestamp: str
+    candidate_name: str
+    total_applications: int
+    active_applications_count: int
+    interviews_scheduled_count: int
+    offers_count: int
+    applications: List[ApplicationPortfolioItem] = Field(default_factory=list)

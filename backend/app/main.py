@@ -47,6 +47,8 @@ from app.schemas import (
     InterviewQuestionsResponse,
     ApplicationNotesUpdateRequest,
     ApplicationOutcomeUpdateRequest,
+    ApplicationPortfolioItem,
+    ApplicationPortfolioResponse,
     ApplicationPriorityUpdateRequest,
     ApplicationRejectionAnalyticsResponse,
     ApplicationReminderUpdateRequest,
@@ -138,6 +140,7 @@ from app.services.db_service import (
     delete_candidate_certification,
     delete_saved_search,
     execute_saved_search,
+    export_application_portfolio,
     export_jobs_to_csv,
     generate_followup_template,
     get_application_channel_analytics,
@@ -1141,6 +1144,17 @@ async def compare_offers_endpoint(payload: OfferComparisonRequest):
     """Compare multiple job offers evaluating base salary, equity, bonus, and total first-year compensation."""
     offers_dicts = [o.model_dump() for o in payload.offers]
     return compare_offer_packages(offers_dicts)
+
+
+@app.get(
+    "/api/applications/export/portfolio",
+    response_model=ApplicationPortfolioResponse,
+    summary="Export candidate application history and portfolio archive",
+    tags=["Applications"]
+)
+async def export_application_portfolio_endpoint():
+    """Generate structured portfolio summary of all applications, interview counts, and timeline activity."""
+    return export_application_portfolio()
 
 
 @app.get(

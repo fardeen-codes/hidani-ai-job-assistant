@@ -3867,3 +3867,54 @@ def compare_offer_packages(offers: List[Dict[str, Any]]) -> Dict[str, Any]:
         "offers": ranked_offers
     }
 
+
+def export_application_portfolio() -> Dict[str, Any]:
+    """
+    Compile complete candidate job search portfolio archive and career application history.
+    """
+    apps = load_applications()
+    profile = load_candidate_profile()
+    candidate_name = profile.get("name") or "Candidate"
+
+    active_count = 0
+    interview_count = 0
+    offers_count = 0
+    items = []
+
+    for a in apps:
+        status = a.get("status", "Applied")
+        if not a.get("is_archived", False):
+            active_count += 1
+        interviews = a.get("interviews", [])
+        if len(interviews) > 0 or status in ("Interview", "Offer", "Accepted"):
+            interview_count += 1
+        if a.get("outcome") in ("Offer", "Accepted") or status in ("Offer", "Accepted"):
+            offers_count += 1
+
+        items.append({
+            "job_id": a.get("job_id", ""),
+            "title": a.get("job_title") or "Untitled Role",
+            "company": a.get("company") or "Unknown",
+            "location": a.get("location") or "Remote",
+            "status": status,
+            "applied_date": a.get("applied_date", ""),
+            "source": a.get("source", "Direct / Portal"),
+            "total_interviews": len(interviews),
+            "total_questions_logged": len(a.get("interview_questions", [])),
+            "timeline_events_count": len(a.get("timeline", [])),
+            "notes": a.get("notes"),
+            "outcome": a.get("outcome")
+        })
+
+    items.sort(key=lambda x: x["applied_date"], reverse=True)
+    return {
+        "status": "success",
+        "export_timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
+        "candidate_name": candidate_name,
+        "total_applications": len(apps),
+        "active_applications_count": active_count,
+        "interviews_scheduled_count": interview_count,
+        "offers_count": offers_count,
+        "applications": items
+    }
+
