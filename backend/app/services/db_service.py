@@ -1033,6 +1033,74 @@ def add_application_interview(
     return True, f"Interview stage '{clean_round}' has been scheduled.", stage_entry
 
 
+VALID_INTERVIEW_STATUSES = {"scheduled": "Scheduled", "completed": "Completed", "cancelled": "Cancelled", "rescheduled": "Rescheduled"}
+
+
+def update_application_interview(
+    job_id: str,
+    stage_id: str,
+    status: Optional[str] = None,
+    scheduled_at: Optional[str] = None,
+    notes: Optional[str] = None
+) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
+    """
+    Update status, scheduled time, or notes of an interview stage.
+    """
+    clean_id = (job_id or "").strip()
+    clean_stage = (stage_id or "").strip()
+    if not clean_id or not clean_stage:
+        return False, "Job ID and Stage ID cannot be empty.", None
+
+    canonical_status = None
+    if status is not None:
+        clean_stat = status.strip().lower()
+        if clean_stat not in VALID_INTERVIEW_STATUSES:
+            allowed = ", ".join(VALID_INTERVIEW_STATUSES.values())
+            return False, f"Invalid interview status '{status}'. Allowed values: {allowed}.", None
+        canonical_status = VALID_INTERVIEW_STATUSES[clean_stat]
+
+    now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+
+    with _db_lock:
+        applications = load_applications()
+        target_stage = None
+        target_app = None
+        for app in applications:
+            if app.get("job_id", "").strip().lower() == clean_id.lower():
+                target_app = app
+                for s in app.get("interviews", []):
+                    if s.get("stage_id", "").strip().lower() == clean_stage.lower():
+                        target_stage = s
+                        break
+                break
+
+        if not target_app:
+            return False, f"No existing application found for Job ID '{clean_id}'.", None
+        if not target_stage:
+            return False, f"Interview stage with ID '{clean_stage}' was not found.", None
+
+        changes = []
+        if canonical_status is not None:
+            old_s = target_stage.get("status", "Scheduled")
+            target_stage["status"] = canonical_status
+            changes.append(f"status '{old_s}' -> '{canonical_status}'")
+        if scheduled_at is not None:
+            target_stage["scheduled_at"] = scheduled_at.strip() or None
+            changes.append(f"time updated to {scheduled_at}")
+        if notes is not None:
+            target_stage["notes"] = notes.strip() or None
+            changes.append("notes updated")
+
+        target_app["updated_date"] = now_str
+        if changes:
+            _record_app_event(target_app, "INTERVIEW_UPDATED", f"Interview stage '{target_stage.get('round_name')}': {', '.join(changes)}")
+
+        _save_applications(applications)
+
+    logger.info(f"Updated interview stage {clean_stage} on application {clean_id}")
+    return True, f"Interview stage '{clean_stage}' updated successfully.", target_stage
+
+
 def archive_application(job_id: str, archived: bool = True) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
     """
     Archive or unarchive an application (soft-delete).

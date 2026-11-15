@@ -36,6 +36,7 @@ from app.schemas import (
     ApplicationCreateRequest,
     ApplicationFunnelResponse,
     ApplicationInterviewCreateRequest,
+    InterviewStageUpdateRequest,
     ApplicationNotesUpdateRequest,
     ApplicationOutcomeUpdateRequest,
     ApplicationPriorityUpdateRequest,
@@ -121,6 +122,7 @@ from app.services.db_service import (
     restore_database_backup,
     save_job_bookmark,
     search_jobs,
+    update_application_interview,
     update_application_notes,
     update_application_outcome,
     update_application_priority,
@@ -1004,6 +1006,40 @@ async def add_application_interview_endpoint(job_id: str, payload: ApplicationIn
     )
     if not success:
         if "cannot be empty" in message:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=message)
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=message)
+    return {
+        "status": "success",
+        "message": message,
+        "interview": stage_entry
+    }
+
+
+@app.patch(
+    "/api/applications/{job_id}/interviews/{stage_id}",
+    response_model=dict,
+    summary="Update interview round status or reschedule time",
+    tags=["Applications"]
+)
+async def update_application_interview_endpoint(
+    job_id: str,
+    stage_id: str,
+    payload: InterviewStageUpdateRequest
+):
+    """Update status, rescheduled date/time, or debrief notes for an interview stage."""
+    clean_id = (job_id or "").strip()
+    clean_stage = (stage_id or "").strip()
+    if not clean_id or not clean_stage:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Job ID and Stage ID cannot be empty.")
+    success, message, stage_entry = update_application_interview(
+        job_id=clean_id,
+        stage_id=clean_stage,
+        status=payload.status,
+        scheduled_at=payload.scheduled_at,
+        notes=payload.notes
+    )
+    if not success:
+        if "Invalid interview status" in message:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=message)
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=message)
     return {

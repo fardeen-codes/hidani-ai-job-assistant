@@ -81,6 +81,13 @@ class ApplicationInterviewCreateRequest(BaseModel):
     status: Optional[str] = Field("Scheduled", description="Status of round: Scheduled, Completed, Cancelled")
 
 
+class InterviewStageUpdateRequest(BaseModel):
+    """Payload to update an interview round's status or reschedule time."""
+    status: Optional[str] = Field(None, description="Status: Scheduled, Completed, Cancelled, Rescheduled")
+    scheduled_at: Optional[str] = Field(None, description="Updated date/time of the interview")
+    notes: Optional[str] = Field(None, description="Updated notes or debrief remarks")
+
+
 class ApplicationAttachment(BaseModel):
     """Document attachment metadata attached to an application."""
     attachment_id: str = Field(description="Unique identifier for the attachment")

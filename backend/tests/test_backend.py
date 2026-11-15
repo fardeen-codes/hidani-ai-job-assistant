@@ -1862,6 +1862,39 @@ class BackendTestCase(unittest.TestCase):
             self.assertIn(job["work_mode"], ["Remote", "Hybrid"])
             self.assertIn(job["normalized_tier"], ["Senior", "Mid-Level"])
 
+    def test_update_application_interview_stage(self):
+        """Test scheduling an interview and then transitioning its status and rescheduling."""
+        # 1. Apply to job
+        self.client.post("/api/applications", json={"job_id": self.test_job_id, "notes": "Interview lifecycle test"})
+
+        # 2. Add interview stage
+        res_add = self.client.post(
+            f"/api/applications/{self.test_job_id}/interviews",
+            json={"round_name": "Technical Screen", "scheduled_at": "2026-11-20 10:00"}
+        )
+        self.assertEqual(res_add.status_code, 201)
+        stage_id = res_add.json()["interview"]["stage_id"]
+
+        # 3. Update interview stage (reschedule and complete)
+        res_update = self.client.patch(
+            f"/api/applications/{self.test_job_id}/interviews/{stage_id}",
+            json={"status": "Completed", "notes": "Candidate passed technical coding challenge."}
+        )
+        self.assertEqual(res_update.status_code, 200)
+        updated_stage = res_update.json()["interview"]
+        self.assertEqual(updated_stage["status"], "Completed")
+        self.assertIn("coding challenge", updated_stage["notes"])
+
+        # 4. Invalid status returns 400
+        res_inv = self.client.patch(
+            f"/api/applications/{self.test_job_id}/interviews/{stage_id}",
+            json={"status": "InvalidStageStatus99"}
+        )
+        self.assertEqual(res_inv.status_code, 400)
+
+        # Clean up
+        withdraw_application(self.test_job_id)
+
 
 if __name__ == "__main__":
     unittest.main()
