@@ -7,6 +7,7 @@ thread-safe atomic writes, and query filtering.
 import json
 import logging
 import os
+import re
 import tempfile
 import threading
 from collections import Counter
@@ -115,6 +116,83 @@ def classify_job_category(title: str, skills: Optional[List[str]] = None) -> str
     return "Other"
 
 
+SALARY_RANGE_REGEX = re.compile(
+    r"(?P<curr1>[\$\€\£]|USD|EUR|GBP)?\s*"
+    r"(?P<min>\d{1,3}(?:,\d{3})+|\d+)\s*(?P<mink>[kK])?\s*"
+    r"(?:-|–|—|to)\s*"
+    r"(?P<curr2>[\$\€\£]|USD|EUR|GBP)?\s*"
+    r"(?P<max>\d{1,3}(?:,\d{3})+|\d+)\s*(?P<maxk>[kK])?\s*"
+    r"(?P<curr3>USD|EUR|GBP)?\s*"
+    r"(?P<period>(?:/\s*(?:year|yr|annum|month|mo|hour|hr)|per\s+(?:year|annum|month|hour)|hourly|annually|monthly))?",
+    re.IGNORECASE
+)
+
+SALARY_SINGLE_REGEX = re.compile(
+    r"(?:salary|compensation|pay|rate|offering)?[:\s]*"
+    r"(?P<curr>[\$\€\£]|USD|EUR|GBP)\s*"
+    r"(?P<val>\d{1,3}(?:,\d{3})+|\d+)\s*(?P<k>[kK])?\s*"
+    r"(?P<period>(?:/\s*(?:year|yr|annum|month|mo|hour|hr)|per\s+(?:year|annum|month|hour)|hourly|annually|monthly))?",
+    re.IGNORECASE
+)
+
+CURRENCY_MAP = {
+    "$": "USD",
+    "€": "EUR",
+    "£": "GBP",
+    "USD": "USD",
+    "EUR": "EUR",
+    "GBP": "GBP",
+}
+
+
+def extract_salary_info(text: Optional[str]) -> Optional[Dict[str, Any]]:
+    """Extract structured salary details (currency, range, period) from job descriptions or titles."""
+    if not text:
+        return None
+
+    clean_text = str(text)
+    m = SALARY_RANGE_REGEX.search(clean_text)
+    if m:
+        curr = m.group("curr1") or m.group("curr2") or m.group("curr3")
+        if curr:
+            norm_curr = CURRENCY_MAP.get(curr, curr.upper())
+            min_val = float(m.group("min").replace(",", ""))
+            max_val = float(m.group("max").replace(",", ""))
+            if m.group("mink") or (m.group("maxk") and min_val < 1000):
+                min_val *= 1000.0
+            if m.group("maxk"):
+                max_val *= 1000.0
+            p_text = (m.group("period") or "").lower()
+            period = "hour" if any(w in p_text for w in ["hour", "hr"]) else ("month" if any(w in p_text for w in ["month", "mo"]) else "year")
+            return {
+                "currency": norm_curr,
+                "min_salary": min_val,
+                "max_salary": max_val,
+                "period": period,
+                "raw_text": m.group(0).strip()
+            }
+
+    m2 = SALARY_SINGLE_REGEX.search(clean_text)
+    if m2:
+        curr = m2.group("curr")
+        norm_curr = CURRENCY_MAP.get(curr, curr.upper())
+        val = float(m2.group("val").replace(",", ""))
+        if m2.group("k") or val < 1000:
+            if m2.group("k"):
+                val *= 1000.0
+        p_text = (m2.group("period") or "").lower()
+        period = "hour" if any(w in p_text for w in ["hour", "hr"]) else ("month" if any(w in p_text for w in ["month", "mo"]) else "year")
+        return {
+            "currency": norm_curr,
+            "min_salary": val,
+            "max_salary": val,
+            "period": period,
+            "raw_text": m2.group(0).strip()
+        }
+
+    return None
+
+
 def load_jobs() -> List[Dict[str, Any]]:
     """Load all jobs from jobs.json with error recovery and mtime-based in-memory caching."""
     global _jobs_cache, _jobs_by_id_cache, _jobs_cache_mtime
@@ -140,6 +218,8 @@ def load_jobs() -> List[Dict[str, Any]]:
                 for j in jobs:
                     if "category" not in j:
                         j["category"] = classify_job_category(j.get("title", ""), j.get("skills", []))
+                    if "salary" not in j:
+                        j["salary"] = extract_salary_info(f"{j.get('description', '')} {j.get('title', '')}")
                 _jobs_cache = jobs
                 _jobs_by_id_cache = {
                     j.get("job_id", "").strip().lower(): j
@@ -172,13 +252,15 @@ def search_jobs(
     location: Optional[str] = None,
     company: Optional[str] = None,
     category: Optional[str] = None,
+    has_salary: Optional[bool] = None,
+    min_salary: Optional[float] = None,
     sort_by: Optional[str] = None,
     order: Optional[str] = "asc",
     limit: Optional[int] = 10
 ) -> List[Dict[str, Any]]:
     """
     Search and filter jobs by designation, skills, query keyword, location, company, category, and experience level.
-    Supports sorting by title, company, experience, or relevance score.
+    Supports sorting by title, company, experience, salary, or relevance score.
     Returns matched job dictionaries.
     """
     all_jobs = load_jobs()
@@ -218,6 +300,28 @@ def search_jobs(
         if cat_clean:
             job_cat = (job.get("category") or classify_job_category(job.get("title", ""), job.get("skills", []))).lower()
             if cat_clean not in job_cat:
+                continue
+
+        # Strict salary presence filter
+        if has_salary is not None:
+            job_sal = job.get("salary")
+            if has_salary and not job_sal:
+                continue
+            if not has_salary and job_sal:
+                continue
+
+        # Strict minimum salary filter
+        if min_salary is not None:
+            job_sal = job.get("salary")
+            if not job_sal:
+                continue
+            eff_sal = job_sal.get("max_salary") or job_sal.get("min_salary") or 0.0
+            p = job_sal.get("period", "year")
+            if p == "hour":
+                eff_sal *= 2000.0
+            elif p == "month":
+                eff_sal *= 12.0
+            if eff_sal < min_salary:
                 continue
 
         score = 0.0
@@ -268,6 +372,19 @@ def search_jobs(
     is_desc = (order or "asc").strip().lower() == "desc"
     if sort_clean in {"title", "company", "experience", "location"}:
         scored_jobs.sort(key=lambda x: (x.get(sort_clean) or "").lower(), reverse=is_desc)
+    elif sort_clean == "salary":
+        def get_sal_val(x):
+            s = x.get("salary")
+            if not s:
+                return -float("inf") if is_desc else float("inf")
+            val = s.get("max_salary") or s.get("min_salary") or 0.0
+            p = s.get("period", "year")
+            if p == "hour":
+                val *= 2000.0
+            elif p == "month":
+                val *= 12.0
+            return val
+        scored_jobs.sort(key=get_sal_val, reverse=is_desc)
     else:
         # Default: descending by calculated score
         scored_jobs.sort(key=lambda x: x.get("internal_score", 0), reverse=True)

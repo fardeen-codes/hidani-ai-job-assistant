@@ -1081,6 +1081,90 @@ class BackendTestCase(unittest.TestCase):
         # Clean up
         withdraw_application(self.test_job_id)
 
+    def test_job_salary_extraction_and_filtering(self):
+        """Test regex extraction of salary details and API filtering by salary disclosures."""
+        from unittest.mock import patch
+        from app.services.db_service import extract_salary_info, search_jobs
+
+        # 1. Regex unit extraction tests
+        sal1 = extract_salary_info("We offer $120,000 - $160,000 / year plus equity")
+        self.assertIsNotNone(sal1)
+        self.assertEqual(sal1["currency"], "USD")
+        self.assertEqual(sal1["min_salary"], 120000.0)
+        self.assertEqual(sal1["max_salary"], 160000.0)
+        self.assertEqual(sal1["period"], "year")
+
+        sal2 = extract_salary_info("Competitive pay: €75k - €95k annually")
+        self.assertIsNotNone(sal2)
+        self.assertEqual(sal2["currency"], "EUR")
+        self.assertEqual(sal2["min_salary"], 75000.0)
+        self.assertEqual(sal2["max_salary"], 95000.0)
+
+        sal3 = extract_salary_info("Contract rate: £50 - £75 / hour")
+        self.assertIsNotNone(sal3)
+        self.assertEqual(sal3["currency"], "GBP")
+        self.assertEqual(sal3["period"], "hour")
+
+        sal_none = extract_salary_info("Great company culture with 2020-2024 experience.")
+        self.assertIsNone(sal_none)
+
+        # 2. Filtering and sorting with mock data
+        mock_jobs = [
+            {
+                "job_id": "sal-job-1",
+                "title": "Senior Backend Dev",
+                "company": "Alpha Corp",
+                "location": "Remote",
+                "description": "Salary: $150,000 / year",
+                "salary": {"currency": "USD", "min_salary": 150000.0, "max_salary": 150000.0, "period": "year"}
+            },
+            {
+                "job_id": "sal-job-2",
+                "title": "Junior Python Dev",
+                "company": "Beta Inc",
+                "location": "Remote",
+                "description": "Salary: $70,000 / year",
+                "salary": {"currency": "USD", "min_salary": 70000.0, "max_salary": 70000.0, "period": "year"}
+            },
+            {
+                "job_id": "sal-job-3",
+                "title": "Intern Dev",
+                "company": "Gamma LLC",
+                "location": "Remote",
+                "description": "No salary listed",
+                "salary": None
+            }
+        ]
+
+        with patch("app.services.db_service.load_jobs", return_value=mock_jobs):
+            # has_salary=True
+            with_sal = search_jobs(has_salary=True, limit=10)
+            self.assertEqual(len(with_sal), 2)
+            self.assertTrue(all(j["salary"] is not None for j in with_sal))
+
+            # has_salary=False
+            without_sal = search_jobs(has_salary=False, limit=10)
+            self.assertEqual(len(without_sal), 1)
+            self.assertEqual(without_sal[0]["job_id"], "sal-job-3")
+
+            # min_salary=100000
+            high_sal = search_jobs(min_salary=100000, limit=10)
+            self.assertEqual(len(high_sal), 1)
+            self.assertEqual(high_sal[0]["job_id"], "sal-job-1")
+
+            # sort_by="salary" desc
+            sorted_desc = search_jobs(sort_by="salary", order="desc", limit=10)
+            self.assertEqual(sorted_desc[0]["job_id"], "sal-job-1")
+            self.assertEqual(sorted_desc[1]["job_id"], "sal-job-2")
+
+        # 3. API endpoint integration
+        res = self.client.get("/api/jobs?limit=5")
+        self.assertEqual(res.status_code, 200)
+        jobs_data = res.json()["jobs"]
+        self.assertTrue(len(jobs_data) > 0)
+        # Verify schema serialization has salary key
+        self.assertIn("salary", jobs_data[0])
+
 
 if __name__ == "__main__":
     unittest.main()

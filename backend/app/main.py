@@ -43,6 +43,7 @@ from app.schemas import (
     JobApplication,
     JobBookmark,
     JobStatsResponse,
+    SalaryInfo,
     SavedSearch,
     SavedSearchCreateRequest,
     SearchHistoryEntry,
@@ -248,7 +249,9 @@ async def get_jobs_list(
     experience_level: Optional[str] = Query(None, description="Optional experience tier filter (Entry-Level, Mid-Level, Senior)"),
     company: Optional[str] = Query(None, description="Optional company name filter"),
     category: Optional[str] = Query(None, description="Optional industry domain filter (Engineering, Data & AI, Product & Design, Finance & Operations, Marketing & Sales)"),
-    sort_by: Optional[str] = Query(None, description="Optional field to sort by (title, company, experience, location)"),
+    has_salary: Optional[bool] = Query(None, description="Optional filter for jobs with disclosed compensation"),
+    min_salary: Optional[float] = Query(None, ge=0, description="Optional minimum annual salary filter"),
+    sort_by: Optional[str] = Query(None, description="Optional field to sort by (title, company, experience, location, salary)"),
     order: Optional[str] = Query("asc", description="Sort direction (asc, desc)"),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0)
@@ -262,13 +265,15 @@ async def get_jobs_list(
     clean_sort = (sort_by or "").strip().lower()
     is_desc = (order or "asc").strip().lower() == "desc"
 
-    if clean_query or clean_loc or clean_exp or clean_company or clean_category or clean_sort:
+    if clean_query or clean_loc or clean_exp or clean_company or clean_category or clean_sort or has_salary is not None or min_salary is not None:
         all_jobs = search_jobs(
             query=clean_query or None,
             location=clean_loc or None,
             experience_level=clean_exp or None,
             company=clean_company or None,
             category=clean_category or None,
+            has_salary=has_salary,
+            min_salary=min_salary,
             sort_by=clean_sort or None,
             order="desc" if is_desc else "asc",
             limit=None
