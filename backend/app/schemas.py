@@ -1098,5 +1098,19 @@ class CareerTransitionResponse(BaseModel):
     key_advice: str
 
 
+class InterviewDifficultyResponse(BaseModel):
+    """Estimated technical interview difficulty rating and complexity breakdown."""
+    status: str = Field(default="success")
+    job_id: str
+    job_title: str
+    company: str
+    difficulty_score: float = Field(ge=1.0, le=5.0, description="Difficulty score on a 1.0 to 5.0 scale")
+    difficulty_tier: str = Field(description="'Introductory', 'Standard', 'Challenging', 'Rigorous', or 'Expert'")
+    expected_interview_stages: List[str] = Field(default_factory=list)
+    key_complexity_factors: List[str] = Field(default_factory=list)
+    recommended_prep_focus: List[str] = Field(default_factory=list)
+
+
+
 
 

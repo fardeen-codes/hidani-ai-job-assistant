@@ -18,6 +18,7 @@ from app.agents.matcher_agent import (
     analyze_skill_gap,
     batch_score_jobs,
     calculate_weighted_skill_match,
+    estimate_interview_difficulty,
     generate_learning_roadmap,
     score_career_transition,
 )
@@ -104,6 +105,7 @@ from app.schemas import (
     DatabaseStorageMetricsResponse,
     DisambiguationResponse,
     FollowupTemplateResponse,
+    InterviewDifficultyResponse,
     JobApplication,
     LearningRoadmapRequest,
     LearningRoadmapResponse,
@@ -1088,6 +1090,27 @@ async def evaluate_job_skill_gap(
             detail=f"Job with ID '{clean_id}' was not found in the database."
         )
     return analysis
+
+
+@app.get(
+    "/api/jobs/{job_id}/interview-difficulty",
+    response_model=InterviewDifficultyResponse,
+    summary="Estimate technical interview difficulty score and complexity breakdown",
+    tags=["Jobs"]
+)
+async def estimate_job_interview_difficulty_endpoint(job_id: str):
+    """Calculate predicted interview difficulty rating (1.0 to 5.0) and expected stage curriculum."""
+    clean_id = (job_id or "").strip()
+    if not clean_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Job ID cannot be empty.")
+    result = estimate_interview_difficulty(clean_id)
+    if not result:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Job with ID '{clean_id}' was not found in the database."
+        )
+    return result
+
 
 
 @app.post(

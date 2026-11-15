@@ -2692,6 +2692,24 @@ class BackendTestCase(unittest.TestCase):
         self.assertEqual(data_pivot["estimated_difficulty"], "High")
         self.assertIn("key_advice", data_pivot)
 
+    def test_interview_difficulty_estimator(self):
+        """Test interview difficulty score estimation and interview stage progression."""
+        res = self.client.get(f"/api/jobs/{self.test_job_id}/interview-difficulty")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "success")
+        self.assertEqual(data["job_id"], self.test_job_id)
+        self.assertGreaterEqual(data["difficulty_score"], 1.0)
+        self.assertLessEqual(data["difficulty_score"], 5.0)
+        self.assertIn(data["difficulty_tier"], ["Introductory", "Standard", "Challenging", "Rigorous", "Expert"])
+        self.assertTrue(len(data["expected_interview_stages"]) >= 3)
+        self.assertTrue(len(data["key_complexity_factors"]) >= 1)
+        self.assertTrue(len(data["recommended_prep_focus"]) >= 1)
+
+        # 404 test
+        res_404 = self.client.get("/api/jobs/job-unknown-9999/interview-difficulty")
+        self.assertEqual(res_404.status_code, 404)
+
 
 if __name__ == "__main__":
     unittest.main()

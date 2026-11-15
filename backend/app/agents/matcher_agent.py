@@ -653,4 +653,112 @@ def score_career_transition(
     }
 
 
+def estimate_interview_difficulty(job_id: str) -> Optional[Dict[str, Any]]:
+    """
+    Estimate technical interview difficulty score (1.0 to 5.0) and complexity breakdown.
+    """
+    job = get_job_by_id(job_id)
+    if not job:
+        return None
+
+    title = job.get("title", "")
+    exp = (job.get("experience") or "").lower()
+    skills = [str(s).lower() for s in (job.get("skills") or [])]
+    desc = (job.get("description") or "").lower()
+
+    # Determine seniority baseline
+    sen = _get_seniority_level(title)
+    if sen >= 4 or "lead" in exp or "staff" in exp or "principal" in exp:
+        score = 4.4
+        tier = "Expert" if sen >= 5 else "Rigorous"
+    elif sen == 3 or "senior" in exp or "sr" in exp:
+        score = 3.8
+        tier = "Challenging"
+    elif sen == 1 or "junior" in exp or "entry" in exp or "intern" in exp:
+        score = 2.0
+        tier = "Introductory"
+    else:
+        score = 2.9
+        tier = "Standard"
+
+    # Evaluate specialized technologies
+    complex_tech = {"kubernetes", "distributed", "concurrency", "microservices", "kafka", "rust", "c++", "security", "ml", "machine learning"}
+    found_complex = [s for s in skills if any(c in s for c in complex_tech)]
+    if found_complex:
+        score = min(score + 0.3, 5.0)
+
+    # Recalibrate tier based on adjusted score
+    if score >= 4.5:
+        tier = "Expert"
+    elif score >= 3.8:
+        tier = "Rigorous"
+    elif score >= 3.0:
+        tier = "Challenging"
+    elif score >= 2.2:
+        tier = "Standard"
+    else:
+        tier = "Introductory"
+
+    # Stages and factors
+    factors = []
+    if sen >= 3:
+        factors.append(f"Seniority expectations for {title} require proven architectural depth and mentoring capability")
+    if found_complex:
+        factors.append(f"Requires distributed/systems complexity expertise ({', '.join(found_complex[:3])})")
+    if len(skills) > 5:
+        factors.append(f"Extensive breadth across {len(skills)} declared technical requirements")
+    if not factors:
+        factors.append("Standard software engineering core data structures, algorithms, and application design")
+
+    if score >= 4.0:
+        stages = [
+            "1. Technical Recruiter Screen (30m)",
+            "2. Low-level Coding & Concurrency Screen (60m)",
+            "3. Distributed System Architecture & Scalability Design (60m)",
+            "4. Engineering Leadership & Cross-Functional Alignment (45m)",
+            "5. Executive / Bar Raiser Cultural Evaluation (45m)"
+        ]
+        prep = [
+            "High-throughput data partitioning and consistency models (CAP / PACELC)",
+            "Distributed tracing, failure recovery, and idempotency patterns",
+            "Staff-level technical influence stories using the STAR method"
+        ]
+    elif score >= 3.0:
+        stages = [
+            "1. Recruiter Screen (30m)",
+            "2. Live Algorithm & Data Structures Coding (60m)",
+            "3. Practical System Design & API Architecture (60m)",
+            "4. Past Project Deep-Dive & Behavioral Fit (45m)"
+        ]
+        prep = [
+            "Microservice boundaries, RESTful API contracts, and caching tiers",
+            "Relational schema indexing and query performance optimization",
+            "Clean code, test coverage, and modular design patterns"
+        ]
+    else:
+        stages = [
+            "1. Recruiter Screen (30m)",
+            "2. Practical Coding & Debugging Exercise (45m)",
+            "3. Core CS Fundamentals & Team Collaboration Interview (45m)"
+        ]
+        prep = [
+            "Core language syntax, standard library idioms, and unit tests",
+            "Basic HTTP protocols, CRUD APIs, and database fundamentals",
+            "Clear communication and problem-solving explanation while coding"
+        ]
+
+    return {
+        "status": "success",
+        "job_id": job.get("job_id", job_id),
+        "job_title": title,
+        "company": job.get("company", ""),
+        "difficulty_score": round(score, 1),
+        "difficulty_tier": tier,
+        "expected_interview_stages": stages,
+        "key_complexity_factors": factors,
+        "recommended_prep_focus": prep
+    }
+
+
+
 
