@@ -51,6 +51,7 @@ from app.schemas import (
     ChatStateResponse,
     CompanyDirectoryResponse,
     CompanyProfile,
+    DatabaseAuditLogResponse,
     DatabaseBackupSnapshot,
     DatabaseCompactionResponse,
     DatabaseHealthResponse,
@@ -91,6 +92,7 @@ from app.services.db_service import (
     get_application_velocity_metrics,
     get_bookmarked_jobs,
     get_company_profile,
+    get_database_audit_log,
     get_job_by_id,
     get_job_stats,
     get_recent_searches,
@@ -1205,6 +1207,20 @@ async def check_database_health_endpoint():
 async def compact_database_endpoint():
     """Purge orphaned bookmarks and deduplicate search history."""
     return compact_database()
+
+
+@app.get(
+    "/api/admin/db/audit-log",
+    response_model=DatabaseAuditLogResponse,
+    summary="Retrieve database operations audit trail log",
+    tags=["Database Admin"]
+)
+async def get_database_audit_log_endpoint(
+    limit: int = Query(50, ge=1, le=200, description="Maximum number of audit events to return"),
+    entity: Optional[str] = Query(None, description="Optional filter by entity (application, bookmark, system)")
+):
+    """Retrieve chronologically ordered audit logs of transactions and multi-entity operations."""
+    return get_database_audit_log(limit=limit, entity=entity)
 
 
 # Static Frontend Delivery

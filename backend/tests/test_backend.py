@@ -1666,6 +1666,33 @@ class BackendTestCase(unittest.TestCase):
         for j in lead_jobs:
             self.assertEqual(j["normalized_tier"], "Lead")
 
+    def test_database_audit_log_and_transaction_tracking(self):
+        """Test recording and retrieving transaction audit trail log."""
+        # 1. Trigger an audited action (apply to job)
+        self.client.post("/api/applications", json={"job_id": self.test_job_id, "notes": "Audit test"})
+
+        # 2. Query audit log
+        res = self.client.get("/api/admin/db/audit-log?limit=10")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertIn("total_entries", data)
+        self.assertIn("entries", data)
+        self.assertGreater(data["total_entries"], 0)
+        recent_entry = data["entries"][0]
+        self.assertIn("entry_id", recent_entry)
+        self.assertIn("action", recent_entry)
+        self.assertIn("entity", recent_entry)
+        self.assertIn("timestamp", recent_entry)
+
+        # 3. Filter by entity
+        res_filter = self.client.get("/api/admin/db/audit-log?entity=application")
+        self.assertEqual(res_filter.status_code, 200)
+        for entry in res_filter.json()["entries"]:
+            self.assertEqual(entry["entity"], "application")
+
+        # Clean up
+        withdraw_application(self.test_job_id)
+
 
 if __name__ == "__main__":
     unittest.main()

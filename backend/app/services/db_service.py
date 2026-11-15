@@ -47,6 +47,27 @@ _search_history_cache_mtime: Optional[float] = None
 _saved_searches_cache: Optional[List[Dict[str, Any]]] = None
 _saved_searches_cache_mtime: Optional[float] = None
 
+# In-memory ring buffer for atomic database transaction audit entries
+_audit_log_entries: List[Dict[str, Any]] = []
+
+
+def _log_db_audit_entry(action: str, entity: str, entity_id: str, details: str) -> None:
+    """Record an audit trail entry for database operations."""
+    global _audit_log_entries
+    entry_id = f"aud_{int(datetime.now(timezone.utc).timestamp() * 1000)}_{len(_audit_log_entries)}"
+    entry = {
+        "entry_id": entry_id,
+        "action": action,
+        "entity": entity,
+        "entity_id": str(entity_id),
+        "details": details,
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+    with _db_lock:
+        _audit_log_entries.append(entry)
+        if len(_audit_log_entries) > 1000:
+            _audit_log_entries = _audit_log_entries[-1000:]
+
 
 def invalidate_jobs_cache() -> None:
     """Clear in-memory jobs cache to force reload on next access."""
@@ -697,6 +718,7 @@ def apply_to_job(job_id: str, notes: Optional[str] = None) -> Tuple[bool, str, O
 
         applications.append(new_application)
         _save_applications(applications)
+        _log_db_audit_entry("APPLY", "application", clean_id, f"Application submitted for '{job.get('title')}' at '{job.get('company')}'")
 
     logger.info(f"Successfully recorded application for job {clean_id} ({job.get('title')})")
     return (
@@ -738,6 +760,7 @@ def withdraw_application(job_id: str) -> Tuple[bool, str]:
             return False, f"No existing application found for Job ID '{clean_id}'."
 
         _save_applications(remaining)
+        _log_db_audit_entry("WITHDRAW", "application", clean_id, f"Application for Job ID '{clean_id}' withdrawn")
 
     logger.info(f"Successfully withdrew application for job {clean_id}")
     return True, f"Application for Job ID '{clean_id}' has been successfully withdrawn."
@@ -2195,4 +2218,18 @@ def generate_followup_template(job_id: str, template_type: str = "status_inquiry
         "subject": subject,
         "body": body
     }
+
+
+def get_database_audit_log(limit: int = 50, entity: Optional[str] = None) -> Dict[str, Any]:
+    """Retrieve chronologically ordered transaction audit entries with optional entity filter."""
+    with _db_lock:
+        entries = list(reversed(_audit_log_entries))
+        if entity:
+            clean_ent = entity.strip().lower()
+            entries = [e for e in entries if e.get("entity", "").lower() == clean_ent]
+        limit = max(1, min(limit or 50, 500))
+        return {
+            "total_entries": len(entries),
+            "entries": entries[:limit]
+        }
 

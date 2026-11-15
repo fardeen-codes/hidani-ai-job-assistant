@@ -456,3 +456,19 @@ class ApplicationVelocityResponse(BaseModel):
     last_30_days_count: int = Field(description="Applications submitted within the last 30 days")
     avg_per_week: float = Field(description="Average application submission velocity per week")
     active_pipeline_count: int = Field(description="Current count of pending or active pipeline applications")
+
+
+class DatabaseAuditEntry(BaseModel):
+    """Transaction audit event entry."""
+    entry_id: str = Field(description="Unique identifier for audit log entry")
+    action: str = Field(description="Operation type (e.g. APPLY, WITHDRAW, BOOKMARK_ADD, BOOKMARK_REMOVE, RESTORE)")
+    entity: str = Field(description="Entity type modified (application, bookmark, saved_search, system)")
+    entity_id: str = Field(description="Target entity identifier")
+    details: str = Field(description="Transaction event details")
+    timestamp: str = Field(description="ISO timestamp of logged transaction")
+
+
+class DatabaseAuditLogResponse(BaseModel):
+    """Paginated collection of database transaction audit entries."""
+    total_entries: int = Field(description="Total recorded audit entries")
+    entries: List[DatabaseAuditEntry] = Field(default_factory=list, description="List of audit log records")
