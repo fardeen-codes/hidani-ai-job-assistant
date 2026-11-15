@@ -2613,6 +2613,29 @@ class BackendTestCase(unittest.TestCase):
         self.assertIn("Hiring Manager", data_email["message"])
         self.assertTrue(data_email["is_within_channel_limit"])
 
+    def test_matcher_learning_roadmap_generation(self):
+        """Test learning roadmap generation with curated curriculum and project ideas."""
+        payload = {
+            "missing_skills": ["Kubernetes", "GraphQL", "Rust"],
+            "target_role": "Senior Cloud Infrastructure Engineer"
+        }
+        res = self.client.post("/api/matcher/learning-roadmap", json=payload)
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "success")
+        self.assertEqual(data["total_skills"], 3)
+        self.assertGreater(data["total_estimated_hours"], 50)
+        skills_in_roadmap = {item["skill"] for item in data["roadmap"]}
+        self.assertIn("Kubernetes", skills_in_roadmap)
+        self.assertIn("GraphQL", skills_in_roadmap)
+        self.assertIn("Rust", skills_in_roadmap)
+        
+        # Verify curated topics & projects
+        k8s_item = next(i for i in data["roadmap"] if i["skill"] == "Kubernetes")
+        self.assertEqual(k8s_item["priority"], "High")
+        self.assertGreaterEqual(len(k8s_item["suggested_topics"]), 3)
+        self.assertIn("Minikube", k8s_item["recommended_project_idea"])
+
 
 if __name__ == "__main__":
     unittest.main()

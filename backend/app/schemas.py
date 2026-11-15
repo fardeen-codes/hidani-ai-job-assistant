@@ -1032,3 +1032,27 @@ class ColdOutreachMessageResponse(BaseModel):
     character_count: int
     is_within_channel_limit: bool
 
+
+class SkillStudyResource(BaseModel):
+    """Actionable study topics, estimated effort, and project idea for a missing job skill."""
+    skill: str = Field(description="Target skill name")
+    priority: str = Field(description="'High', 'Medium', or 'Low'")
+    suggested_topics: List[str] = Field(default_factory=list, description="Core topics and modules to study")
+    estimated_hours: int = Field(ge=1, description="Estimated study and practice hours")
+    recommended_project_idea: str = Field(description="Hands-on portfolio project idea")
+
+
+class LearningRoadmapRequest(BaseModel):
+    """Payload to generate structured study path for missing technical requirements."""
+    missing_skills: List[str] = Field(..., min_length=1, description="Missing skills to generate study path for")
+    target_role: Optional[str] = Field(None, description="Target job title")
+
+
+class LearningRoadmapResponse(BaseModel):
+    """Actionable upskilling roadmap with learning milestones and projects."""
+    status: str = Field(default="success")
+    total_skills: int
+    total_estimated_hours: int
+    roadmap: List[SkillStudyResource] = Field(default_factory=list)
+
+

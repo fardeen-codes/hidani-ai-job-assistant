@@ -14,7 +14,11 @@ from fastapi import FastAPI, File, HTTPException, Query, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 
-from app.agents.matcher_agent import analyze_skill_gap, batch_score_jobs
+from app.agents.matcher_agent import (
+    analyze_skill_gap,
+    batch_score_jobs,
+    generate_learning_roadmap,
+)
 from app.agents.orchestrator import (
     clear_session_state,
     evaluate_intent_confidence_and_clarification,
@@ -97,6 +101,8 @@ from app.schemas import (
     DisambiguationResponse,
     FollowupTemplateResponse,
     JobApplication,
+    LearningRoadmapRequest,
+    LearningRoadmapResponse,
     JobBookmark,
     JobStatsResponse,
     JobTagCloudResponse,
@@ -1095,6 +1101,21 @@ async def batch_score_jobs_endpoint(payload: BatchScoreRequest):
         "total_evaluated": len(results),
         "results": results
     }
+
+
+@app.post(
+    "/api/matcher/learning-roadmap",
+    response_model=LearningRoadmapResponse,
+    summary="Generate personalized study roadmap and hands-on projects for missing job skills",
+    tags=["Matcher"]
+)
+async def generate_learning_roadmap_endpoint(payload: LearningRoadmapRequest):
+    """Generate structured study curriculum, estimated effort, and project recommendations for target missing skills."""
+    return generate_learning_roadmap(
+        missing_skills=payload.missing_skills,
+        target_role=payload.target_role
+    )
+
 
 
 @app.get(

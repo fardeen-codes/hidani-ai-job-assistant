@@ -368,3 +368,129 @@ def batch_score_jobs(
 
     results.sort(key=lambda x: x["match_score"], reverse=True)
     return results
+
+
+_SKILL_CURRICULUM_TEMPLATES = {
+    "kubernetes": {
+        "topics": ["Pod Lifecycle & Deployments", "Services & Ingress", "StatefulSets & Helm", "CRDs & Operators"],
+        "hours": 30,
+        "priority": "High",
+        "project": "Deploy a multi-tier microservice architecture to local Minikube using Helm charts."
+    },
+    "docker": {
+        "topics": ["Dockerfile Multi-stage Builds", "Compose Orchestration", "Networking & Volumes", "Image Minimization"],
+        "hours": 15,
+        "priority": "High",
+        "project": "Containerize a polyglot application with optimized multi-stage build caching."
+    },
+    "aws": {
+        "topics": ["IAM & VPC Security", "ECS / Fargate", "S3 & Lambda Serverless", "CloudWatch Observability"],
+        "hours": 35,
+        "priority": "High",
+        "project": "Provision an automated serverless data processing pipeline using Terraform and AWS Lambda."
+    },
+    "graphql": {
+        "topics": ["Schema Definition Language (SDL)", "Resolvers & DataLoader (N+1)", "Subscriptions", "Apollo Federation"],
+        "hours": 20,
+        "priority": "Medium",
+        "project": "Build a unified GraphQL gateway with batching and caching over downstream REST services."
+    },
+    "kafka": {
+        "topics": ["Producers, Consumers & Offsets", "Partitioning & Consumer Groups", "Kafka Streams", "Schema Registry & Avro"],
+        "hours": 25,
+        "priority": "High",
+        "project": "Implement real-time event streaming and dead-letter queue recovery mechanism."
+    },
+    "redis": {
+        "topics": ["Data Structures & TTLs", "Pub/Sub & Streams", "Caching Strategies & Cache Invalidation", "Redis Cluster & Persistence"],
+        "hours": 15,
+        "priority": "Medium",
+        "project": "Implement a distributed rate limiter and session cache with sliding window logic."
+    },
+    "typescript": {
+        "topics": ["Generics & Conditional Types", "Utility Types & Mapped Types", "Strict Null Checking", "Compiler Options & Tooling"],
+        "hours": 18,
+        "priority": "High",
+        "project": "Refactor a dynamic JavaScript library to fully typed TypeScript with strict compiler validation."
+    },
+    "python": {
+        "topics": ["Asyncio & Concurrency", "Metaclasses & Descriptors", "Type Annotations & Pydantic", "Profiling & Memory Optimization"],
+        "hours": 25,
+        "priority": "High",
+        "project": "Develop a high-throughput asynchronous web crawler using asyncio and aiohttp."
+    },
+    "postgresql": {
+        "topics": ["Indexing Strategies & EXPLAIN ANALYZE", "Transactions & Isolation Levels", "Partitioning & Vacuuming", "Connection Pooling"],
+        "hours": 20,
+        "priority": "High",
+        "project": "Optimize slow multi-join query performance with composite B-Tree and GIN indexes."
+    },
+    "react": {
+        "topics": ["Hooks & Custom Hooks", "Server Components & Suspense", "State Management & Context", "Performance Profiling & Memoization"],
+        "hours": 25,
+        "priority": "High",
+        "project": "Build an interactive dashboard with optimistic UI updates and virtualization."
+    }
+}
+
+
+def generate_learning_roadmap(missing_skills: List[str], target_role: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Generate an actionable technical learning roadmap with study topics, estimated effort, and project ideas.
+    """
+    seen = set()
+    cleaned_skills = []
+    for s in missing_skills:
+        clean = (s or "").strip()
+        if clean and clean.lower() not in seen:
+            seen.add(clean.lower())
+            cleaned_skills.append(clean)
+
+    roadmap = []
+    total_hours = 0
+
+    for skill in cleaned_skills:
+        norm = _normalize_skill(skill)
+        template = _SKILL_CURRICULUM_TEMPLATES.get(norm)
+        if not template:
+            # Check if any template key is a substring
+            for k, val in _SKILL_CURRICULUM_TEMPLATES.items():
+                if k in norm:
+                    template = val
+                    break
+
+        if template:
+            hours = template["hours"]
+            item = {
+                "skill": skill,
+                "priority": template["priority"],
+                "suggested_topics": list(template["topics"]),
+                "estimated_hours": hours,
+                "recommended_project_idea": template["project"]
+            }
+        else:
+            role_ctx = f" for {target_role}" if target_role else ""
+            hours = 20
+            item = {
+                "skill": skill,
+                "priority": "Medium",
+                "suggested_topics": [
+                    f"Core Fundamentals & Architecture of {skill}",
+                    f"Best Practices & Design Patterns for {skill}{role_ctx}",
+                    f"Integration & Testing with {skill}",
+                    f"Production Deployment & Monitoring for {skill}"
+                ],
+                "estimated_hours": hours,
+                "recommended_project_idea": f"Design and implement a standalone proof-of-concept system showcasing {skill} in a production-ready application."
+            }
+
+        roadmap.append(item)
+        total_hours += hours
+
+    return {
+        "status": "success",
+        "total_skills": len(roadmap),
+        "total_estimated_hours": total_hours,
+        "roadmap": roadmap
+    }
+
