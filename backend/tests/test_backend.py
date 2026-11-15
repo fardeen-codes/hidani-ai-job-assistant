@@ -2232,6 +2232,27 @@ class BackendTestCase(unittest.TestCase):
         self.assertTrue(len(data["keyword_density"]) >= 3)
         self.assertTrue(len(data["sections_breakdown"]) >= 5)
 
+    def test_jobs_export_to_csv(self):
+        """Test exporting active jobs as a formatted CSV spreadsheet."""
+        # 1. Export all jobs
+        res = self.client.get("/api/jobs/export/csv")
+        self.assertEqual(res.status_code, 200)
+        self.assertIn("text/csv", res.headers["content-type"])
+        self.assertIn('filename="jobs_export.csv"', res.headers.get("content-disposition", ""))
+        content = res.text
+        lines = content.strip().split("\n")
+        self.assertGreater(len(lines), 1)  # Header + at least 1 job
+        header = lines[0]
+        self.assertIn("job_id", header)
+        self.assertIn("title", header)
+        self.assertIn("company", header)
+        self.assertIn("location", header)
+
+        # 2. Filtered export
+        res_filtered = self.client.get("/api/jobs/export/csv?query=software")
+        self.assertEqual(res_filtered.status_code, 200)
+        self.assertGreater(len(res_filtered.text.strip().split("\n")), 1)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -117,6 +117,7 @@ from app.services.db_service import (
     delete_candidate_certification,
     delete_saved_search,
     execute_saved_search,
+    export_jobs_to_csv,
     generate_followup_template,
     get_application_funnel_metrics,
     get_application_stats,
@@ -808,6 +809,22 @@ async def get_job_tag_cloud_endpoint(
 async def get_tier_salary_insights_endpoint():
     """Retrieve compensation benchmarks and distributions across career tiers (Entry-Level, Mid-Level, Senior, Lead)."""
     return get_tier_salary_insights()
+
+
+@app.get("/api/jobs/export/csv", summary="Export jobs as CSV", tags=["Jobs"])
+async def export_jobs_csv_endpoint(
+    query: Optional[str] = Query(None, description="Search term filter"),
+    location: Optional[str] = Query(None, description="Location filter"),
+    experience_level: Optional[str] = Query(None, description="Experience level filter"),
+    category: Optional[str] = Query(None, description="Domain category filter")
+):
+    """Export job listings matching current filters as a downloadable CSV spreadsheet."""
+    csv_content = export_jobs_to_csv(query=query, location=location, experience_level=experience_level, category=category)
+    return Response(
+        content=csv_content,
+        media_type="text/csv",
+        headers={"Content-Disposition": 'attachment; filename="jobs_export.csv"'}
+    )
 
 
 @app.get("/api/jobs/{job_id}", summary="Get job details by ID", tags=["Jobs"])

@@ -4,6 +4,8 @@ Handles reading and writing jobs.json and applications.json with deduplication,
 thread-safe atomic writes, and query filtering.
 """
 
+import csv
+import io
 import json
 import logging
 import os
@@ -3355,4 +3357,38 @@ def analyze_resume_ats_readability(
         "actionable_tips": actionable_tips,
         "sections_breakdown": sections_breakdown
     }
+
+
+def export_jobs_to_csv(
+    query: Optional[str] = None,
+    location: Optional[str] = None,
+    experience_level: Optional[str] = None,
+    category: Optional[str] = None
+) -> str:
+    """
+    Export filtered or all jobs as a structured CSV string.
+    """
+    matches = search_jobs(query=query, location=location, experience_level=experience_level, category=category, limit=500)
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        "job_id", "title", "company", "location", "experience",
+        "skills", "min_salary", "max_salary", "currency", "source_link"
+    ])
+    for job in matches:
+        sal = job.get("salary") or {}
+        skills_str = "; ".join(job.get("skills") or [])
+        writer.writerow([
+            job.get("job_id", ""),
+            job.get("title", ""),
+            job.get("company", ""),
+            job.get("location", ""),
+            job.get("experience", ""),
+            skills_str,
+            sal.get("min_salary", "") if isinstance(sal, dict) else "",
+            sal.get("max_salary", "") if isinstance(sal, dict) else "",
+            sal.get("currency", "") if isinstance(sal, dict) else "",
+            job.get("source_link", "")
+        ])
+    return output.getvalue()
 
