@@ -17,6 +17,7 @@ from fastapi.responses import JSONResponse, Response
 from app.agents.matcher_agent import analyze_skill_gap, batch_score_jobs
 from app.agents.orchestrator import (
     clear_session_state,
+    evaluate_intent_confidence_and_clarification,
     export_session_transcript,
     get_session_metrics,
     get_session_state,
@@ -87,6 +88,7 @@ from app.schemas import (
     DatabaseRepairResponse,
     DatabaseRestoreResponse,
     DatabaseStorageMetricsResponse,
+    DisambiguationResponse,
     FollowupTemplateResponse,
     JobApplication,
     JobBookmark,
@@ -505,6 +507,17 @@ async def chat(request: ChatRequest):
     except Exception as exc:
         logger.error(f"Error in chat processing: {exc}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Chat assistant error: {str(exc)}")
+
+
+@app.post(
+    "/api/chat/clarification",
+    response_model=DisambiguationResponse,
+    summary="Evaluate intent confidence and suggest clarification options",
+    tags=["Chat"]
+)
+async def evaluate_chat_clarification_endpoint(payload: ChatRequest):
+    """Detect if conversational request is ambiguous and generate quick-reply clarification prompts."""
+    return evaluate_intent_confidence_and_clarification(payload.message)
 
 
 @app.post("/api/chat/reset", summary="Reset session conversation history", tags=["Chat"])

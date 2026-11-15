@@ -1043,3 +1043,74 @@ def export_session_transcript(session_id: str, format: str = "markdown") -> Tupl
             lines.append(f"[{role.upper()}]: {content}\n")
         return True, "Transcript formatted successfully.", "\n".join(lines)
 
+
+def evaluate_intent_confidence_and_clarification(user_message: str) -> Dict[str, Any]:
+    """
+    Score intent classification confidence and generate clarification suggestions when ambiguous.
+    """
+    text = (user_message or "").strip().lower()
+    if not text:
+        return {
+            "status": "success",
+            "needs_clarification": True,
+            "top_intent": None,
+            "confidence": 0.0,
+            "clarification_message": "How can I assist you with your job search today?",
+            "quick_replies": [
+                {"intent_label": "job_search", "confidence": 0.3, "suggested_prompt": "Find remote Python jobs"},
+                {"intent_label": "view_applications", "confidence": 0.3, "suggested_prompt": "Show my applied jobs"},
+                {"intent_label": "resume_analysis", "confidence": 0.3, "suggested_prompt": "Review my resume ATS score"}
+            ]
+        }
+
+    intent_keywords = {
+        "job_search": ["job", "jobs", "find", "search", "role", "roles", "hiring", "developer", "engineer", "position", "remote"],
+        "view_bookmarks": ["bookmark", "bookmarks", "saved", "favorite", "saved jobs", "shortlist"],
+        "view_applications": ["applied", "application", "applications", "interview", "interviews", "status", "pipeline", "offer"],
+        "resume_analysis": ["resume", "cv", "ats", "readability", "score", "skills gap", "critique", "profile"],
+        "stats_overview": ["stats", "market", "salary", "compensation", "trends", "analytics", "companies"]
+    }
+
+    intent_prompts = {
+        "job_search": "Find matching job openings",
+        "view_bookmarks": "View saved bookmarked jobs",
+        "view_applications": "Check job application status",
+        "resume_analysis": "Audit resume completeness and ATS score",
+        "stats_overview": "Browse job market salary trends"
+    }
+
+    scores = {}
+    tokens = set(re.findall(r"\b\w+\b", text))
+    for intent, kws in intent_keywords.items():
+        match_count = sum(1 for kw in kws if kw in text or kw in tokens)
+        score = min(1.0, match_count / max(1, len(tokens) * 0.5))
+        scores[intent] = round(score, 2)
+
+    sorted_intents = sorted(scores.items(), key=lambda x: -x[1])
+    top_intent, top_score = sorted_intents[0]
+    second_intent, second_score = sorted_intents[1]
+
+    # Needs clarification if top score is weak, or top two are close and ambiguous
+    is_ambiguous = (top_score < 0.35) or (top_score < 0.6 and (top_score - second_score) < 0.15)
+
+    quick_replies = []
+    for intent, sc in sorted_intents[:3]:
+        quick_replies.append({
+            "intent_label": intent,
+            "confidence": max(0.2, sc),
+            "suggested_prompt": intent_prompts.get(intent, intent)
+        })
+
+    clarification_msg = None
+    if is_ambiguous:
+        clarification_msg = f"I want to make sure I understand. Did you mean to {intent_prompts.get(top_intent, 'search')}, or would you prefer something else?"
+
+    return {
+        "status": "success",
+        "needs_clarification": is_ambiguous,
+        "top_intent": top_intent if not is_ambiguous else None,
+        "confidence": top_score,
+        "clarification_message": clarification_msg,
+        "quick_replies": quick_replies
+    }
+

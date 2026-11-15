@@ -962,3 +962,20 @@ class ApplicationPortfolioResponse(BaseModel):
     interviews_scheduled_count: int
     offers_count: int
     applications: List[ApplicationPortfolioItem] = Field(default_factory=list)
+
+
+class IntentClarificationItem(BaseModel):
+    """Disambiguation quick-reply option for low-confidence intent matches."""
+    intent_label: str = Field(description="Possible user intent category")
+    confidence: float = Field(description="Confidence probability score (0.0 to 1.0)")
+    suggested_prompt: str = Field(description="Actionable quick-reply prompt text")
+
+
+class DisambiguationResponse(BaseModel):
+    """Intent confidence evaluation and clarification prompt recommendations."""
+    status: str = Field(default="success")
+    needs_clarification: bool = Field(description="True if top intent confidence is ambiguous")
+    top_intent: Optional[str] = Field(None, description="Most likely identified intent")
+    confidence: float = Field(description="Top confidence score")
+    clarification_message: Optional[str] = Field(None, description="Conversational prompt asking user to clarify")
+    quick_replies: List[IntentClarificationItem] = Field(default_factory=list)

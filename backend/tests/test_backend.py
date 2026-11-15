@@ -2507,6 +2507,25 @@ class BackendTestCase(unittest.TestCase):
         finally:
             self.client.post(f"/api/chat/reset/{session_id}")
 
+    def test_orchestrator_intent_clarification_and_confidence(self):
+        """Test scoring intent confidence and generating disambiguation prompts for ambiguous queries."""
+        # 1. Ambiguous query -> needs clarification
+        res_ambig = self.client.post("/api/chat/clarification", json={"message": "can you help me with things"})
+        self.assertEqual(res_ambig.status_code, 200)
+        data_ambig = res_ambig.json()
+        self.assertEqual(data_ambig["status"], "success")
+        self.assertTrue(data_ambig["needs_clarification"])
+        self.assertIsNotNone(data_ambig["clarification_message"])
+        self.assertTrue(len(data_ambig["quick_replies"]) >= 2)
+
+        # 2. Clear job search query -> no clarification needed
+        res_clear = self.client.post("/api/chat/clarification", json={"message": "find remote software engineer jobs"})
+        self.assertEqual(res_clear.status_code, 200)
+        data_clear = res_clear.json()
+        self.assertFalse(data_clear["needs_clarification"])
+        self.assertEqual(data_clear["top_intent"], "job_search")
+        self.assertGreater(data_clear["confidence"], 0.3)
+
 
 if __name__ == "__main__":
     unittest.main()
