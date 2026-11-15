@@ -65,6 +65,8 @@ from app.schemas import (
     ChatResponse,
     ChatStateResponse,
     CompanyDirectoryResponse,
+    CompanyHiringSurgeItem,
+    CompanyHiringSurgeResponse,
     CompanyProfile,
     DatabaseAuditLogResponse,
     DatabaseBackupSnapshot,
@@ -129,6 +131,7 @@ from app.services.db_service import (
     get_candidate_certifications,
     get_candidate_salary_preferences,
     get_candidate_work_preferences,
+    get_company_hiring_surges,
     get_company_profile,
     get_database_audit_log,
     get_database_storage_metrics,
@@ -809,6 +812,17 @@ async def get_job_tag_cloud_endpoint(
 async def get_tier_salary_insights_endpoint():
     """Retrieve compensation benchmarks and distributions across career tiers (Entry-Level, Mid-Level, Senior, Lead)."""
     return get_tier_salary_insights()
+
+
+@app.get(
+    "/api/jobs/analytics/hiring-surges",
+    response_model=CompanyHiringSurgeResponse,
+    summary="Detect companies with rapid hiring surges",
+    tags=["Jobs"]
+)
+async def get_company_hiring_surges_endpoint(limit: int = Query(10, ge=1, le=50)):
+    """Analyze company hiring velocity, department expansion patterns, and recent job surges."""
+    return get_company_hiring_surges(limit=limit)
 
 
 @app.get("/api/jobs/export/csv", summary="Export jobs as CSV", tags=["Jobs"])

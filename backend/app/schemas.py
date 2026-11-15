@@ -766,3 +766,20 @@ class ATSScoreResponse(BaseModel):
     keyword_density: Dict[str, int] = Field(default_factory=dict, description="Top detected high-impact keywords")
     actionable_tips: List[str] = Field(default_factory=list)
     sections_breakdown: List[ATSSectionAnalysis] = Field(default_factory=list)
+
+
+class CompanyHiringSurgeItem(BaseModel):
+    """Company hiring volume and velocity metrics."""
+    company: str = Field(description="Company name")
+    total_active_jobs: int = Field(description="Total active job listings")
+    recent_postings_7d: int = Field(description="Recent job postings")
+    growth_indicator: str = Field(description="'Rapid Hiring', 'Steady Hiring', or 'Moderate'")
+    top_categories: List[str] = Field(default_factory=list, description="Primary departments hiring")
+    sample_roles: List[str] = Field(default_factory=list, description="Recent open titles")
+
+
+class CompanyHiringSurgeResponse(BaseModel):
+    """Analytics payload identifying companies experiencing high hiring surges."""
+    status: str = Field(default="success")
+    analyzed_companies: int = Field(description="Total companies analyzed")
+    surging_companies: List[CompanyHiringSurgeItem] = Field(default_factory=list)

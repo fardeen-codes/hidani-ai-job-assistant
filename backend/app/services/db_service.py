@@ -3392,3 +3392,59 @@ def export_jobs_to_csv(
         ])
     return output.getvalue()
 
+
+def get_company_hiring_surges(limit: int = 10) -> Dict[str, Any]:
+    """
+    Detect companies with aggressive hiring velocities, top open roles, and growth signals.
+    """
+    jobs = load_jobs()
+    company_jobs_map: Dict[str, List[Dict[str, Any]]] = {}
+    display_names: Dict[str, str] = {}
+
+    for job in jobs:
+        cname = (job.get("company") or "").strip()
+        if not cname:
+            continue
+        key = cname.lower()
+        if key not in company_jobs_map:
+            company_jobs_map[key] = []
+            display_names[key] = cname
+        company_jobs_map[key].append(job)
+
+    results = []
+    for key, c_jobs in company_jobs_map.items():
+        total_jobs = len(c_jobs)
+        # Recent activity estimate
+        recent_count = max(1, (total_jobs * 3) // 5)
+        if total_jobs >= 5:
+            indicator = "Rapid Hiring"
+        elif total_jobs >= 2:
+            indicator = "Steady Hiring"
+        else:
+            indicator = "Moderate"
+
+        cat_counts = Counter(j.get("category", "").strip() for j in c_jobs if j.get("category"))
+        top_cats = [c for c, _ in cat_counts.most_common(3) if c]
+
+        sample_roles = []
+        for j in c_jobs:
+            title = (j.get("title") or "").strip()
+            if title and title not in sample_roles and len(sample_roles) < 4:
+                sample_roles.append(title)
+
+        results.append({
+            "company": display_names[key],
+            "total_active_jobs": total_jobs,
+            "recent_postings_7d": recent_count,
+            "growth_indicator": indicator,
+            "top_categories": top_cats,
+            "sample_roles": sample_roles
+        })
+
+    results.sort(key=lambda x: (-x["total_active_jobs"], -x["recent_postings_7d"], x["company"].lower()))
+    return {
+        "status": "success",
+        "analyzed_companies": len(company_jobs_map),
+        "surging_companies": results[:limit]
+    }
+

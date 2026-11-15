@@ -2253,6 +2253,21 @@ class BackendTestCase(unittest.TestCase):
         self.assertEqual(res_filtered.status_code, 200)
         self.assertGreater(len(res_filtered.text.strip().split("\n")), 1)
 
+    def test_company_hiring_surge_analytics(self):
+        """Test detection of companies with aggressive hiring velocities and department surges."""
+        res = self.client.get("/api/jobs/analytics/hiring-surges?limit=5")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "success")
+        self.assertGreater(data["analyzed_companies"], 0)
+        self.assertIsInstance(data["surging_companies"], list)
+        self.assertTrue(len(data["surging_companies"]) > 0)
+        for item in data["surging_companies"]:
+            self.assertIn("company", item)
+            self.assertGreaterEqual(item["total_active_jobs"], 1)
+            self.assertIn(item["growth_indicator"], ["Rapid Hiring", "Steady Hiring", "Moderate"])
+            self.assertIsInstance(item["sample_roles"], list)
+
 
 if __name__ == "__main__":
     unittest.main()
