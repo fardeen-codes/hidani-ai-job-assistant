@@ -962,6 +962,51 @@ class BackendTestCase(unittest.TestCase):
         withdraw_application(self.test_job_id)
         withdraw_application(other_id)
 
+    def test_application_timeline_audit_log(self):
+        """Test application event audit log and timeline tracking across its lifecycle."""
+        withdraw_application(self.test_job_id)
+
+        # 1. Non-existent application -> 404
+        res_404 = self.client.get(f"/api/applications/{self.test_job_id}/timeline")
+        self.assertEqual(res_404.status_code, 404)
+
+        # 2. Submit application -> initial SUBMITTED event
+        apply_to_job(self.test_job_id, notes="Interested in this role")
+
+        # 3. Update status -> STATUS_CHANGED event
+        self.client.patch(
+            f"/api/applications/{self.test_job_id}",
+            json={"status": "Under Review"}
+        )
+
+        # 4. Update notes -> NOTES_UPDATED event
+        self.client.patch(
+            f"/api/applications/{self.test_job_id}/notes",
+            json={"notes": "Recruiter phone screen passed"}
+        )
+
+        # 5. Set reminder -> REMINDER_UPDATED event
+        self.client.patch(
+            f"/api/applications/{self.test_job_id}/reminder",
+            json={"reminder_date": "2026-11-28"}
+        )
+
+        # 6. Retrieve timeline endpoint
+        res_timeline = self.client.get(f"/api/applications/{self.test_job_id}/timeline")
+        self.assertEqual(res_timeline.status_code, 200)
+        data = res_timeline.json()
+        self.assertEqual(data["job_id"], self.test_job_id)
+        self.assertEqual(data["total_events"], 4)
+        events = data["timeline"]
+        self.assertEqual(events[0]["event_type"], "SUBMITTED")
+        self.assertEqual(events[1]["event_type"], "STATUS_CHANGED")
+        self.assertEqual(events[2]["event_type"], "NOTES_UPDATED")
+        self.assertEqual(events[3]["event_type"], "REMINDER_UPDATED")
+        self.assertIn("2026-11-28", events[3]["details"])
+
+        # Clean up
+        withdraw_application(self.test_job_id)
+
 
 if __name__ == "__main__":
     unittest.main()

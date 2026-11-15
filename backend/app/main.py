@@ -33,6 +33,7 @@ from app.schemas import (
     ApplicationReminderUpdateRequest,
     ApplicationStatsResponse,
     ApplicationStatusUpdateRequest,
+    ApplicationTimelineResponse,
     BulkApplicationStatusUpdateRequest,
     BulkApplicationStatusUpdateResponse,
     ChatRequest,
@@ -51,6 +52,7 @@ from app.services.db_service import (
     clear_search_history,
     get_application_stats,
     get_application_status,
+    get_application_timeline,
     get_bookmarked_jobs,
     get_job_by_id,
     get_job_stats,
@@ -519,6 +521,31 @@ async def get_application_by_id(job_id: str):
             detail=f"No application found for Job ID '{clean_id}'."
         )
     return apps[0]
+
+
+@app.get(
+    "/api/applications/{job_id}/timeline",
+    response_model=ApplicationTimelineResponse,
+    summary="Get application audit event history and timeline",
+    tags=["Applications"]
+)
+async def get_application_timeline_endpoint(job_id: str):
+    """Retrieve the chronological lifecycle audit trail of events for an application."""
+    clean_id = (job_id or "").strip()
+    if not clean_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Job ID cannot be empty.")
+
+    timeline = get_application_timeline(clean_id)
+    if timeline is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No application found for Job ID '{clean_id}'."
+        )
+    return ApplicationTimelineResponse(
+        job_id=clean_id,
+        total_events=len(timeline),
+        timeline=timeline
+    )
 
 
 @app.patch(

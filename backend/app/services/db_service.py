@@ -304,10 +304,22 @@ def load_applications() -> List[Dict[str, Any]]:
             return [dict(a) for a in _applications_cache] if _applications_cache is not None else []
 
 
+def _record_app_event(app: Dict[str, Any], event_type: str, details: str) -> None:
+    """Append a timestamped audit event to an application's lifecycle timeline."""
+    if "timeline" not in app or not isinstance(app["timeline"], list):
+        app["timeline"] = []
+    app["timeline"].append({
+        "event_type": event_type,
+        "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
+        "details": details
+    })
+
+
 def apply_to_job(job_id: str, notes: Optional[str] = None) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
     """
     Apply to a job ID with deduplication and validation.
     Accepts an optional applicant note / cover letter remark.
+    Records initial submission event in application timeline.
     Returns: (success: bool, message: str, application_data: Optional[dict])
     """
     clean_id = (job_id or "").strip()
@@ -335,14 +347,22 @@ def apply_to_job(job_id: str, notes: Optional[str] = None) -> Tuple[bool, str, O
                 )
 
         # Create new application record
+        now_ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
         new_application = {
             "job_id": job.get("job_id"),
             "job_title": job.get("title"),
             "company": job.get("company"),
             "location": job.get("location"),
-            "applied_date": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
+            "applied_date": now_ts,
             "status": "Applied",
-            "notes": clean_notes
+            "notes": clean_notes,
+            "timeline": [
+                {
+                    "event_type": "SUBMITTED",
+                    "timestamp": now_ts,
+                    "details": "Application submitted" + (f" with cover note: {clean_notes[:40]}..." if clean_notes else "")
+                }
+            ]
         }
 
         applications.append(new_application)
@@ -422,8 +442,10 @@ def update_application_status(job_id: str, new_status: str) -> Tuple[bool, str, 
         updated_app = None
         for app in applications:
             if app.get("job_id", "").strip().lower() == clean_id.lower():
+                old_status = app.get("status", "Applied")
                 app["status"] = canonical_status
                 app["updated_date"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+                _record_app_event(app, "STATUS_CHANGED", f"Status changed from '{old_status}' to '{canonical_status}'")
                 updated_app = app
                 break
 
@@ -463,8 +485,10 @@ def bulk_update_application_status(
         for app in applications:
             curr_id = app.get("job_id", "").strip().lower()
             if curr_id in target_ids:
+                old_status = app.get("status", "Applied")
                 app["status"] = canonical_status
                 app["updated_date"] = now_ts
+                _record_app_event(app, "STATUS_CHANGED", f"Status updated from '{old_status}' to '{canonical_status}' via bulk action")
                 updated_ids.append(app.get("job_id", ""))
 
         if updated_ids:
@@ -494,6 +518,7 @@ def update_application_notes(job_id: str, notes: str) -> Tuple[bool, str, Option
             if app.get("job_id", "").strip().lower() == clean_id.lower():
                 app["notes"] = (notes or "").strip() or None
                 app["updated_date"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+                _record_app_event(app, "NOTES_UPDATED", "Candidate personal notes updated")
                 updated_app = app
                 break
 
@@ -524,6 +549,8 @@ def update_application_reminder(job_id: str, reminder_date: Optional[str]) -> Tu
             if app.get("job_id", "").strip().lower() == clean_id.lower():
                 app["reminder_date"] = clean_rem
                 app["updated_date"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+                rem_detail = f"Follow-up reminder set for {clean_rem}" if clean_rem else "Follow-up reminder cleared"
+                _record_app_event(app, "REMINDER_UPDATED", rem_detail)
                 updated_app = app
                 break
 
@@ -538,6 +565,17 @@ def update_application_reminder(job_id: str, reminder_date: Optional[str]) -> Tu
         msg = f"Follow-up reminder for Job ID '{clean_id}' has been cleared."
     logger.info(msg)
     return True, msg, updated_app
+
+
+def get_application_timeline(job_id: str) -> Optional[List[Dict[str, Any]]]:
+    """Retrieve the chronological audit event timeline for an application."""
+    clean_id = (job_id or "").strip().lower()
+    if not clean_id:
+        return None
+    apps = get_application_status(clean_id)
+    if not apps:
+        return None
+    return apps[0].get("timeline") or []
 
 
 def get_upcoming_reminders() -> List[Dict[str, Any]]:
