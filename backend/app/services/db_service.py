@@ -1950,3 +1950,101 @@ def compact_database() -> Dict[str, Any]:
             "total_compacted_files": total_files
         }
 
+
+def list_hiring_companies(limit: int = 50) -> List[Dict[str, Any]]:
+    """
+    Aggregate hiring companies across all available job postings,
+    returning top companies by active listing count along with hiring insights.
+    """
+    jobs = load_jobs()
+    company_jobs_map: Dict[str, List[Dict[str, Any]]] = {}
+    display_names: Dict[str, str] = {}
+
+    for job in jobs:
+        cname = (job.get("company") or "").strip()
+        if not cname:
+            continue
+        key = cname.lower()
+        if key not in company_jobs_map:
+            company_jobs_map[key] = []
+            display_names[key] = cname
+        company_jobs_map[key].append(job)
+
+    results = []
+    for key, c_jobs in company_jobs_map.items():
+        skills_counter: Counter = Counter()
+        locations_set = set()
+        categories_set = set()
+        sample_titles = []
+
+        for j in c_jobs:
+            for s in j.get("required_skills", []):
+                if s:
+                    skills_counter[s.strip()] += 1
+            loc = (j.get("location") or "").strip()
+            if loc:
+                locations_set.add(loc)
+            cat = (j.get("category") or "").strip()
+            if cat:
+                categories_set.add(cat)
+            title = (j.get("title") or "").strip()
+            if title and title not in sample_titles and len(sample_titles) < 5:
+                sample_titles.append(title)
+
+        top_skills = [s for s, _ in skills_counter.most_common(8)]
+        results.append({
+            "company": display_names[key],
+            "active_jobs_count": len(c_jobs),
+            "locations": sorted(list(locations_set)),
+            "top_skills": top_skills,
+            "categories": sorted(list(categories_set)),
+            "sample_titles": sample_titles
+        })
+
+    results.sort(key=lambda x: (-x["active_jobs_count"], x["company"].lower()))
+    return results[:limit]
+
+
+def get_company_profile(company_name: str) -> Optional[Dict[str, Any]]:
+    """
+    Retrieve comprehensive hiring profile, required skills, and sample roles for a specific company.
+    """
+    clean_target = (company_name or "").strip().lower()
+    if not clean_target:
+        return None
+
+    jobs = load_jobs()
+    matching_jobs = [j for j in jobs if (j.get("company") or "").strip().lower() == clean_target]
+    if not matching_jobs:
+        return None
+
+    company_display = matching_jobs[0].get("company", "").strip() or company_name
+    skills_counter: Counter = Counter()
+    locations_set = set()
+    categories_set = set()
+    sample_titles = []
+
+    for j in matching_jobs:
+        for s in j.get("required_skills", []):
+            if s:
+                skills_counter[s.strip()] += 1
+        loc = (j.get("location") or "").strip()
+        if loc:
+            locations_set.add(loc)
+        cat = (j.get("category") or "").strip()
+        if cat:
+            categories_set.add(cat)
+        title = (j.get("title") or "").strip()
+        if title and title not in sample_titles and len(sample_titles) < 5:
+            sample_titles.append(title)
+
+    top_skills = [s for s, _ in skills_counter.most_common(10)]
+    return {
+        "company": company_display,
+        "active_jobs_count": len(matching_jobs),
+        "locations": sorted(list(locations_set)),
+        "top_skills": top_skills,
+        "categories": sorted(list(categories_set)),
+        "sample_titles": sample_titles
+    }
+

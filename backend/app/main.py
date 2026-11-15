@@ -48,6 +48,8 @@ from app.schemas import (
     ChatRequest,
     ChatResponse,
     ChatStateResponse,
+    CompanyDirectoryResponse,
+    CompanyProfile,
     DatabaseBackupSnapshot,
     DatabaseCompactionResponse,
     DatabaseHealthResponse,
@@ -84,6 +86,7 @@ from app.services.db_service import (
     get_application_status,
     get_application_timeline,
     get_bookmarked_jobs,
+    get_company_profile,
     get_job_by_id,
     get_job_stats,
     get_recent_searches,
@@ -91,6 +94,7 @@ from app.services.db_service import (
     get_similar_jobs,
     get_skill_salary_insights,
     get_upcoming_reminders,
+    list_hiring_companies,
     load_applications,
     load_jobs,
     load_saved_searches,
@@ -331,6 +335,35 @@ async def get_jobs_list(
         "offset": offset,
         "jobs": paged
     }
+
+
+@app.get(
+    "/api/companies",
+    response_model=CompanyDirectoryResponse,
+    summary="List hiring companies and hiring insights",
+    tags=["Companies"]
+)
+async def list_companies_endpoint(limit: int = Query(50, ge=1, le=100)):
+    """Retrieve directory of hiring companies ranked by active job listings with skill insights."""
+    companies = list_hiring_companies(limit=limit)
+    return {
+        "total_companies": len(companies),
+        "companies": companies
+    }
+
+
+@app.get(
+    "/api/companies/{company_name}",
+    response_model=CompanyProfile,
+    summary="Get detailed company hiring profile",
+    tags=["Companies"]
+)
+async def get_company_profile_endpoint(company_name: str):
+    """Retrieve in-depth hiring profile, top demanded skills, and sample open roles for a company."""
+    profile = get_company_profile(company_name)
+    if not profile:
+        raise HTTPException(status_code=404, detail=f"No active job listings found for company '{company_name}'.")
+    return profile
 
 
 @app.get("/api/searches/recent", response_model=List[SearchHistoryEntry], summary="Get recent job searches", tags=["Searches"])

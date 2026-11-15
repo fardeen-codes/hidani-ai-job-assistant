@@ -1559,6 +1559,34 @@ class BackendTestCase(unittest.TestCase):
         # Clean up
         self.client.delete(f"/api/searches/saved/{search_id}")
 
+    def test_company_directory_and_profile(self):
+        """Test listing hiring companies and retrieving detailed company profile."""
+        # 1. Directory
+        res_dir = self.client.get("/api/companies?limit=10")
+        self.assertEqual(res_dir.status_code, 200)
+        data = res_dir.json()
+        self.assertIn("total_companies", data)
+        self.assertIn("companies", data)
+        self.assertGreater(data["total_companies"], 0)
+        top_company = data["companies"][0]
+        self.assertIn("company", top_company)
+        self.assertGreater(top_company["active_jobs_count"], 0)
+        self.assertIsInstance(top_company["locations"], list)
+        self.assertIsInstance(top_company["top_skills"], list)
+
+        # 2. Specific company profile
+        target_company = top_company["company"]
+        res_prof = self.client.get(f"/api/companies/{target_company}")
+        self.assertEqual(res_prof.status_code, 200)
+        prof = res_prof.json()
+        self.assertEqual(prof["company"], target_company)
+        self.assertEqual(prof["active_jobs_count"], top_company["active_jobs_count"])
+        self.assertIsInstance(prof["sample_titles"], list)
+
+        # 3. Non-existent company 404
+        res_404 = self.client.get("/api/companies/NonExistentFictionalCo999")
+        self.assertEqual(res_404.status_code, 404)
+
 
 if __name__ == "__main__":
     unittest.main()

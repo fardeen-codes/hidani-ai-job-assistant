@@ -420,3 +420,19 @@ class DatabaseCompactionResponse(BaseModel):
     removed_orphan_bookmarks: int = Field(description="Number of purged orphan bookmarks")
     deduplicated_history: int = Field(description="Number of duplicate history entries pruned")
     total_compacted_files: int = Field(description="Total JSON files rewritten and compacted")
+
+
+class CompanyProfile(BaseModel):
+    """Aggregated company profile with hiring insights and active roles."""
+    company: str = Field(description="Company name")
+    active_jobs_count: int = Field(description="Total active job listings")
+    locations: List[str] = Field(default_factory=list, description="Unique locations company is hiring in")
+    top_skills: List[str] = Field(default_factory=list, description="Most demanded skills by this company")
+    categories: List[str] = Field(default_factory=list, description="Job domains / categories offered")
+    sample_titles: List[str] = Field(default_factory=list, description="Sample job titles from this company")
+
+
+class CompanyDirectoryResponse(BaseModel):
+    """Directory listing of hiring companies with aggregates."""
+    total_companies: int = Field(description="Total number of unique companies hiring")
+    companies: List[CompanyProfile] = Field(default_factory=list, description="List of company profiles")
