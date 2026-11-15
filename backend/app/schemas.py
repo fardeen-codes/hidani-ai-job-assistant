@@ -589,3 +589,16 @@ class BatchScoreResponse(BaseModel):
     """Batch job evaluation compatibility response."""
     total_evaluated: int = Field(description="Count of evaluated jobs")
     results: List[BatchJobScoreItem] = Field(default_factory=list, description="Evaluated jobs ranked by match score")
+
+
+class BookmarkCategorySummary(BaseModel):
+    """Bookmark folder/category breakdown with item count."""
+    category: str = Field(description="Category or folder name")
+    count: int = Field(description="Total saved bookmarks in this category")
+
+
+class BookmarkCategoriesResponse(BaseModel):
+    """Response payload listing user bookmark categories."""
+    total_categories: int = Field(description="Number of distinct bookmark folders")
+    total_bookmarks: int = Field(description="Total saved bookmarks across all folders")
+    categories: List[BookmarkCategorySummary] = Field(default_factory=list, description="Category distribution")

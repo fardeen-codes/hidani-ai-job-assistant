@@ -1788,6 +1788,29 @@ def bulk_remove_bookmarks(job_ids: List[str]) -> Tuple[bool, str, int, int]:
     return True, msg, deleted_count, len(remaining)
 
 
+def get_bookmark_categories() -> Dict[str, Any]:
+    """
+    Aggregate saved bookmarks by user folder/category and return counts.
+    """
+    bookmarks = load_bookmarks()
+    category_counter: Counter = Counter()
+
+    for bm in bookmarks:
+        cat = (bm.get("category") or "").strip() or "Uncategorized"
+        category_counter[cat] += 1
+
+    categories_list = [
+        {"category": cat, "count": count}
+        for cat, count in category_counter.most_common()
+    ]
+
+    return {
+        "total_categories": len(category_counter),
+        "total_bookmarks": len(bookmarks),
+        "categories": categories_list
+    }
+
+
 def _save_search_history(history: List[Dict[str, Any]]) -> None:
     """Persist search history atomically and synchronize in-memory cache."""
     global _search_history_cache, _search_history_cache_mtime

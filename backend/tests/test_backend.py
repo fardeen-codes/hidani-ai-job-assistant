@@ -1914,6 +1914,25 @@ class BackendTestCase(unittest.TestCase):
         self.assertIn("missing_skills", item)
         self.assertIsInstance(item["matching_skills"], list)
 
+    def test_bookmark_categories_aggregation(self):
+        """Test bookmark folder categories and counts aggregation."""
+        # 1. Bookmark a job and assign category
+        self.client.post(f"/api/bookmarks/{self.test_job_id}")
+        self.client.patch(f"/api/bookmarks/{self.test_job_id}", json={"category": "Dream Roles"})
+
+        # 2. Get categories
+        res = self.client.get("/api/bookmarks/categories")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertIn("total_categories", data)
+        self.assertIn("total_bookmarks", data)
+        self.assertIn("categories", data)
+        self.assertGreater(data["total_bookmarks"], 0)
+        self.assertTrue(any(c["category"] == "Dream Roles" for c in data["categories"]))
+
+        # Clean up
+        self.client.delete(f"/api/bookmarks/{self.test_job_id}")
+
 
 if __name__ == "__main__":
     unittest.main()

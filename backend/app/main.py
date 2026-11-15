@@ -49,6 +49,7 @@ from app.schemas import (
     ApplicationVelocityResponse,
     BatchScoreRequest,
     BatchScoreResponse,
+    BookmarkCategoriesResponse,
     BookmarkUpdateRequest,
     BulkApplicationStatusUpdateRequest,
     BulkApplicationStatusUpdateResponse,
@@ -102,6 +103,7 @@ from app.services.db_service import (
     get_application_status,
     get_application_timeline,
     get_application_velocity_metrics,
+    get_bookmark_categories,
     get_bookmarked_jobs,
     get_company_profile,
     get_database_audit_log,
@@ -1286,6 +1288,17 @@ async def export_bookmarks_endpoint(
         content=bookmarks,
         headers={"Content-Disposition": "attachment; filename=job_bookmarks.json"}
     )
+
+
+@app.get(
+    "/api/bookmarks/categories",
+    response_model=BookmarkCategoriesResponse,
+    summary="Get bookmark categories and folder counts",
+    tags=["Bookmarks"]
+)
+async def get_bookmark_categories_endpoint():
+    """Retrieve user bookmark categories with counts of saved jobs per folder."""
+    return get_bookmark_categories()
 
 
 @app.post("/api/bookmarks/{job_id}", status_code=status.HTTP_201_CREATED, summary="Bookmark a job posting", tags=["Bookmarks"])
