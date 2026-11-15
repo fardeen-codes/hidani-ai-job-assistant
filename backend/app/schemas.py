@@ -480,3 +480,20 @@ class DatabaseAuditLogResponse(BaseModel):
     """Paginated collection of database transaction audit entries."""
     total_entries: int = Field(description="Total recorded audit entries")
     entries: List[DatabaseAuditEntry] = Field(default_factory=list, description="List of audit log records")
+
+
+class CollectionStorageMetric(BaseModel):
+    """Storage footprint and record density metrics for a database collection."""
+    collection: str = Field(description="Collection name")
+    file_path: str = Field(description="Storage file path on disk")
+    record_count: int = Field(description="Number of parsed JSON records")
+    size_bytes: int = Field(description="Total file size on disk in bytes")
+    avg_bytes_per_record: float = Field(description="Average storage density in bytes per record")
+
+
+class DatabaseStorageMetricsResponse(BaseModel):
+    """System-wide storage and capacity report for local database collections."""
+    storage_engine: str = Field(default="Atomic JSON Filesystem Storage", description="Underlying database storage engine")
+    total_size_bytes: int = Field(description="Total disk footprint of all database collections in bytes")
+    total_records: int = Field(description="Total combined records across all collections")
+    collections: List[CollectionStorageMetric] = Field(default_factory=list, description="Per-collection metrics")

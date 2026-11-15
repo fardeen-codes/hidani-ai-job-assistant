@@ -57,6 +57,7 @@ from app.schemas import (
     DatabaseCompactionResponse,
     DatabaseHealthResponse,
     DatabaseRestoreResponse,
+    DatabaseStorageMetricsResponse,
     FollowupTemplateResponse,
     JobApplication,
     JobBookmark,
@@ -94,6 +95,7 @@ from app.services.db_service import (
     get_bookmarked_jobs,
     get_company_profile,
     get_database_audit_log,
+    get_database_storage_metrics,
     get_job_by_id,
     get_job_stats,
     get_recent_searches,
@@ -1300,6 +1302,17 @@ async def get_database_audit_log_endpoint(
 ):
     """Retrieve chronologically ordered audit logs of transactions and multi-entity operations."""
     return get_database_audit_log(limit=limit, entity=entity)
+
+
+@app.get(
+    "/api/admin/db/storage",
+    response_model=DatabaseStorageMetricsResponse,
+    summary="Get database storage footprint and collection metrics",
+    tags=["Database Admin"]
+)
+async def get_database_storage_metrics_endpoint():
+    """Compute disk storage size, record counts, and density metrics across all collections."""
+    return get_database_storage_metrics()
 
 
 # Static Frontend Delivery

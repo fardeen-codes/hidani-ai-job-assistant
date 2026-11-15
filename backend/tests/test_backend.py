@@ -1751,6 +1751,25 @@ class BackendTestCase(unittest.TestCase):
         # Clean up
         withdraw_application(self.test_job_id)
 
+    def test_database_storage_metrics(self):
+        """Test database storage metrics endpoint and collection statistics."""
+        res = self.client.get("/api/admin/db/storage")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertIn("storage_engine", data)
+        self.assertIn("total_size_bytes", data)
+        self.assertIn("total_records", data)
+        self.assertIn("collections", data)
+        self.assertGreater(data["total_size_bytes"], 0)
+        self.assertGreater(data["total_records"], 0)
+        self.assertEqual(len(data["collections"]), 5)
+        for col in data["collections"]:
+            self.assertIn("collection", col)
+            self.assertIn("file_path", col)
+            self.assertIn("record_count", col)
+            self.assertIn("size_bytes", col)
+            self.assertIn("avg_bytes_per_record", col)
+
 
 if __name__ == "__main__":
     unittest.main()

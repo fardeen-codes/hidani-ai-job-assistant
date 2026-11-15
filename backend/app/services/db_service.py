@@ -2289,3 +2289,44 @@ def get_database_audit_log(limit: int = 50, entity: Optional[str] = None) -> Dic
             "entries": entries[:limit]
         }
 
+
+def get_database_storage_metrics() -> Dict[str, Any]:
+    """
+    Compute storage footprint, record counts, and storage density metrics across all database collections.
+    """
+    collections_info = [
+        ("jobs", JOBS_FILE, lambda: len(load_jobs())),
+        ("applications", APPLICATIONS_FILE, lambda: len(load_applications())),
+        ("bookmarks", BOOKMARKS_FILE, lambda: len(load_bookmarks())),
+        ("saved_searches", SAVED_SEARCHES_FILE, lambda: len(load_saved_searches())),
+        ("search_history", SEARCH_HISTORY_FILE, lambda: len(load_search_history())),
+    ]
+
+    metrics = []
+    total_size = 0
+    total_records = 0
+
+    with _db_lock:
+        for name, file_path, loader in collections_info:
+            size_b = file_path.stat().st_size if file_path.exists() else 0
+            rec_cnt = loader()
+            density = round(size_b / max(1, rec_cnt), 2) if rec_cnt > 0 else 0.0
+
+            total_size += size_b
+            total_records += rec_cnt
+
+            metrics.append({
+                "collection": name,
+                "file_path": str(file_path),
+                "record_count": rec_cnt,
+                "size_bytes": size_b,
+                "avg_bytes_per_record": density
+            })
+
+    return {
+        "storage_engine": "Atomic JSON Filesystem Storage",
+        "total_size_bytes": total_size,
+        "total_records": total_records,
+        "collections": metrics
+    }
+
