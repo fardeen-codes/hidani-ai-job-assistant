@@ -2330,3 +2330,34 @@ def get_database_storage_metrics() -> Dict[str, Any]:
         "collections": metrics
     }
 
+
+def get_job_tag_cloud(category: Optional[str] = None, limit: int = 30) -> Dict[str, Any]:
+    """
+    Aggregate technical skills and domain keywords across jobs into a weighted tag cloud.
+    Supports optional category filtering.
+    """
+    jobs = load_jobs()
+    clean_cat = (category or "").strip().lower()
+
+    if clean_cat:
+        jobs = [j for j in jobs if (j.get("category") or "").strip().lower() == clean_cat]
+
+    tag_counter: Counter = Counter()
+    for job in jobs:
+        for skill in (job.get("skills") or []):
+            clean_s = str(skill).strip()
+            if clean_s:
+                tag_counter[clean_s] += 1
+
+    limit = max(1, min(limit or 30, 200))
+    top_items = [
+        {"tag": tag, "count": count, "category": category or None}
+        for tag, count in tag_counter.most_common(limit)
+    ]
+
+    return {
+        "total_tags": len(tag_counter),
+        "category": category or None,
+        "tags": top_items
+    }
+

@@ -497,3 +497,17 @@ class DatabaseStorageMetricsResponse(BaseModel):
     total_size_bytes: int = Field(description="Total disk footprint of all database collections in bytes")
     total_records: int = Field(description="Total combined records across all collections")
     collections: List[CollectionStorageMetric] = Field(default_factory=list, description="Per-collection metrics")
+
+
+class JobTagCloudItem(BaseModel):
+    """Keyword or skill tag with occurrence count and popularity weight."""
+    tag: str = Field(description="Skill or technical keyword")
+    count: int = Field(description="Occurrence frequency in job postings")
+    category: Optional[str] = Field(None, description="Domain category if filtered")
+
+
+class JobTagCloudResponse(BaseModel):
+    """Aggregated tag cloud response."""
+    total_tags: int = Field(description="Total unique tags evaluated")
+    category: Optional[str] = Field(None, description="Applied category filter")
+    tags: List[JobTagCloudItem] = Field(default_factory=list, description="Top keyword tags")

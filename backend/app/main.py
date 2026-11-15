@@ -62,6 +62,7 @@ from app.schemas import (
     JobApplication,
     JobBookmark,
     JobStatsResponse,
+    JobTagCloudResponse,
     SalaryInfo,
     SavedSearch,
     SavedSearchCreateRequest,
@@ -98,6 +99,7 @@ from app.services.db_service import (
     get_database_storage_metrics,
     get_job_by_id,
     get_job_stats,
+    get_job_tag_cloud,
     get_recent_searches,
     get_search_suggestions,
     get_similar_jobs,
@@ -496,6 +498,20 @@ async def get_skill_salary_insights_endpoint(
 ):
     """Retrieve average compensation benchmarks associated with in-demand technical skills."""
     return get_skill_salary_insights(limit=limit)
+
+
+@app.get(
+    "/api/jobs/analytics/tag-cloud",
+    response_model=JobTagCloudResponse,
+    summary="Get aggregated technical tag cloud across job postings",
+    tags=["Jobs"]
+)
+async def get_job_tag_cloud_endpoint(
+    category: Optional[str] = Query(None, description="Optional category filter"),
+    limit: int = Query(30, ge=1, le=100, description="Max tags to return")
+):
+    """Retrieve top technical keywords and skills tag cloud with occurrence counts."""
+    return get_job_tag_cloud(category=category, limit=limit)
 
 
 @app.get("/api/jobs/{job_id}", summary="Get job details by ID", tags=["Jobs"])

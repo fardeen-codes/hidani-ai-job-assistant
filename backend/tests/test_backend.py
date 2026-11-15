@@ -1770,6 +1770,27 @@ class BackendTestCase(unittest.TestCase):
             self.assertIn("size_bytes", col)
             self.assertIn("avg_bytes_per_record", col)
 
+    def test_job_tag_cloud_aggregation(self):
+        """Test tag cloud keyword aggregation and category filtering."""
+        res = self.client.get("/api/jobs/analytics/tag-cloud?limit=20")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertIn("total_tags", data)
+        self.assertIn("tags", data)
+        self.assertGreater(data["total_tags"], 0)
+        self.assertTrue(len(data["tags"]) <= 20)
+        top_tag = data["tags"][0]
+        self.assertIn("tag", top_tag)
+        self.assertIn("count", top_tag)
+        self.assertGreater(top_tag["count"], 0)
+
+        # Filtered by category
+        res_cat = self.client.get("/api/jobs/analytics/tag-cloud?category=Engineering&limit=10")
+        self.assertEqual(res_cat.status_code, 200)
+        data_cat = res_cat.json()
+        self.assertEqual(data_cat["category"], "Engineering")
+        self.assertTrue(len(data_cat["tags"]) <= 10)
+
 
 if __name__ == "__main__":
     unittest.main()
