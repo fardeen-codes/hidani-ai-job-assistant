@@ -1841,6 +1841,27 @@ class BackendTestCase(unittest.TestCase):
         # Clean up session
         self.client.post(f"/api/chat/reset/{test_sess}")
 
+    def test_advanced_job_filtering(self):
+        """Test multi-criteria complex job filtering with AND/OR skills and work mode."""
+        payload = {
+            "keywords": ["engineer"],
+            "skills": ["python"],
+            "match_all_skills": False,
+            "work_modes": ["Remote", "Hybrid"],
+            "experience_tiers": ["Senior", "Mid-Level"],
+            "limit": 10,
+            "offset": 0
+        }
+        res = self.client.post("/api/jobs/filter", json=payload)
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertIn("total_matched", data)
+        self.assertIn("jobs", data)
+        self.assertGreater(data["total_matched"], 0)
+        for job in data["jobs"]:
+            self.assertIn(job["work_mode"], ["Remote", "Hybrid"])
+            self.assertIn(job["normalized_tier"], ["Senior", "Mid-Level"])
+
 
 if __name__ == "__main__":
     unittest.main()

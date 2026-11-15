@@ -29,6 +29,8 @@ from app.config import (
     is_openai_configured,
 )
 from app.schemas import (
+    AdvancedJobFilterRequest,
+    AdvancedJobFilterResponse,
     ApplicationArchiveUpdateRequest,
     ApplicationAttachmentCreateRequest,
     ApplicationCreateRequest,
@@ -79,6 +81,7 @@ from app.schemas import (
 from app.services.db_service import (
     add_application_attachment,
     add_application_interview,
+    advanced_filter_jobs,
     apply_to_job,
     archive_application,
     bulk_remove_bookmarks,
@@ -365,6 +368,27 @@ async def get_jobs_list(
         "offset": offset,
         "jobs": paged
     }
+
+
+@app.post(
+    "/api/jobs/filter",
+    response_model=AdvancedJobFilterResponse,
+    summary="Advanced multi-criteria job filtering",
+    tags=["Jobs"]
+)
+async def advanced_job_filter_endpoint(payload: AdvancedJobFilterRequest):
+    """Perform complex multi-criteria boolean filtering across jobs with AND/OR skills matching and compensation floor."""
+    return advanced_filter_jobs(
+        keywords=payload.keywords,
+        skills=payload.skills,
+        match_all_skills=payload.match_all_skills,
+        work_modes=payload.work_modes,
+        experience_tiers=payload.experience_tiers,
+        min_salary=payload.min_salary,
+        category=payload.category,
+        limit=payload.limit,
+        offset=payload.offset
+    )
 
 
 @app.get(

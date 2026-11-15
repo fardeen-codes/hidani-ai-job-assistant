@@ -538,3 +538,24 @@ class SessionMetricsResponse(BaseModel):
     has_active_profile: bool = Field(description="Whether a candidate profile is loaded in memory")
     cached_recommendations_count: int = Field(description="Number of cached job recommendations")
     created_at: str = Field(description="ISO timestamp of session initialization")
+
+
+class AdvancedJobFilterRequest(BaseModel):
+    """Multi-criteria criteria for complex job matching queries."""
+    keywords: Optional[List[str]] = Field(default_factory=list, description="Keywords to match across title or description")
+    skills: Optional[List[str]] = Field(default_factory=list, description="Technical skills to match (all or any)")
+    match_all_skills: bool = Field(default=False, description="True for AND logic on skills, False for OR")
+    work_modes: Optional[List[str]] = Field(default_factory=list, description="Allowed work modes: Remote, Hybrid, Onsite")
+    experience_tiers: Optional[List[str]] = Field(default_factory=list, description="Allowed career tiers: Entry-Level, Mid-Level, Senior, Lead")
+    min_salary: Optional[float] = Field(None, ge=0, description="Minimum compensation threshold")
+    category: Optional[str] = Field(None, description="Domain category filter")
+    limit: int = Field(default=20, ge=1, le=100, description="Page limit")
+    offset: int = Field(default=0, ge=0, description="Pagination offset")
+
+
+class AdvancedJobFilterResponse(BaseModel):
+    """Response payload for multi-criteria advanced job filtering."""
+    total_matched: int = Field(description="Total jobs matching complex criteria")
+    limit: int = Field(description="Page size limit")
+    offset: int = Field(description="Offset index")
+    jobs: List[Dict[str, Any]] = Field(default_factory=list, description="Matching job records")

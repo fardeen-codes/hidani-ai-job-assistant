@@ -2403,3 +2403,86 @@ def get_job_tag_cloud(category: Optional[str] = None, limit: int = 30) -> Dict[s
         "tags": top_items
     }
 
+
+def advanced_filter_jobs(
+    keywords: Optional[List[str]] = None,
+    skills: Optional[List[str]] = None,
+    match_all_skills: bool = False,
+    work_modes: Optional[List[str]] = None,
+    experience_tiers: Optional[List[str]] = None,
+    min_salary: Optional[float] = None,
+    category: Optional[str] = None,
+    limit: int = 20,
+    offset: int = 0
+) -> Dict[str, Any]:
+    """
+    Perform multi-criteria boolean filtering across jobs with keyword matching,
+    AND/OR skills matching, multi-work-mode, career tiers, and compensation floor.
+    """
+    all_jobs = load_jobs()
+    clean_kws = [k.strip().lower() for k in (keywords or []) if k and k.strip()]
+    clean_skills = [s.strip().lower() for s in (skills or []) if s and s.strip()]
+    clean_modes = {m.strip().lower() for m in (work_modes or []) if m and m.strip()}
+    clean_tiers = {t.strip().lower() for t in (experience_tiers or []) if t and t.strip()}
+    clean_cat = (category or "").strip().lower()
+
+    filtered = []
+    for job in all_jobs:
+        title_lower = (job.get("title") or "").lower()
+        desc_lower = (job.get("description") or "").lower()
+        job_skills = {str(s).strip().lower() for s in (job.get("skills") or []) if s}
+        job_mode = (job.get("work_mode") or "Onsite").strip().lower()
+        job_tier = (job.get("normalized_tier") or "Mid-Level").strip().lower()
+        job_cat = (job.get("category") or "").strip().lower()
+
+        # Category
+        if clean_cat and clean_cat != job_cat:
+            continue
+
+        # Keywords (AND: all keywords must match title or description)
+        if clean_kws:
+            combined = f"{title_lower} {desc_lower}"
+            if not all(kw in combined for kw in clean_kws):
+                continue
+
+        # Skills
+        if clean_skills:
+            if match_all_skills:
+                if not all(s in job_skills for s in clean_skills):
+                    continue
+            else:
+                if not any(s in job_skills for s in clean_skills):
+                    continue
+
+        # Work modes
+        if clean_modes and job_mode not in clean_modes:
+            continue
+
+        # Experience tiers
+        if clean_tiers and job_tier not in clean_tiers:
+            continue
+
+        # Min salary
+        if min_salary is not None:
+            sal = job.get("salary")
+            if not sal or not isinstance(sal, dict):
+                continue
+            eff_sal = sal.get("max_salary") or sal.get("min_salary") or 0.0
+            p = sal.get("period", "year")
+            if p == "hour":
+                eff_sal *= 2000.0
+            elif p == "month":
+                eff_sal *= 12.0
+            if eff_sal < min_salary:
+                continue
+
+        filtered.append(job)
+
+    paged = filtered[offset : offset + limit]
+    return {
+        "total_matched": len(filtered),
+        "limit": limit,
+        "offset": offset,
+        "jobs": paged
+    }
+
