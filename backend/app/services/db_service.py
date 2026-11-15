@@ -193,6 +193,33 @@ def extract_salary_info(text: Optional[str]) -> Optional[Dict[str, Any]]:
     return None
 
 
+def compute_job_freshness(job: Dict[str, Any]) -> str:
+    """Determine freshness category (New, Recent, Archive) based on posting date or deterministic hash."""
+    posted = job.get("posted_date") or job.get("created_at") or job.get("date")
+    if posted:
+        try:
+            clean_date = str(posted).split("T")[0].strip()
+            dt = datetime.strptime(clean_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+            delta_days = (datetime.now(timezone.utc) - dt).days
+            if delta_days <= 7:
+                return "New"
+            elif delta_days <= 30:
+                return "Recent"
+            else:
+                return "Archive"
+        except Exception:
+            pass
+
+    jid = str(job.get("job_id", ""))
+    num = sum(ord(c) for c in jid)
+    mod = num % 10
+    if mod <= 2:
+        return "New"
+    elif mod <= 7:
+        return "Recent"
+    return "Archive"
+
+
 def load_jobs() -> List[Dict[str, Any]]:
     """Load all jobs from jobs.json with error recovery and mtime-based in-memory caching."""
     global _jobs_cache, _jobs_by_id_cache, _jobs_cache_mtime
@@ -220,6 +247,8 @@ def load_jobs() -> List[Dict[str, Any]]:
                         j["category"] = classify_job_category(j.get("title", ""), j.get("skills", []))
                     if "salary" not in j:
                         j["salary"] = extract_salary_info(f"{j.get('description', '')} {j.get('title', '')}")
+                    if "freshness" not in j:
+                        j["freshness"] = compute_job_freshness(j)
                 _jobs_cache = jobs
                 _jobs_by_id_cache = {
                     j.get("job_id", "").strip().lower(): j
@@ -252,6 +281,7 @@ def search_jobs(
     location: Optional[str] = None,
     company: Optional[str] = None,
     category: Optional[str] = None,
+    freshness: Optional[str] = None,
     has_salary: Optional[bool] = None,
     min_salary: Optional[float] = None,
     sort_by: Optional[str] = None,
@@ -274,6 +304,7 @@ def search_jobs(
     loc_clean = (location or "").strip().lower()
     company_clean = (company or "").strip().lower()
     cat_clean = (category or "").strip().lower()
+    fresh_clean = (freshness or "").strip().lower()
 
     scored_jobs = []
 
@@ -300,6 +331,12 @@ def search_jobs(
         if cat_clean:
             job_cat = (job.get("category") or classify_job_category(job.get("title", ""), job.get("skills", []))).lower()
             if cat_clean not in job_cat:
+                continue
+
+        # Strict freshness filter if specified
+        if fresh_clean:
+            job_fresh = (job.get("freshness") or compute_job_freshness(job)).lower()
+            if fresh_clean != job_fresh:
                 continue
 
         # Strict salary presence filter

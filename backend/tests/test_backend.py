@@ -1222,6 +1222,37 @@ class BackendTestCase(unittest.TestCase):
         self.assertIn("saved_searches", names)
         self.assertIn("search_history", names)
 
+    def test_job_freshness_classification_and_filtering(self):
+        """Test computing job freshness recency tiers and filtering via search API."""
+        from datetime import datetime, timedelta, timezone
+        from unittest.mock import patch
+        from app.services.db_service import compute_job_freshness, search_jobs
+
+        now = datetime.now(timezone.utc)
+        recent_date = (now - timedelta(days=3)).strftime("%Y-%m-%d")
+        older_date = (now - timedelta(days=20)).strftime("%Y-%m-%d")
+        archived_date = (now - timedelta(days=60)).strftime("%Y-%m-%d")
+
+        self.assertEqual(compute_job_freshness({"posted_date": recent_date}), "New")
+        self.assertEqual(compute_job_freshness({"posted_date": older_date}), "Recent")
+        self.assertEqual(compute_job_freshness({"posted_date": archived_date}), "Archive")
+
+        mock_jobs = [
+            {"job_id": "j-new", "title": "New Engineer", "company": "Co", "location": "Remote", "freshness": "New"},
+            {"job_id": "j-old", "title": "Old Engineer", "company": "Co", "location": "Remote", "freshness": "Archive"}
+        ]
+        with patch("app.services.db_service.load_jobs", return_value=mock_jobs):
+            new_jobs = search_jobs(freshness="new")
+            self.assertEqual(len(new_jobs), 1)
+            self.assertEqual(new_jobs[0]["job_id"], "j-new")
+
+        # Integration with GET /api/jobs
+        res = self.client.get("/api/jobs?limit=5")
+        self.assertEqual(res.status_code, 200)
+        jobs = res.json()["jobs"]
+        if jobs:
+            self.assertIn(jobs[0].get("freshness"), ["New", "Recent", "Archive"])
+
 
 if __name__ == "__main__":
     unittest.main()
