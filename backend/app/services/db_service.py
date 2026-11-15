@@ -5,6 +5,7 @@ thread-safe atomic writes, and query filtering.
 """
 
 import csv
+import hashlib
 import io
 import json
 import logging
@@ -3917,4 +3918,73 @@ def export_application_portfolio() -> Dict[str, Any]:
         "offers_count": offers_count,
         "applications": items
     }
+
+
+def compute_database_checksums() -> Dict[str, Any]:
+    """
+    Compute cryptographic SHA-256 integrity checksums, record counts, and storage metrics for all database collections.
+    """
+    tracked_files = [
+        ("jobs", JOBS_FILE),
+        ("applications", APPLICATIONS_FILE),
+        ("bookmarks", BOOKMARKS_FILE),
+        ("candidate_profile", PROFILE_FILE),
+        ("search_history", SEARCH_HISTORY_FILE),
+        ("saved_searches", SAVED_SEARCHES_FILE),
+    ]
+
+    collections = []
+    total_size = 0
+
+    with _db_lock:
+        for name, path in tracked_files:
+            file_exists = path.exists()
+            size = 0
+            record_count = 0
+            sha256 = ""
+            mtime_str = None
+
+            if file_exists:
+                try:
+                    stat = path.stat()
+                    size = stat.st_size
+                    total_size += size
+                    mtime_str = datetime.fromtimestamp(stat.st_mtime, timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+
+                    with open(path, "rb") as f:
+                        content = f.read()
+                        sha256 = hashlib.sha256(content).hexdigest()
+
+                    try:
+                        parsed = json.loads(content.decode("utf-8"))
+                        if isinstance(parsed, list):
+                            record_count = len(parsed)
+                        elif isinstance(parsed, dict):
+                            record_count = len(parsed.keys())
+                    except Exception:
+                        record_count = 0
+                except Exception as e:
+                    logger.warning(f"Error computing checksum for {path}: {e}")
+                    sha256 = "error"
+            else:
+                sha256 = "missing"
+
+            collections.append({
+                "collection": name,
+                "file_path": str(path),
+                "exists": file_exists,
+                "record_count": record_count,
+                "size_bytes": size,
+                "sha256_checksum": sha256,
+                "last_modified": mtime_str
+            })
+
+    return {
+        "status": "success",
+        "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
+        "total_collections": len(collections),
+        "total_size_bytes": total_size,
+        "collections": collections
+    }
+
 

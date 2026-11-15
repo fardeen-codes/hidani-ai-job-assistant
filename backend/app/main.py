@@ -91,6 +91,7 @@ from app.schemas import (
     ChatStateResponse,
     ColdOutreachMessageRequest,
     ColdOutreachMessageResponse,
+    CollectionChecksumItem,
     CompanyDirectoryResponse,
     CompanyHiringSurgeItem,
     CompanyHiringSurgeResponse,
@@ -98,6 +99,7 @@ from app.schemas import (
     DatabaseAuditLogResponse,
     DatabaseBackupSnapshot,
     DatabaseBenchmarkResponse,
+    DatabaseChecksumResponse,
     DatabaseCompactionResponse,
     DatabaseHealthResponse,
     DatabaseRepairResponse,
@@ -162,6 +164,7 @@ from app.services.db_service import (
     clear_search_history,
     compact_database,
     compare_offer_packages,
+    compute_database_checksums,
     create_database_backup,
     create_saved_search,
     delete_candidate_certification,
@@ -2133,6 +2136,18 @@ async def check_database_health_endpoint():
 async def compact_database_endpoint():
     """Purge orphaned bookmarks and deduplicate search history."""
     return compact_database()
+
+
+@app.get(
+    "/api/admin/db/checksums",
+    response_model=DatabaseChecksumResponse,
+    summary="Compute cryptographic SHA-256 integrity checksums for all database collections",
+    tags=["Database Admin"]
+)
+async def compute_database_checksums_endpoint():
+    """Generate SHA-256 integrity manifest and storage statistics across persistent storage files."""
+    return compute_database_checksums()
+
 
 
 @app.post(

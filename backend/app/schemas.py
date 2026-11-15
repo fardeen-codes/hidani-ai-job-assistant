@@ -1111,6 +1111,27 @@ class InterviewDifficultyResponse(BaseModel):
     recommended_prep_focus: List[str] = Field(default_factory=list)
 
 
+class CollectionChecksumItem(BaseModel):
+    """Integrity checksum and disk metrics for a database collection."""
+    collection: str
+    file_path: str
+    exists: bool
+    record_count: int
+    size_bytes: int
+    sha256_checksum: str
+    last_modified: Optional[str] = None
+
+
+class DatabaseChecksumResponse(BaseModel):
+    """Database collection cryptographic integrity manifest and change detection state."""
+    status: str = Field(default="success")
+    timestamp: str
+    total_collections: int
+    total_size_bytes: int
+    collections: List[CollectionChecksumItem] = Field(default_factory=list)
+
+
+
 
 
 

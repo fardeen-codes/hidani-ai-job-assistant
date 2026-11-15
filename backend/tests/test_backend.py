@@ -2710,6 +2710,25 @@ class BackendTestCase(unittest.TestCase):
         res_404 = self.client.get("/api/jobs/job-unknown-9999/interview-difficulty")
         self.assertEqual(res_404.status_code, 404)
 
+    def test_database_checksums_integrity(self):
+        """Test SHA-256 cryptographic collection checksums and record counts."""
+        res = self.client.get("/api/admin/db/checksums")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "success")
+        self.assertGreaterEqual(data["total_collections"], 4)
+        self.assertGreater(data["total_size_bytes"], 0)
+        
+        col_names = {c["collection"] for c in data["collections"]}
+        self.assertIn("jobs", col_names)
+        self.assertIn("applications", col_names)
+
+        # Check sha256 hex length
+        jobs_col = next(c for c in data["collections"] if c["collection"] == "jobs")
+        self.assertTrue(jobs_col["exists"])
+        self.assertEqual(len(jobs_col["sha256_checksum"]), 64)
+        self.assertGreater(jobs_col["record_count"], 0)
+
 
 if __name__ == "__main__":
     unittest.main()
