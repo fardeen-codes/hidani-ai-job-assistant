@@ -41,6 +41,7 @@ from app.schemas import (
     ChatResponse,
     ChatStateResponse,
     DatabaseBackupSnapshot,
+    DatabaseHealthResponse,
     DatabaseRestoreResponse,
     JobApplication,
     JobBookmark,
@@ -55,6 +56,7 @@ from app.schemas import (
 from app.services.db_service import (
     apply_to_job,
     bulk_update_application_status,
+    check_database_health,
     clear_search_history,
     create_database_backup,
     create_saved_search,
@@ -838,6 +840,17 @@ async def restore_database_backup_endpoint(payload: DatabaseBackupSnapshot):
         message=message,
         restored_counts=counts
     )
+
+
+@app.get(
+    "/api/admin/db/health",
+    response_model=DatabaseHealthResponse,
+    summary="Check database integrity and collection health",
+    tags=["Database Admin"]
+)
+async def check_database_health_endpoint():
+    """Perform integrity diagnostic check across all local JSON collections."""
+    return check_database_health()
 
 
 # Static Frontend Delivery

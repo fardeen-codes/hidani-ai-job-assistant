@@ -1207,6 +1207,21 @@ class BackendTestCase(unittest.TestCase):
         res_invalid = self.client.post("/api/admin/restore", json={"bad_field": 123})
         self.assertEqual(res_invalid.status_code, 422)
 
+    def test_database_health_diagnostics(self):
+        """Test database integrity check and health diagnostics API."""
+        res = self.client.get("/api/admin/db/health")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertIn("status", data)
+        self.assertEqual(data["total_collections"], 5)
+        self.assertTrue(data["healthy_collections"] >= 1)
+        names = [c["collection"] for c in data["collections"]]
+        self.assertIn("jobs", names)
+        self.assertIn("applications", names)
+        self.assertIn("bookmarks", names)
+        self.assertIn("saved_searches", names)
+        self.assertIn("search_history", names)
+
 
 if __name__ == "__main__":
     unittest.main()

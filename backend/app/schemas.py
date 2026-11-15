@@ -256,3 +256,21 @@ class DatabaseRestoreResponse(BaseModel):
     status: str = Field(description="Operation result status: success or error")
     message: str = Field(description="Human-readable result summary")
     restored_counts: Dict[str, int] = Field(description="Count of restored records per collection")
+
+
+class CollectionHealthStatus(BaseModel):
+    """Health and integrity metrics for a single JSON database collection."""
+    collection: str = Field(description="Collection name identifier")
+    exists: bool = Field(description="Whether collection file exists on disk")
+    record_count: int = Field(description="Number of parsed JSON objects")
+    file_size_bytes: int = Field(description="Storage size in bytes")
+    status: str = Field(description="Health status: healthy, missing, or corrupted")
+    last_modified: Optional[str] = Field(None, description="ISO timestamp of last modification")
+
+
+class DatabaseHealthResponse(BaseModel):
+    """Diagnostic health report across all local JSON collections."""
+    status: str = Field(description="Overall database health: healthy, degraded, or unhealthy")
+    total_collections: int = Field(description="Total monitored collections count")
+    healthy_collections: int = Field(description="Number of collections in healthy state")
+    collections: List[CollectionHealthStatus] = Field(default_factory=list, description="Collection health statuses")

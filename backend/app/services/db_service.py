@@ -1213,3 +1213,73 @@ def restore_database_backup(snapshot: Dict[str, Any]) -> Tuple[bool, str, Dict[s
     logger.info(f"Database successfully restored from snapshot ({counts})")
     return True, "Database successfully restored from backup snapshot.", counts
 
+
+def check_database_health() -> Dict[str, Any]:
+    """
+    Perform an integrity check on all JSON storage collections:
+    jobs, applications, bookmarks, saved_searches, and search_history.
+    Returns status summary with record counts and file metadata.
+    """
+    monitored_files = [
+        ("jobs", JOBS_FILE),
+        ("applications", APPLICATIONS_FILE),
+        ("bookmarks", BOOKMARKS_FILE),
+        ("saved_searches", SAVED_SEARCHES_FILE),
+        ("search_history", SEARCH_HISTORY_FILE),
+    ]
+
+    collection_statuses = []
+    healthy_count = 0
+
+    with _db_lock:
+        for name, file_path in monitored_files:
+            if not file_path.exists():
+                collection_statuses.append({
+                    "collection": name,
+                    "exists": False,
+                    "record_count": 0,
+                    "file_size_bytes": 0,
+                    "status": "missing",
+                    "last_modified": None
+                })
+                continue
+
+            try:
+                stat = file_path.stat()
+                size_bytes = stat.st_size
+                mtime_iso = datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat()
+                with open(file_path, "r", encoding="utf-8") as f:
+                    content = f.read().strip()
+                    if not content:
+                        data = []
+                    else:
+                        data = json.loads(content)
+                record_count = len(data) if isinstance(data, list) else 1
+                collection_statuses.append({
+                    "collection": name,
+                    "exists": True,
+                    "record_count": record_count,
+                    "file_size_bytes": size_bytes,
+                    "status": "healthy",
+                    "last_modified": mtime_iso
+                })
+                healthy_count += 1
+            except Exception as exc:
+                logger.error(f"Integrity check failed for collection {name}: {exc}")
+                collection_statuses.append({
+                    "collection": name,
+                    "exists": True,
+                    "record_count": 0,
+                    "file_size_bytes": file_path.stat().st_size if file_path.exists() else 0,
+                    "status": "corrupted",
+                    "last_modified": None
+                })
+
+    overall_status = "healthy" if healthy_count == len(monitored_files) else ("degraded" if healthy_count > 0 else "unhealthy")
+    return {
+        "status": overall_status,
+        "total_collections": len(monitored_files),
+        "healthy_collections": healthy_count,
+        "collections": collection_statuses
+    }
+
