@@ -34,6 +34,7 @@ from app.schemas import (
     ApplicationArchiveUpdateRequest,
     ApplicationAttachmentCreateRequest,
     ApplicationCreateRequest,
+    ApplicationDeadlinesUpdateRequest,
     ApplicationFunnelResponse,
     ApplicationInterviewCreateRequest,
     InterviewStageUpdateRequest,
@@ -128,6 +129,7 @@ from app.services.db_service import (
     restore_database_backup,
     save_job_bookmark,
     search_jobs,
+    update_application_deadlines,
     update_application_interview,
     update_application_notes,
     update_application_outcome,
@@ -1114,6 +1116,31 @@ async def update_application_priority_endpoint(job_id: str, payload: Application
     if not success:
         if "Invalid priority" in message:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=message)
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=message)
+    return {
+        "status": "success",
+        "message": message,
+        "application": updated_app
+    }
+
+
+@app.patch(
+    "/api/applications/{job_id}/deadlines",
+    response_model=dict,
+    summary="Update application decision deadlines and expected feedback date",
+    tags=["Applications"]
+)
+async def update_application_deadlines_endpoint(job_id: str, payload: ApplicationDeadlinesUpdateRequest):
+    """Set or clear target decision deadline or expected response milestone for an application."""
+    clean_id = (job_id or "").strip()
+    if not clean_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Job ID cannot be empty.")
+    success, message, updated_app = update_application_deadlines(
+        clean_id,
+        decision_deadline=payload.decision_deadline,
+        expected_feedback_date=payload.expected_feedback_date
+    )
+    if not success:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=message)
     return {
         "status": "success",

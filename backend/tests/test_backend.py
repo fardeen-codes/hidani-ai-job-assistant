@@ -1943,6 +1943,32 @@ class BackendTestCase(unittest.TestCase):
         self.assertIn("repaired_bookmarks", data)
         self.assertIn("message", data)
 
+    def test_application_deadlines_tracking(self):
+        """Test setting and updating target decision deadline and expected feedback date milestones."""
+        # 1. Apply to job
+        self.client.post("/api/applications", json={"job_id": self.test_job_id, "notes": "Milestone test"})
+
+        # 2. Update deadlines
+        res = self.client.patch(
+            f"/api/applications/{self.test_job_id}/deadlines",
+            json={
+                "decision_deadline": "2026-12-15",
+                "expected_feedback_date": "2026-11-30"
+            }
+        )
+        self.assertEqual(res.status_code, 200)
+        app_data = res.json()["application"]
+        self.assertEqual(app_data["decision_deadline"], "2026-12-15")
+        self.assertEqual(app_data["expected_feedback_date"], "2026-11-30")
+
+        # 3. Verify in timeline
+        res_time = self.client.get(f"/api/applications/{self.test_job_id}/timeline")
+        self.assertEqual(res_time.status_code, 200)
+        self.assertTrue(any(e["event_type"] == "DEADLINES_UPDATED" for e in res_time.json()["timeline"]))
+
+        # Clean up
+        withdraw_application(self.test_job_id)
+
 
 if __name__ == "__main__":
     unittest.main()

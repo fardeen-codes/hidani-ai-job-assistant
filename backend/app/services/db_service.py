@@ -1193,6 +1193,51 @@ def update_application_priority(
     return True, f"Application priority/favorite updated for Job ID '{clean_id}'.", target_app
 
 
+def update_application_deadlines(
+    job_id: str,
+    decision_deadline: Optional[str] = None,
+    expected_feedback_date: Optional[str] = None
+) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
+    """
+    Update target decision deadline and expected feedback date milestones for an application.
+    """
+    clean_id = (job_id or "").strip()
+    if not clean_id:
+        return False, "Job ID cannot be empty.", None
+
+    now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+
+    with _db_lock:
+        applications = load_applications()
+        target_app = None
+        for app in applications:
+            if app.get("job_id", "").strip().lower() == clean_id.lower():
+                changes = []
+                if decision_deadline is not None:
+                    clean_dd = decision_deadline.strip() or None
+                    app["decision_deadline"] = clean_dd
+                    changes.append(f"decision deadline: {clean_dd}" if clean_dd else "decision deadline cleared")
+                if expected_feedback_date is not None:
+                    clean_fb = expected_feedback_date.strip() or None
+                    app["expected_feedback_date"] = clean_fb
+                    changes.append(f"expected feedback: {clean_fb}" if clean_fb else "expected feedback cleared")
+
+                app["updated_date"] = now_str
+                if changes:
+                    _record_app_event(app, "DEADLINES_UPDATED", f"Milestones updated: {', '.join(changes)}")
+                    _log_db_audit_entry("DEADLINES_UPDATE", "application", clean_id, f"Milestones updated: {', '.join(changes)}")
+                target_app = app
+                break
+
+        if not target_app:
+            return False, f"No existing application found for Job ID '{clean_id}'.", None
+
+        _save_applications(applications)
+
+    logger.info(f"Updated deadlines for application {clean_id}")
+    return True, f"Deadlines updated for Job ID '{clean_id}'.", target_app
+
+
 def add_application_attachment(
     job_id: str,
     file_name: str,

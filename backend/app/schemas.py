@@ -123,6 +123,8 @@ class JobApplication(BaseModel):
     archived_date: Optional[str] = Field(default=None, description="Timestamp of archiving")
     priority: Optional[str] = Field(default="Medium", description="Application priority level: Low, Medium, High, Urgent")
     is_favorite: Optional[bool] = Field(default=False, description="Candidate starred / favorited flag")
+    decision_deadline: Optional[str] = Field(default=None, description="Candidate target offer or decision deadline")
+    expected_feedback_date: Optional[str] = Field(default=None, description="Expected feedback or response date from company")
     outcome: Optional[str] = Field(default=None, description="Final outcome: Offer, Rejected, Accepted, Declined")
     rejection_reason: Optional[str] = Field(default=None, description="Reason code: Skill Gap, Compensation, Headcount, etc.")
     feedback_notes: Optional[str] = Field(default=None, description="Detailed interviewer or debrief feedback")
@@ -150,6 +152,12 @@ class ApplicationPriorityUpdateRequest(BaseModel):
     """Payload to update application priority level or starred status."""
     priority: Optional[str] = Field(None, description="Priority rating: Low, Medium, High, Urgent")
     is_favorite: Optional[bool] = Field(None, description="Star or favorite indicator")
+
+
+class ApplicationDeadlinesUpdateRequest(BaseModel):
+    """Payload to update target decision deadline and expected feedback date."""
+    decision_deadline: Optional[str] = Field(None, description="Target decision deadline date (e.g. '2026-12-01')")
+    expected_feedback_date: Optional[str] = Field(None, description="Expected response date (e.g. '2026-11-25')")
 
 
 class ApplicationTimelineResponse(BaseModel):
