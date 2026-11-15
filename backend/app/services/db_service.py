@@ -1367,6 +1367,56 @@ def get_application_funnel_metrics() -> Dict[str, Any]:
     }
 
 
+def get_application_velocity_metrics() -> Dict[str, Any]:
+    """
+    Compute application submission velocity metrics (last 7 days, last 30 days,
+    weekly average velocity, and active pipeline volume).
+    """
+    apps = load_applications()
+    total = len(apps)
+    now = datetime.now(timezone.utc)
+
+    last_7_days_count = 0
+    last_30_days_count = 0
+    active_pipeline_count = 0
+
+    terminal_statuses = {"rejected", "withdrawn", "accepted"}
+
+    for a in apps:
+        status_val = (a.get("status") or "").strip().lower()
+        if status_val not in terminal_statuses:
+            active_pipeline_count += 1
+
+        app_date_str = a.get("applied_date")
+        if app_date_str:
+            try:
+                clean_date = str(app_date_str).replace("Z", "+00:00")
+                if "T" in clean_date:
+                    dt = datetime.fromisoformat(clean_date)
+                else:
+                    dt = datetime.strptime(clean_date.split()[0], "%Y-%m-%d").replace(tzinfo=timezone.utc)
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
+                diff_days = (now - dt).total_seconds() / 86400.0
+                if diff_days <= 7:
+                    last_7_days_count += 1
+                if diff_days <= 30:
+                    last_30_days_count += 1
+            except Exception:
+                last_7_days_count += 1
+                last_30_days_count += 1
+
+    avg_per_week = round(last_30_days_count / (30.0 / 7.0), 2)
+
+    return {
+        "total_applied": total,
+        "last_7_days_count": last_7_days_count,
+        "last_30_days_count": last_30_days_count,
+        "avg_per_week": avg_per_week,
+        "active_pipeline_count": active_pipeline_count
+    }
+
+
 def _save_bookmarks(bookmarks: List[Dict[str, Any]]) -> None:
     """Persist bookmarks atomically and synchronize the in-memory cache."""
     global _bookmarks_cache, _bookmarks_cache_mtime

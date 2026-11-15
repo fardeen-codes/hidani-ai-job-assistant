@@ -40,6 +40,7 @@ from app.schemas import (
     ApplicationStatusUpdateRequest,
     ApplicationTagsUpdateRequest,
     ApplicationTimelineResponse,
+    ApplicationVelocityResponse,
     BookmarkUpdateRequest,
     BulkApplicationStatusUpdateRequest,
     BulkApplicationStatusUpdateResponse,
@@ -87,6 +88,7 @@ from app.services.db_service import (
     get_application_stats,
     get_application_status,
     get_application_timeline,
+    get_application_velocity_metrics,
     get_bookmarked_jobs,
     get_company_profile,
     get_job_by_id,
@@ -652,6 +654,17 @@ async def get_applications_statistics():
 async def get_applications_funnel_endpoint():
     """Calculate conversion rates across candidate application pipeline stages."""
     return get_application_funnel_metrics()
+
+
+@app.get(
+    "/api/applications/analytics/velocity",
+    response_model=ApplicationVelocityResponse,
+    summary="Get application submission rate and velocity metrics",
+    tags=["Applications"]
+)
+async def get_applications_velocity_endpoint():
+    """Retrieve application submission rate across 7-day and 30-day windows."""
+    return get_application_velocity_metrics()
 
 
 @app.get(

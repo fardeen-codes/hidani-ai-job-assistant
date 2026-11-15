@@ -1621,6 +1621,27 @@ class BackendTestCase(unittest.TestCase):
         # Clean up
         withdraw_application(self.test_job_id)
 
+    def test_application_velocity_metrics(self):
+        """Test application submission velocity tracking and metrics."""
+        # Ensure at least one application submitted
+        self.client.post("/api/applications", json={"job_id": self.test_job_id, "notes": "Velocity test"})
+
+        res = self.client.get("/api/applications/analytics/velocity")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertIn("total_applied", data)
+        self.assertIn("last_7_days_count", data)
+        self.assertIn("last_30_days_count", data)
+        self.assertIn("avg_per_week", data)
+        self.assertIn("active_pipeline_count", data)
+        self.assertGreaterEqual(data["total_applied"], 1)
+        self.assertGreaterEqual(data["last_7_days_count"], 1)
+        self.assertGreaterEqual(data["last_30_days_count"], 1)
+        self.assertGreaterEqual(data["active_pipeline_count"], 1)
+
+        # Clean up
+        withdraw_application(self.test_job_id)
+
 
 if __name__ == "__main__":
     unittest.main()

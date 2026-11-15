@@ -446,3 +446,12 @@ class FollowupTemplateResponse(BaseModel):
     template_type: str = Field(description="Type of template: status_inquiry, interview_followup, or thank_you")
     subject: str = Field(description="Suggested email subject line")
     body: str = Field(description="Polite, personalized email body text")
+
+
+class ApplicationVelocityResponse(BaseModel):
+    """Application velocity metrics tracking submission rate and momentum."""
+    total_applied: int = Field(description="Total lifetime job applications submitted")
+    last_7_days_count: int = Field(description="Applications submitted within the last 7 days")
+    last_30_days_count: int = Field(description="Applications submitted within the last 30 days")
+    avg_per_week: float = Field(description="Average application submission velocity per week")
+    active_pipeline_count: int = Field(description="Current count of pending or active pipeline applications")
