@@ -1050,5 +1050,66 @@ def normalize_job_title_semantics(raw_title: str) -> Dict[str, Any]:
     }
 
 
+def calculate_company_culture_index(
+    company_name: str,
+    job_listings: Optional[List[Dict[str, Any]]] = None
+) -> Dict[str, Any]:
+    """
+    Calculate engineering culture, autonomy tier, and remote-friendliness score for a company.
+    """
+    clean_company = (company_name or "Tech Enterprise").strip()
+    listings = job_listings or []
+
+    remote_count = 0
+    total_listings = len(listings)
+    has_distributed_keywords = False
+
+    for job in listings:
+        loc = (job.get("location") or "").lower()
+        desc = (job.get("description") or "").lower()
+        if "remote" in loc or "anywhere" in loc or "distributed" in loc:
+            remote_count += 1
+        if any(w in desc for w in ["flexible hours", "asynchronous", "async", "work from home", "remote-first", "autonomous"]):
+            has_distributed_keywords = True
+
+    remote_ratio = (remote_count / total_listings) if total_listings > 0 else 0.70
+    remote_score = round(min(10.0, max(4.0, (remote_ratio * 6.0) + (4.0 if has_distributed_keywords or total_listings == 0 else 2.5))), 1)
+
+    if remote_score >= 8.0:
+        autonomy_tier = "High Autonomy (Remote-First)"
+        wlb = "Sustainable / Async"
+    elif remote_score >= 6.0:
+        autonomy_tier = "Structured / Hybrid"
+        wlb = "Balanced"
+    else:
+        autonomy_tier = "In-Office Centric"
+        wlb = "High-Pace"
+
+    culture_score = round(min(9.8, max(6.5, 7.5 + (0.5 if remote_score >= 7.0 else 0.0) + (0.5 if total_listings > 3 else 0.0))), 1)
+
+    values = [
+        "Continuous Delivery & Rapid Iteration",
+        "Engineering Transparency & Documentation",
+        "Autonomous Decision Making & Ownership"
+    ]
+
+    highlights = [
+        f"Remote-friendliness indexed at {remote_score}/10 based on hiring telemetry",
+        f"Operating tier: {autonomy_tier} with emphasis on asynchronous coordination",
+        f"Work-life rhythm categorized as '{wlb}'"
+    ]
+
+    return {
+        "company": clean_company,
+        "culture_score": culture_score,
+        "remote_friendliness_score": remote_score,
+        "autonomy_tier": autonomy_tier,
+        "work_life_balance_indicator": wlb,
+        "core_values": values,
+        "culture_highlights": highlights
+    }
+
+
+
 
 

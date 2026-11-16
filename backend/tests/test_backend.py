@@ -3250,6 +3250,19 @@ class BackendTestCase(unittest.TestCase):
         res_404 = self.client.post("/api/applications/invalid-job-99999/thank-you", json={"thank_you_sent": False})
         self.assertEqual(res_404.status_code, 404)
 
+    def test_company_culture_index_calculator(self):
+        """Test calculating company culture score, remote friendliness, and autonomy tier."""
+        res = self.client.get("/api/companies/Google/culture")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["company"], "Google")
+        self.assertGreaterEqual(data["culture_score"], 5.0)
+        self.assertGreaterEqual(data["remote_friendliness_score"], 4.0)
+        self.assertTrue(len(data["autonomy_tier"]) > 0)
+        self.assertTrue(len(data["work_life_balance_indicator"]) > 0)
+        self.assertGreaterEqual(len(data["core_values"]), 2)
+        self.assertGreaterEqual(len(data["culture_highlights"]), 1)
+
 
 if __name__ == "__main__":
     unittest.main()

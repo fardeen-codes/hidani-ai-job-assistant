@@ -1561,6 +1561,18 @@ class ApplicationThankYouNoteResponse(BaseModel):
     message: str
 
 
+class CompanyCultureIndexResponse(BaseModel):
+    """Company engineering culture, autonomy tier, and remote-friendliness index."""
+    company: str
+    culture_score: float = Field(description="Calculated culture rating from 0.0 to 10.0")
+    remote_friendliness_score: float = Field(description="Remote work friendliness rating from 0.0 to 10.0")
+    autonomy_tier: str = Field(description="Autonomy tier: High Autonomy, Structured / Hybrid, or In-Office Centric")
+    work_life_balance_indicator: str = Field(description="Rating: Sustainable, Balanced, or High-Pace")
+    core_values: List[str]
+    culture_highlights: List[str]
+
+
+
 
 
 

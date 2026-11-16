@@ -21,6 +21,7 @@ from fastapi.responses import JSONResponse, Response
 from app.agents.matcher_agent import (
     analyze_skill_gap,
     batch_score_jobs,
+    calculate_company_culture_index,
     calculate_salary_expectation_fit,
     calculate_weighted_skill_match,
     estimate_interview_difficulty,
@@ -117,6 +118,7 @@ from app.schemas import (
     ColdOutreachMessageRequest,
     ColdOutreachMessageResponse,
     CollectionChecksumItem,
+    CompanyCultureIndexResponse,
     CompanyDirectoryResponse,
     CompanyInterviewPredictionResponse,
     CompanyHiringSurgeItem,
@@ -1113,6 +1115,22 @@ async def list_companies_endpoint(limit: int = Query(50, ge=1, le=100)):
         "total_companies": len(companies),
         "companies": companies
     }
+
+
+@app.get(
+    "/api/companies/{company_name}/culture",
+    response_model=CompanyCultureIndexResponse,
+    summary="Get company engineering culture and remote-friendliness score",
+    tags=["Companies"]
+)
+async def get_company_culture_endpoint(company_name: str):
+    """Calculate culture score, remote work friendliness, and autonomy tier for a company."""
+    clean_name = (company_name or "").strip()
+    if not clean_name:
+        raise HTTPException(status_code=400, detail="Company name cannot be empty.")
+    all_jobs = load_jobs()
+    matching_jobs = [j for j in all_jobs if str(j.get("company", "")).strip().lower() == clean_name.lower()]
+    return calculate_company_culture_index(clean_name, matching_jobs)
 
 
 @app.get(
