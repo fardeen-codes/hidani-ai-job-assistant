@@ -3107,6 +3107,21 @@ class BackendTestCase(unittest.TestCase):
         self.assertEqual(data["missing_count"], 1)          # AWS (Missing)
         self.assertEqual(len(data["breakdown"]), 4)
 
+    def test_company_interview_question_prediction(self):
+        """Test predicting tailored technical and system design interview questions for a target company."""
+        res = self.client.get("/api/matcher/predict-questions?company=Airbnb&role_title=Staff+Backend+Engineer&skills=Python&skills=PostgreSQL")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "success")
+        self.assertEqual(data["company"], "Airbnb")
+        self.assertEqual(data["role_title"], "Staff Backend Engineer")
+        self.assertGreaterEqual(len(data["predicted_questions"]), 3)
+        self.assertGreaterEqual(data["estimated_interview_loops"], 4)
+        for q in data["predicted_questions"]:
+            self.assertIn("question", q)
+            self.assertIn("category", q)
+            self.assertIn("difficulty", q)
+
 
 if __name__ == "__main__":
     unittest.main()

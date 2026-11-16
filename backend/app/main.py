@@ -22,6 +22,7 @@ from app.agents.matcher_agent import (
     estimate_interview_difficulty,
     evaluate_skill_proficiency_gaps,
     generate_learning_roadmap,
+    predict_company_interview_questions,
     score_career_transition,
 )
 from app.agents.orchestrator import (
@@ -107,6 +108,7 @@ from app.schemas import (
     ColdOutreachMessageResponse,
     CollectionChecksumItem,
     CompanyDirectoryResponse,
+    CompanyInterviewPredictionResponse,
     CompanyHiringSurgeItem,
     CompanyHiringSurgeResponse,
     CompanyProfile,
@@ -130,6 +132,7 @@ from app.schemas import (
     InterviewDifficultyResponse,
     InterviewDifficultyFeedbackRequest,
     InterviewDifficultyFeedbackResponse,
+    InterviewQuestionPredictionItem,
     JobApplication,
     LearningRoadmapRequest,
     LearningRoadmapResponse,
@@ -1474,6 +1477,25 @@ async def score_career_transition_endpoint(payload: CareerTransitionRequest):
         current_title=payload.current_title,
         target_title=payload.target_title,
         current_experience_years=payload.current_experience_years or 3.0
+    )
+
+
+@app.get(
+    "/api/matcher/predict-questions",
+    response_model=CompanyInterviewPredictionResponse,
+    summary="Predict company-tailored interview questions and evaluation loops",
+    tags=["Matcher"]
+)
+async def predict_company_questions_endpoint(
+    company: str = Query(..., description="Target company name"),
+    role_title: str = Query(..., description="Target job title"),
+    skills: Optional[List[str]] = Query(None, description="Key technical skills evaluated")
+):
+    """Predict high-probability technical, behavioral, and system design questions for a company and role."""
+    return predict_company_interview_questions(
+        company=company,
+        role_title=role_title,
+        skills=skills
     )
 
 

@@ -849,5 +849,66 @@ def evaluate_skill_proficiency_gaps(
     }
 
 
+def predict_company_interview_questions(
+    company: str,
+    role_title: str,
+    skills: Optional[List[str]] = None
+) -> Dict[str, Any]:
+    """
+    Generate tailored interview question predictions based on target company tier and role domain.
+    """
+    clean_company = (company or "Tech Company").strip()
+    clean_role = (role_title or "Software Engineer").strip()
+    skills_list = [s.strip() for s in (skills or []) if s and s.strip()]
+
+    title_lower = clean_role.lower()
+    is_senior = any(w in title_lower for w in ["senior", "lead", "staff", "principal", "architect"])
+    is_backend = any(w in title_lower for w in ["backend", "distributed", "infra", "platform", "cloud", "data"])
+
+    questions = []
+
+    if is_backend or not skills_list:
+        questions.append({
+            "question": f"How would you design a distributed idempotency mechanism for high-throughput transactions at {clean_company}?",
+            "category": "System Design",
+            "difficulty": "Hard" if is_senior else "Medium",
+            "rationale": f"Core systems at {clean_company} demand strict fault tolerance and deduplication under network partitions."
+        })
+        questions.append({
+            "question": "Explain how you handle database connection pooling and failovers during an unexpected traffic spike.",
+            "category": "Domain Architecture",
+            "difficulty": "Medium",
+            "rationale": "Evaluates practical operational reliability and resilience under stress."
+        })
+
+    if skills_list:
+        top_skill = skills_list[0]
+        questions.append({
+            "question": f"In {top_skill}, what is your approach to profiling memory leaks and optimizing concurrency bottlenecks?",
+            "category": "Coding / Algorithms",
+            "difficulty": "Hard" if is_senior else "Medium",
+            "rationale": f"Tests deep mastery of {top_skill} internals beyond surface-level syntax."
+        })
+
+    questions.append({
+        "question": "Describe a scenario where you strongly disagreed with an engineering decision at your previous company. How did you resolve it?",
+        "category": "Behavioral & Culture",
+        "difficulty": "Medium",
+        "rationale": f"Validates communication maturity, cross-functional empathy, and alignment with {clean_company} values."
+    })
+
+    focus = "Distributed System Design & Concurrency" if is_backend else "Full-Stack Architecture & User Latency"
+    loops = 5 if is_senior else 4
+
+    return {
+        "status": "success",
+        "company": clean_company,
+        "role_title": clean_role,
+        "predicted_questions": questions,
+        "primary_interview_focus": focus,
+        "estimated_interview_loops": loops
+    }
+
+
 
 

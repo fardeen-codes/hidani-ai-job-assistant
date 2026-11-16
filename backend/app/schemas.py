@@ -984,6 +984,24 @@ class InterviewQuestionsResponse(BaseModel):
     questions: List[InterviewQuestionEntry] = Field(default_factory=list)
 
 
+class InterviewQuestionPredictionItem(BaseModel):
+    """Predicted interview question with category, difficulty, and rationale."""
+    question: str = Field(description="Predicted interview question prompt")
+    category: str = Field(description="Category: System Design, Coding / Algorithms, Behavioral & Culture, Domain Architecture")
+    difficulty: str = Field(description="Difficulty tier: Easy, Medium, Hard, Expert")
+    rationale: str = Field(description="Why this question is highly likely for this company and role")
+
+
+class CompanyInterviewPredictionResponse(BaseModel):
+    """Predicted interview questions and preparation focus for a company and role."""
+    status: str = Field(default="success")
+    company: str = Field(description="Target company name")
+    role_title: str = Field(description="Target role title")
+    predicted_questions: List[InterviewQuestionPredictionItem] = Field(default_factory=list)
+    primary_interview_focus: str = Field(description="Dominant focus area of the company interview loops")
+    estimated_interview_loops: int = Field(description="Expected number of evaluation rounds")
+
+
 class ApplicationChannelMetric(BaseModel):
     """Effectiveness and conversion performance for an application source channel."""
     source: str = Field(description="Submission channel (e.g. LinkedIn, Referral, Direct / Portal)")
