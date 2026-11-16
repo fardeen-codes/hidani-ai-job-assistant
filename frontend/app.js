@@ -763,6 +763,13 @@ function renderInteractiveJobCards(container, jobs) {
             ${isBookmarked ? '★ Saved' : 'Save'}
           </button>
           <button
+            onclick="requestRoadmapForJob('${escapeHtml(job.job_id)}', '${escapeHtml(job.title)}')"
+            title="Generate custom learning roadmap for missing skills"
+            class="px-2.5 py-1.5 rounded text-xs font-medium text-neutral-300 hover:text-white bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 transition-colors"
+          >
+            Roadmap
+          </button>
+          <button
             onclick="window.applyToJob('${escapeHtml(job.job_id)}')"
             ${isApplied ? 'disabled' : ''}
             class="px-3.5 py-1.5 rounded text-xs font-semibold transition-colors ${
@@ -1065,6 +1072,11 @@ async function fetchAndRenderJobsList(keyword = '') {
 window.discussJob = (jobId, title) => {
   closeJobsModal();
   elements.messageInput.value = `Tell me about job ${jobId} (${title})`;
+  handleSendMessage();
+};
+
+window.requestRoadmapForJob = (jobId, title) => {
+  elements.messageInput.value = `/roadmap ${jobId}`;
   handleSendMessage();
 };
 
