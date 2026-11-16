@@ -1268,6 +1268,17 @@ class ExperienceTierBreakdownResponse(BaseModel):
     tiers: List[ExperienceTierMetric] = Field(default_factory=list)
 
 
+class JobFreshnessResponse(BaseModel):
+    """Evaluation of job freshness, age in days, and urgency indicator."""
+    status: str = Field(default="success")
+    job_id: str
+    posted_date: Optional[str] = None
+    age_days: int
+    freshness_tier: str = Field(description="'New' (<= 7 days), 'Recent' (8-30 days), or 'Established' (> 30 days)")
+    is_actively_hiring: bool
+
+
+
 
 
 

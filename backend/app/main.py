@@ -124,6 +124,7 @@ from app.schemas import (
     LearningRoadmapRequest,
     LearningRoadmapResponse,
     JobBookmark,
+    JobFreshnessResponse,
     JobStatsResponse,
     JobTagCloudResponse,
     LocationPreferenceResponse,
@@ -215,6 +216,7 @@ from app.services.db_service import (
     get_experience_tier_breakdown,
     get_interview_questions,
     get_job_by_id,
+    get_job_freshness_details,
     get_job_stats,
     get_job_tag_cloud,
     get_recent_searches,
@@ -1246,6 +1248,24 @@ async def get_job_details_by_id(job_id: str):
             detail=f"Job with ID '{clean_id}' was not found in the database."
         )
     return job
+
+
+@app.get(
+    "/api/jobs/{job_id}/freshness",
+    response_model=JobFreshnessResponse,
+    summary="Get job posting freshness tier and age in days",
+    tags=["Jobs"]
+)
+async def get_job_freshness_endpoint(job_id: str):
+    """Retrieve job posting age, freshness tier (New, Recent, Established), and urgency status."""
+    clean_id = (job_id or "").strip()
+    if not clean_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Job ID cannot be empty.")
+    freshness = get_job_freshness_details(clean_id)
+    if not freshness:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Job '{clean_id}' was not found.")
+    return freshness
+
 
 
 @app.get(

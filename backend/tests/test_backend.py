@@ -2947,6 +2947,21 @@ class BackendTestCase(unittest.TestCase):
             self.assertGreaterEqual(t["percentage"], 0.0)
             self.assertIsInstance(t["top_categories"], list)
 
+    def test_job_freshness_details_evaluation(self):
+        """Test retrieving job posting freshness tier, age, and urgency."""
+        res = self.client.get(f"/api/jobs/{self.test_job_id}/freshness")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "success")
+        self.assertEqual(data["job_id"], self.test_job_id)
+        self.assertIn(data["freshness_tier"], ["New", "Recent", "Established"])
+        self.assertGreaterEqual(data["age_days"], 0)
+        self.assertIsInstance(data["is_actively_hiring"], bool)
+
+        # 404 test
+        res_404 = self.client.get("/api/jobs/non-existent-job-xyz/freshness")
+        self.assertEqual(res_404.status_code, 404)
+
 
 if __name__ == "__main__":
     unittest.main()
