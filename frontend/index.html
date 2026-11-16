@@ -325,6 +325,14 @@
             class="job-filter-btn px-2.5 py-1 rounded text-[11px] font-mono bg-neutral-800 text-neutral-300 hover:bg-neutral-700 border border-neutral-700"
             data-filter="Backend">Backend</button>
         </div>
+        <!-- Salary Presets -->
+        <div class="flex items-center gap-1.5 flex-wrap" id="salaryFilterPills">
+          <span class="text-[10px] font-mono text-neutral-400 mr-0.5">Min:</span>
+          <button class="salary-filter-btn px-2 py-0.5 rounded text-[10px] font-mono bg-neutral-100 text-neutral-950 font-semibold" data-min-salary="0">All</button>
+          <button class="salary-filter-btn px-2 py-0.5 rounded text-[10px] font-mono bg-neutral-800 text-neutral-300 hover:bg-neutral-700 border border-neutral-700" data-min-salary="100000">$100k+</button>
+          <button class="salary-filter-btn px-2 py-0.5 rounded text-[10px] font-mono bg-neutral-800 text-neutral-300 hover:bg-neutral-700 border border-neutral-700" data-min-salary="130000">$130k+</button>
+          <button class="salary-filter-btn px-2 py-0.5 rounded text-[10px] font-mono bg-neutral-800 text-neutral-300 hover:bg-neutral-700 border border-neutral-700" data-min-salary="160000">$160k+</button>
+        </div>
       </div>
 
       <!-- Jobs List Table / Scroll Area -->

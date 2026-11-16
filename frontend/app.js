@@ -17,7 +17,8 @@ const state = {
   appliedJobIds: new Set(JSON.parse(localStorage.getItem('hidani_applied_jobs') || '[]')),
   bookmarkedJobIds: new Set(JSON.parse(localStorage.getItem('hidani_bookmarked_jobs') || '[]')),
   systemHealth: null,
-  activeFilter: ''
+  activeFilter: '',
+  minSalary: 0
 };
 
 // Persist session ID
@@ -183,6 +184,21 @@ function setupEventListeners() {
       const filter = btn.getAttribute('data-filter') || '';
       elements.jobsSearchInput.value = filter;
       fetchAndRenderJobsList(filter);
+    });
+  }
+
+  // Quick salary filter pills
+  const salaryPills = document.getElementById('salaryFilterPills');
+  if (salaryPills) {
+    salaryPills.addEventListener('click', (e) => {
+      const btn = e.target.closest('.salary-filter-btn');
+      if (!btn) return;
+      salaryPills.querySelectorAll('.salary-filter-btn').forEach(b => {
+        b.className = 'salary-filter-btn px-2 py-0.5 rounded text-[10px] font-mono bg-neutral-800 text-neutral-300 hover:bg-neutral-700 border border-neutral-700';
+      });
+      btn.className = 'salary-filter-btn px-2 py-0.5 rounded text-[10px] font-mono bg-neutral-100 text-neutral-950 font-semibold';
+      state.minSalary = parseInt(btn.getAttribute('data-min-salary'), 10) || 0;
+      fetchAndRenderJobsList(elements.jobsSearchInput.value.trim());
     });
   }
 
@@ -772,7 +788,11 @@ async function fetchAndRenderJobsList(keyword = '') {
     const res = await fetch(url);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-    const jobs = data.jobs || [];
+    let jobs = data.jobs || [];
+
+    if (state.minSalary > 0) {
+      jobs = jobs.filter(j => (j.salary_max || j.salary_min || 0) >= state.minSalary);
+    }
 
     elements.jobsModalSubtitle.innerText = `${data.total.toLocaleString()} total positions available`;
 
