@@ -439,6 +439,15 @@
         <button data-status="Rejected" class="app-status-filter-pill px-2.5 py-1 rounded text-xs font-mono transition-colors bg-neutral-800 hover:bg-neutral-700 text-neutral-300">Rejected</button>
       </div>
 
+      <!-- Priority Queue Alert Banner -->
+      <div id="appsPriorityBanner" class="hidden px-4 py-2 bg-amber-500/10 border-b border-amber-500/20 text-xs text-amber-200 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="inline-block w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+          <span id="appsPriorityBannerText" class="font-medium">1 application requires immediate action today</span>
+        </div>
+        <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">Priority Queue</span>
+      </div>
+
       <!-- Applications List Container -->
       <div class="flex-1 overflow-y-auto p-4 space-y-2.5" id="appsListContainer">
         <!-- Rendered dynamically -->

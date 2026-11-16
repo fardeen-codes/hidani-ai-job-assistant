@@ -1254,6 +1254,26 @@ async function fetchAndRenderApplicationsList() {
     elements.appsModalSubtitle.innerText = `${totalCount} total applications submitted (${apps.length} showing)`;
     updateApplicationsBadge(totalCount);
 
+    // Fetch priority queue telemetry
+    const priorityBanner = document.getElementById('appsPriorityBanner');
+    const priorityBannerText = document.getElementById('appsPriorityBannerText');
+    const priorityMap = new Map();
+    try {
+      const qRes = await fetch(`${API_BASE}/applications/queue/prioritized`);
+      if (qRes.ok) {
+        const qData = await qRes.json();
+        (qData.queue || []).forEach(item => priorityMap.set(item.job_id, item));
+        if (priorityBanner && priorityBannerText) {
+          if (qData.critical_actions_count > 0) {
+            priorityBannerText.innerText = `${qData.critical_actions_count} urgent ${qData.critical_actions_count === 1 ? 'application requires' : 'applications require'} immediate attention`;
+            priorityBanner.classList.remove('hidden');
+          } else {
+            priorityBanner.classList.add('hidden');
+          }
+        }
+      }
+    } catch (e) {}
+
     if (apps.length === 0) {
       elements.appsListContainer.innerHTML = `
         <div class="py-12 text-center space-y-2">
@@ -1284,6 +1304,10 @@ async function fetchAndRenderApplicationsList() {
         : (['Interview', 'Offer', 'Under Review'].includes(currentStatus)
           ? `<button onclick="toggleThankYouStatus('${escapeHtml(app.job_id)}', true)" title="Click to record thank-you note sent" class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-neutral-900 text-neutral-400 hover:text-neutral-200 border border-neutral-800 hover:border-neutral-700 transition-colors">✉️ Send Thank-You</button>`
           : '');
+      const priorityInfo = priorityMap.get(app.job_id);
+      const urgencyBadge = priorityInfo && priorityInfo.urgency_tier === 'Critical'
+        ? `<span class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-rose-500/15 text-rose-300 border border-rose-500/30" title="${escapeHtml(priorityInfo.recommended_action)}">⚡ Urgent Action</span>`
+        : '';
       const statusOptions = statuses.map(s =>
         `<option value="${s}" ${s === currentStatus ? 'selected' : ''}>${s}</option>`
       ).join('');
@@ -1292,6 +1316,7 @@ async function fetchAndRenderApplicationsList() {
           <div class="flex items-center gap-2 flex-wrap">
             <span class="text-xs font-mono text-neutral-400">#${idx + 1}</span>
             <h4 class="text-xs sm:text-sm font-semibold text-white">${escapeHtml(app.job_title || 'Software Role')}</h4>
+            ${urgencyBadge}
             ${questionBadge}
             ${difficultyBadge}
             ${thankYouBadge}
