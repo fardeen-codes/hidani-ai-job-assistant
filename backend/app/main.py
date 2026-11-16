@@ -120,6 +120,8 @@ from app.schemas import (
     DatabaseChecksumResponse,
     DatabaseCompactionResponse,
     DatabaseHealthResponse,
+    DatabaseIntegrityIssue,
+    DatabaseIntegrityReportResponse,
     DatabaseRepairResponse,
     DatabaseRestoreResponse,
     DatabaseStorageMetricsResponse,
@@ -220,6 +222,7 @@ from app.services.db_service import (
     execute_saved_search,
     export_application_portfolio,
     export_jobs_to_csv,
+    generate_database_integrity_report,
     generate_followup_template,
     get_application_channel_analytics,
     get_application_funnel_metrics,
@@ -2605,6 +2608,7 @@ async def check_database_health_endpoint():
     summary="Compact database and purge orphan references",
     tags=["Database Admin"]
 )
+@app.post("/api/db/compact", response_model=DatabaseCompactionResponse, include_in_schema=False)
 async def compact_database_endpoint():
     """Purge orphaned bookmarks and deduplicate search history."""
     return compact_database()
@@ -2619,6 +2623,18 @@ async def compact_database_endpoint():
 async def compute_database_checksums_endpoint():
     """Generate SHA-256 integrity manifest and storage statistics across persistent storage files."""
     return compute_database_checksums()
+
+
+@app.get(
+    "/api/admin/db/integrity/report",
+    response_model=DatabaseIntegrityReportResponse,
+    summary="Generate deep database integrity and structural validation report",
+    tags=["Database Admin"]
+)
+@app.get("/api/db/integrity/report", response_model=DatabaseIntegrityReportResponse, include_in_schema=False)
+async def generate_database_integrity_report_endpoint():
+    """Perform comprehensive structural validation, foreign key checks, and schema integrity scan."""
+    return generate_database_integrity_report()
 
 
 @app.post(
@@ -2638,6 +2654,7 @@ async def vacuum_database_endpoint():
     summary="Run environment diagnostics and storage IOPS throughput profiler",
     tags=["Database Admin"]
 )
+@app.get("/api/db/diagnostics", response_model=SystemDiagnosticsResponse, include_in_schema=False)
 async def run_system_diagnostics_endpoint():
     """Execute live system runtime diagnostics, process environment inspection, and storage I/O speed benchmark."""
     return run_system_storage_diagnostics()

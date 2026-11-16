@@ -3158,6 +3158,18 @@ class BackendTestCase(unittest.TestCase):
         self.assertEqual(data_fe["seniority_level"], "Senior")
         self.assertIn("React", data_fe["core_competencies"])
 
+    def test_database_integrity_self_check_report(self):
+        """Test generating deep integrity and structural validation report across all JSON collections."""
+        res = self.client.get("/api/admin/db/integrity/report")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "success")
+        self.assertIn(data["overall_health"], ["Healthy", "Warning", "Critical"])
+        self.assertGreaterEqual(data["total_collections_scanned"], 4)
+        self.assertGreaterEqual(data["total_records_checked"], 1)
+        self.assertIsInstance(data["issues"], list)
+        self.assertTrue(len(data["checked_at"]) > 0)
+
 
 if __name__ == "__main__":
     unittest.main()

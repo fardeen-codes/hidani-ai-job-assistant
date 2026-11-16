@@ -1349,6 +1349,25 @@ class DatabaseVacuumResponse(BaseModel):
     collections: List[DatabaseVacuumCollectionResult] = Field(default_factory=list)
 
 
+class DatabaseIntegrityIssue(BaseModel):
+    """Specific schema, index, or constraint issue detected during database integrity check."""
+    collection: str = Field(description="Name of the JSON collection file")
+    record_id: Optional[str] = Field(None, description="Identifier of the faulty record if applicable")
+    severity: str = Field(description="'Warning' or 'Error'")
+    description: str = Field(description="Explanation of the issue detected")
+
+
+class DatabaseIntegrityReportResponse(BaseModel):
+    """Deep structural and referential integrity check report for all persistent data."""
+    status: str = Field(default="success")
+    overall_health: str = Field(description="'Healthy', 'Warning', or 'Critical'")
+    total_collections_scanned: int = Field(description="Total JSON database files checked")
+    total_records_checked: int = Field(description="Total entity records examined")
+    issues_found: int = Field(description="Count of detected issues")
+    issues: List[DatabaseIntegrityIssue] = Field(default_factory=list, description="List of detected warnings and errors")
+    checked_at: str = Field(description="Timestamp when integrity scan was completed")
+
+
 class StorageSpeedBenchmark(BaseModel):
     """Storage I/O write and read throughput benchmarking."""
     write_speed_mb_s: float

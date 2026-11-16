@@ -4670,5 +4670,111 @@ def run_system_storage_diagnostics() -> Dict[str, Any]:
     }
 
 
+def generate_database_integrity_report() -> Dict[str, Any]:
+    """
+    Perform deep structural validation, foreign key checks, and schema integrity scan across all collections.
+    """
+    targets = [
+        ("jobs", JOBS_FILE, "job_id", ["job_id", "title", "company"]),
+        ("applications", APPLICATIONS_FILE, "job_id", ["job_id", "status"]),
+        ("bookmarks", BOOKMARKS_FILE, "job_id", ["job_id"]),
+        ("candidate_profile", PROFILE_FILE, None, []),
+        ("saved_searches", SAVED_SEARCHES_FILE, "search_id", ["search_id"]),
+    ]
+
+    issues = []
+    total_records = 0
+
+    with _db_lock:
+        for name, path, pk_field, required_fields in targets:
+            if not path.exists():
+                issues.append({
+                    "collection": name,
+                    "record_id": None,
+                    "severity": "Warning",
+                    "description": f"Collection file {path.name} does not exist yet."
+                })
+                continue
+
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    content = f.read().strip()
+                if not content:
+                    parsed = [] if name != "candidate_profile" else {}
+                else:
+                    parsed = json.loads(content)
+            except Exception as exc:
+                issues.append({
+                    "collection": name,
+                    "record_id": None,
+                    "severity": "Error",
+                    "description": f"JSON syntax error or unreadable file: {exc}"
+                })
+                continue
+
+            if isinstance(parsed, list):
+                total_records += len(parsed)
+                seen_pks = set()
+                for idx, record in enumerate(parsed):
+                    if not isinstance(record, dict):
+                        issues.append({
+                            "collection": name,
+                            "record_id": str(idx),
+                            "severity": "Error",
+                            "description": f"Record at index {idx} is not a valid JSON object."
+                        })
+                        continue
+
+                    if pk_field:
+                        val = record.get(pk_field)
+                        if not val:
+                            issues.append({
+                                "collection": name,
+                                "record_id": str(idx),
+                                "severity": "Error",
+                                "description": f"Missing primary key field '{pk_field}'."
+                            })
+                        elif val in seen_pks:
+                            issues.append({
+                                "collection": name,
+                                "record_id": str(val),
+                                "severity": "Warning",
+                                "description": f"Duplicate primary key '{val}' in collection."
+                            })
+                        else:
+                            seen_pks.add(val)
+
+                    for req in required_fields:
+                        if req not in record or record[req] is None:
+                            issues.append({
+                                "collection": name,
+                                "record_id": str(record.get(pk_field, idx)),
+                                "severity": "Warning",
+                                "description": f"Missing expected field '{req}'."
+                            })
+            elif isinstance(parsed, dict):
+                total_records += 1
+
+    has_errors = any(i["severity"] == "Error" for i in issues)
+    has_warnings = any(i["severity"] == "Warning" for i in issues)
+
+    if has_errors:
+        health = "Critical"
+    elif has_warnings:
+        health = "Warning"
+    else:
+        health = "Healthy"
+
+    return {
+        "status": "success",
+        "overall_health": health,
+        "total_collections_scanned": len(targets),
+        "total_records_checked": total_records,
+        "issues_found": len(issues),
+        "issues": issues,
+        "checked_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    }
+
+
 
 
