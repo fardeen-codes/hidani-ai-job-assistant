@@ -1268,6 +1268,11 @@ async function fetchAndRenderApplicationsList() {
       const difficultyBadge = app.interview_difficulty_tier
         ? `<span class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-amber-500/15 text-amber-300 border border-amber-500/30">${escapeHtml(app.interview_difficulty_tier)} (${app.interview_difficulty_score || 3}/5)</span>`
         : '';
+      const thankYouBadge = app.thank_you_sent
+        ? `<button onclick="toggleThankYouStatus('${escapeHtml(app.job_id)}', false)" title="Thank-you note recorded. Click to mark pending." class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/25 transition-colors">✉️ Thank-You Sent</button>`
+        : (['Interview', 'Offer', 'Under Review'].includes(currentStatus)
+          ? `<button onclick="toggleThankYouStatus('${escapeHtml(app.job_id)}', true)" title="Click to record thank-you note sent" class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-neutral-900 text-neutral-400 hover:text-neutral-200 border border-neutral-800 hover:border-neutral-700 transition-colors">✉️ Send Thank-You</button>`
+          : '');
       const statusOptions = statuses.map(s =>
         `<option value="${s}" ${s === currentStatus ? 'selected' : ''}>${s}</option>`
       ).join('');
@@ -1278,6 +1283,7 @@ async function fetchAndRenderApplicationsList() {
             <h4 class="text-xs sm:text-sm font-semibold text-white">${escapeHtml(app.job_title || 'Software Role')}</h4>
             ${questionBadge}
             ${difficultyBadge}
+            ${thankYouBadge}
           </div>
           <p class="text-xs text-neutral-400 mt-0.5">${escapeHtml(app.company || 'Tech Company')} • <span class="text-neutral-300">${escapeHtml(app.location || 'Remote')}</span></p>
           <p class="text-[11px] font-mono text-neutral-500 mt-1">Submitted on ${escapeHtml(app.applied_date || 'Recent')}</p>
@@ -1640,6 +1646,24 @@ window.updateApplicationStatusFromModal = async (jobId, newStatus) => {
   } catch (err) {
     showToast(`Error: ${err.message}`, 'error');
     fetchAndRenderApplicationsList();
+  }
+};
+
+window.toggleThankYouStatus = async (jobId, markSent) => {
+  try {
+    const res = await fetch(`${API_BASE}/applications/${encodeURIComponent(jobId)}/thank-you`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ thank_you_sent: markSent })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `Failed to update status (${res.status})`);
+    }
+    showToast(markSent ? 'Marked thank-you note as sent!' : 'Thank-you note marked as pending', 'success');
+    fetchAndRenderApplicationsList();
+  } catch (err) {
+    showToast(`Error: ${err.message}`, 'error');
   }
 };
 
