@@ -1019,14 +1019,23 @@ async function fetchAndRenderApplicationsList() {
       const card = document.createElement('div');
       card.className = 'p-3.5 rounded-lg bg-neutral-950 border border-neutral-800 flex items-start justify-between gap-3';
       const currentStatus = app.status || 'Applied';
+      const questionCount = Array.isArray(app.interview_questions) ? app.interview_questions.length : 0;
+      const questionBadge = questionCount > 0
+        ? `<span class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-purple-500/15 text-purple-300 border border-purple-500/30">🎯 ${questionCount} Questions</span>`
+        : '';
+      const difficultyBadge = app.interview_difficulty_tier
+        ? `<span class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-amber-500/15 text-amber-300 border border-amber-500/30">${escapeHtml(app.interview_difficulty_tier)} (${app.interview_difficulty_score || 3}/5)</span>`
+        : '';
       const statusOptions = statuses.map(s =>
         `<option value="${s}" ${s === currentStatus ? 'selected' : ''}>${s}</option>`
       ).join('');
       card.innerHTML = `
         <div>
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-2 flex-wrap">
             <span class="text-xs font-mono text-neutral-400">#${idx + 1}</span>
             <h4 class="text-xs sm:text-sm font-semibold text-white">${escapeHtml(app.job_title || 'Software Role')}</h4>
+            ${questionBadge}
+            ${difficultyBadge}
           </div>
           <p class="text-xs text-neutral-400 mt-0.5">${escapeHtml(app.company || 'Tech Company')} • <span class="text-neutral-300">${escapeHtml(app.location || 'Remote')}</span></p>
           <p class="text-[11px] font-mono text-neutral-500 mt-1">Submitted on ${escapeHtml(app.applied_date || 'Recent')}</p>
