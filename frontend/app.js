@@ -565,11 +565,38 @@ function appendAssistantMessage(markdownContent, actions = []) {
 
   msgEl.innerHTML = `
     <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-4 sm:p-5 shadow-sm text-neutral-200 text-sm">
-      <div class="text-[10px] font-mono uppercase tracking-wider text-neutral-400 mb-2 font-semibold">Assistant</div>
+      <div class="flex items-center justify-between mb-2">
+        <div class="text-[10px] font-mono uppercase tracking-wider text-neutral-400 font-semibold">Assistant</div>
+        <button
+          class="copy-msg-btn px-2 py-0.5 rounded text-[10px] font-mono text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 transition-colors flex items-center gap-1"
+          title="Copy message to clipboard"
+        >
+          <svg class="w-3 h-3 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+          </svg>
+          <span class="btn-text">Copy</span>
+        </button>
+      </div>
       <div class="prose-chat">${parsedHtml}</div>
       <div class="actions-slot mt-3 space-y-3"></div>
     </div>
   `;
+
+  const copyBtn = msgEl.querySelector('.copy-msg-btn');
+  if (copyBtn) {
+    copyBtn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(markdownContent || '');
+        const btnText = copyBtn.querySelector('.btn-text');
+        if (btnText) btnText.textContent = 'Copied!';
+        setTimeout(() => {
+          if (btnText) btnText.textContent = 'Copy';
+        }, 2000);
+      } catch (err) {
+        showToast('Failed to copy message', 'error');
+      }
+    });
+  }
 
   elements.messagesContainer.appendChild(msgEl);
 
