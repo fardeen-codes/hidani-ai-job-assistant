@@ -1572,6 +1572,27 @@ class CompanyCultureIndexResponse(BaseModel):
     culture_highlights: List[str]
 
 
+class ApplicationPriorityRankItem(BaseModel):
+    """Prioritized application entry ranked by urgency and match relevance."""
+    job_id: str
+    job_title: str
+    company: str
+    status: str
+    urgency_tier: str = Field(description="'Critical' (>=80 score), 'High' (>=60 score), or 'Normal'")
+    priority_score: float = Field(description="Normalized priority score between 0.0 and 100.0")
+    recommended_action: str
+    due_date: Optional[str] = None
+
+
+class ApplicationPriorityRankingResponse(BaseModel):
+    """Ranked prioritized application queue response."""
+    status: str = Field(default="success")
+    total_active_applications: int
+    critical_actions_count: int
+    queue: List[ApplicationPriorityRankItem]
+
+
+
 
 
 

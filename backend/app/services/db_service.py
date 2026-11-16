@@ -4884,6 +4884,72 @@ def update_application_thank_you_status(
     return True, f"Thank-you note status for Job ID '{clean_id}' updated successfully.", target_app
 
 
+def get_prioritized_applications_queue() -> Dict[str, Any]:
+    """
+    Rank active job applications by operational urgency, status weighting, and deadline proximity.
+    """
+    apps = load_applications()
+    queue = []
+    status_weights = {
+        "Offer": 90.0,
+        "Interview": 75.0,
+        "Under Review": 55.0,
+        "Applied": 35.0,
+        "Rejected": 10.0,
+        "Withdrawn": 5.0
+    }
+
+    for app in apps:
+        if app.get("archived", False):
+            continue
+
+        app_status = app.get("status", "Applied")
+        base_score = status_weights.get(app_status, 40.0)
+
+        if app.get("priority") in ["high", "critical", "starred"] or app.get("starred", False):
+            base_score += 15.0
+
+        if app_status == "Interview" and not app.get("thank_you_sent", False):
+            base_score += 10.0
+
+        due_date = app.get("expected_decision_date") or app.get("reminder_date") or app.get("auto_followup_date")
+        if due_date:
+            base_score += 10.0
+
+        score = min(100.0, base_score)
+        if score >= 80.0:
+            urgency = "Critical"
+            action = "Prepare interview rounds / Respond to pending offer decision"
+        elif score >= 60.0:
+            urgency = "High"
+            action = "Send follow-up check-in / Complete outstanding prep questions"
+        else:
+            urgency = "Normal"
+            action = "Monitor application status in portal"
+
+        queue.append({
+            "job_id": app.get("job_id", ""),
+            "job_title": app.get("job_title", "Software Role"),
+            "company": app.get("company", "Company"),
+            "status": app_status,
+            "urgency_tier": urgency,
+            "priority_score": round(score, 1),
+            "recommended_action": action,
+            "due_date": due_date
+        })
+
+    queue.sort(key=lambda x: x["priority_score"], reverse=True)
+    critical_count = sum(1 for q in queue if q["urgency_tier"] == "Critical")
+
+    return {
+        "status": "success",
+        "total_active_applications": len(queue),
+        "critical_actions_count": critical_count,
+        "queue": queue
+    }
+
+
+
 
 
 

@@ -3263,6 +3263,25 @@ class BackendTestCase(unittest.TestCase):
         self.assertGreaterEqual(len(data["core_values"]), 2)
         self.assertGreaterEqual(len(data["culture_highlights"]), 1)
 
+    def test_prioritized_applications_queue(self):
+        """Test retrieving application priority ranking queue based on stage weighting and deadlines."""
+        # Ensure an active application exists
+        self.client.post("/api/applications", json={"job_id": self.test_job_id})
+        res = self.client.get("/api/applications/queue/prioritized")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "success")
+        self.assertIn("total_active_applications", data)
+        self.assertIn("critical_actions_count", data)
+        self.assertIn("queue", data)
+        self.assertIsInstance(data["queue"], list)
+        if data["queue"]:
+            first_item = data["queue"][0]
+            self.assertIn("job_id", first_item)
+            self.assertIn("urgency_tier", first_item)
+            self.assertIn("priority_score", first_item)
+            self.assertIn("recommended_action", first_item)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -75,6 +75,8 @@ from app.schemas import (
     ApplicationOutcomeUpdateRequest,
     ApplicationPortfolioItem,
     ApplicationPortfolioResponse,
+    ApplicationPriorityRankItem,
+    ApplicationPriorityRankingResponse,
     ApplicationPriorityUpdateRequest,
     ApplicationRejectionAnalyticsResponse,
     ApplicationRollbackResponse,
@@ -266,6 +268,7 @@ from app.services.db_service import (
     get_job_freshness_details,
     get_job_stats,
     get_job_tag_cloud,
+    get_prioritized_applications_queue,
     get_recent_searches,
     get_rejection_analytics,
     get_remote_work_breakdown,
@@ -1784,6 +1787,17 @@ async def get_application_channel_analytics_endpoint():
 async def get_application_stage_durations_endpoint():
     """Calculate average dwell time and duration metrics across application pipeline stages."""
     return get_application_stage_durations()
+
+
+@app.get(
+    "/api/applications/queue/prioritized",
+    response_model=ApplicationPriorityRankingResponse,
+    summary="Get operational priority queue of applications ranked by urgency",
+    tags=["Applications"]
+)
+async def get_prioritized_applications_queue_endpoint():
+    """Rank candidate applications by deadline urgency, stage weighting, and pending actions."""
+    return get_prioritized_applications_queue()
 
 
 @app.post(
