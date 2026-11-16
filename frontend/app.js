@@ -1039,13 +1039,22 @@ async function fetchAndRenderApplicationsList() {
           >
             ${statusOptions}
           </select>
-          <button
-            onclick="withdrawApplicationFromModal('${escapeHtml(app.job_id)}')"
-            title="Withdraw this application"
-            class="px-2 py-0.5 rounded text-[10px] text-neutral-400 hover:text-rose-400 hover:bg-neutral-900 border border-neutral-800 hover:border-neutral-700 transition-colors"
-          >
-            Withdraw
-          </button>
+          <div class="flex items-center gap-1.5">
+            <button
+              onclick="rollbackApplicationFromModal('${escapeHtml(app.job_id)}')"
+              title="Revert to previous status snapshot"
+              class="px-2 py-0.5 rounded text-[10px] text-neutral-400 hover:text-amber-300 hover:bg-amber-950/40 border border-neutral-800 hover:border-amber-700/50 transition-colors"
+            >
+              ⤺ Undo
+            </button>
+            <button
+              onclick="withdrawApplicationFromModal('${escapeHtml(app.job_id)}')"
+              title="Withdraw this application"
+              class="px-2 py-0.5 rounded text-[10px] text-neutral-400 hover:text-rose-400 hover:bg-neutral-900 border border-neutral-800 hover:border-neutral-700 transition-colors"
+            >
+              Withdraw
+            </button>
+          </div>
         </div>
       `;
       elements.appsListContainer.appendChild(card);
@@ -1256,6 +1265,23 @@ function closeAllModals() {
   closeProfileDrawer();
   closeShortcutsModal();
 }
+
+window.rollbackApplicationFromModal = async (jobId) => {
+  try {
+    const res = await fetch(`${API_BASE}/applications/${encodeURIComponent(jobId)}/rollback`, {
+      method: 'POST'
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `Rollback failed (${res.status})`);
+    }
+    const data = await res.json();
+    showToast(`Reverted ${jobId} to ${data.restored_status || 'previous status'}`, 'success');
+    fetchAndRenderApplicationsList();
+  } catch (err) {
+    showToast(`Rollback unavailable: ${err.message}`, 'error');
+  }
+};
 
 window.withdrawApplicationFromModal = async (jobId) => {
   if (!confirm(`Are you sure you want to withdraw your application for Job ID ${jobId}?`)) return;
