@@ -1182,6 +1182,25 @@ class SystemDiagnosticsResponse(BaseModel):
     total_database_records: int
 
 
+class CandidateLanguageItem(BaseModel):
+    """Candidate spoken or written language proficiency."""
+    language: str = Field(..., description="Language name (e.g. English, Japanese, Spanish)")
+    proficiency: str = Field(default="Professional Working", description="'Native / Bilingual', 'Fluent', 'Professional Working', 'Conversational', or 'Elementary'")
+
+
+class CandidateLanguagesUpdateRequest(BaseModel):
+    """Payload to update candidate language proficiencies."""
+    languages: List[CandidateLanguageItem] = Field(..., description="List of candidate language proficiencies")
+
+
+class CandidateLanguagesResponse(BaseModel):
+    """Candidate language proficiencies response."""
+    status: str = Field(default="success")
+    total_languages: int
+    languages: List[CandidateLanguageItem] = Field(default_factory=list)
+
+
+
 
 
 

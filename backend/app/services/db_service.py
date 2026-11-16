@@ -3475,6 +3475,39 @@ def get_candidate_certifications() -> List[Dict[str, Any]]:
     return profile.get("certifications", [])
 
 
+def get_candidate_languages() -> List[Dict[str, Any]]:
+    """Retrieve all candidate language proficiencies."""
+    profile = load_candidate_profile()
+    return profile.get("languages", [])
+
+
+def update_candidate_languages(languages: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Update and persist candidate language proficiencies."""
+    clean_langs = []
+    seen = set()
+    for item in languages:
+        lang_name = (item.get("language") or "").strip()
+        prof = (item.get("proficiency") or "Professional Working").strip()
+        if lang_name and lang_name.lower() not in seen:
+            seen.add(lang_name.lower())
+            clean_langs.append({
+                "language": lang_name,
+                "proficiency": prof
+            })
+
+    with _db_lock:
+        profile = load_candidate_profile()
+        profile["languages"] = clean_langs
+        save_candidate_profile(profile)
+
+    return {
+        "status": "success",
+        "total_languages": len(clean_langs),
+        "languages": clean_langs
+    }
+
+
+
 def analyze_resume_ats_readability(
     resume_text: str,
     target_category: Optional[str] = "Engineering"

@@ -2795,6 +2795,30 @@ class BackendTestCase(unittest.TestCase):
         self.assertEqual(bench["block_size_bytes"], 64 * 1024)
         self.assertGreater(bench["test_file_size_mb"], 0.0)
 
+    def test_candidate_language_proficiencies_management(self):
+        """Test candidate language proficiencies lifecycle and persistence."""
+        payload = {
+            "languages": [
+                {"language": "English", "proficiency": "Native / Bilingual"},
+                {"language": "Japanese", "proficiency": "Conversational"},
+                {"language": "German", "proficiency": "Elementary"}
+            ]
+        }
+        put_res = self.client.put("/api/profile/languages", json=payload)
+        self.assertEqual(put_res.status_code, 200)
+        data = put_res.json()
+        self.assertEqual(data["status"], "success")
+        self.assertEqual(data["total_languages"], 3)
+
+        get_res = self.client.get("/api/profile/languages")
+        self.assertEqual(get_res.status_code, 200)
+        get_data = get_res.json()
+        langs = {item["language"]: item["proficiency"] for item in get_data["languages"]}
+        self.assertIn("English", langs)
+        self.assertEqual(langs["English"], "Native / Bilingual")
+        self.assertIn("Japanese", langs)
+        self.assertEqual(langs["Japanese"], "Conversational")
+
 
 if __name__ == "__main__":
     unittest.main()

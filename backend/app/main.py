@@ -83,6 +83,9 @@ from app.schemas import (
     BulkApplicationStatusUpdateResponse,
     BulkBookmarkDeleteRequest,
     BulkBookmarkDeleteResponse,
+    CandidateLanguageItem,
+    CandidateLanguagesResponse,
+    CandidateLanguagesUpdateRequest,
     CareerTransitionRequest,
     CareerTransitionResponse,
     CertificationAddRequest,
@@ -188,6 +191,7 @@ from app.services.db_service import (
     get_bookmark_categories,
     get_bookmarked_jobs,
     get_candidate_certifications,
+    get_candidate_languages,
     get_candidate_salary_preferences,
     get_candidate_work_preferences,
     get_company_hiring_surges,
@@ -232,6 +236,7 @@ from app.services.db_service import (
     update_application_source,
     update_application_status,
     update_application_tags,
+    update_candidate_languages,
     update_candidate_salary_preferences,
     update_candidate_work_preferences,
     update_job_bookmark,
@@ -509,6 +514,35 @@ async def delete_certification_endpoint(cert_id: str):
     if not success:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=message)
     return {"status": "success", "message": message}
+
+
+@app.get(
+    "/api/profile/languages",
+    response_model=CandidateLanguagesResponse,
+    summary="Get candidate language proficiencies",
+    tags=["Resume"]
+)
+async def get_candidate_languages_endpoint():
+    """Retrieve all language proficiencies recorded on candidate profile."""
+    langs = get_candidate_languages()
+    return CandidateLanguagesResponse(
+        status="success",
+        total_languages=len(langs),
+        languages=langs
+    )
+
+
+@app.put(
+    "/api/profile/languages",
+    response_model=CandidateLanguagesResponse,
+    summary="Update candidate language proficiencies",
+    tags=["Resume"]
+)
+async def update_candidate_languages_endpoint(payload: CandidateLanguagesUpdateRequest):
+    """Set and persist language proficiencies on candidate profile."""
+    res = update_candidate_languages([item.model_dump() for item in payload.languages])
+    return CandidateLanguagesResponse(**res)
+
 
 
 @app.post(
