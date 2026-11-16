@@ -910,5 +910,78 @@ def predict_company_interview_questions(
     }
 
 
+def calculate_salary_expectation_fit(
+    candidate_min: float,
+    candidate_max: Optional[float] = None,
+    job_id: Optional[str] = None,
+    job_min: Optional[float] = None,
+    job_max: Optional[float] = None
+) -> Dict[str, Any]:
+    """
+    Calculate compensation fit score and range overlap between candidate targets and job offer.
+    """
+    j_min = job_min
+    j_max = job_max
+
+    if job_id and (j_min is None or j_max is None):
+        job = get_job_by_id(job_id)
+        if job:
+            if j_min is None:
+                j_min = job.get("salary_min")
+            if j_max is None:
+                j_max = job.get("salary_max")
+
+    j_min = float(j_min or 0.0)
+    j_max = float(j_max or j_min or 0.0)
+    c_min = float(candidate_min)
+    c_max = float(candidate_max or c_min * 1.25)
+
+    if j_max <= 0:
+        return {
+            "status": "success",
+            "compatibility_score": 75.0,
+            "salary_fit_status": "Undisclosed",
+            "delta_annual": 0.0,
+            "overlap_percentage": 0.0,
+            "summary": "Position salary is undisclosed or competitive."
+        }
+
+    c_mid = (c_min + c_max) / 2.0
+    j_mid = (j_min + j_max) / 2.0 if j_max > 0 else j_min
+    delta = round(j_mid - c_mid, 2)
+
+    overlap_start = max(c_min, j_min)
+    overlap_end = min(c_max, j_max)
+    overlap_len = max(0.0, overlap_end - overlap_start)
+    c_len = max(1.0, c_max - c_min)
+    overlap_pct = round((overlap_len / c_len) * 100.0, 1)
+
+    if j_max >= c_max:
+        fit = "Exceeds Expectations"
+        score = 100.0
+        summary = f"Job maximum (${j_max:,.0f}) fully exceeds candidate expectations."
+    elif j_max >= c_min:
+        fit = "Strong Fit"
+        score = round(70.0 + (overlap_pct * 0.3), 1)
+        summary = f"Job range (${j_min:,.0f} - ${j_max:,.0f}) overlaps well with candidate baseline (${c_min:,.0f})."
+    elif j_max >= c_min * 0.85:
+        fit = "Modest Stretch"
+        score = 55.0
+        summary = f"Job ceiling (${j_max:,.0f}) is slightly below desired floor (${c_min:,.0f}), but negotiable."
+    else:
+        fit = "Below Range"
+        score = 25.0
+        summary = f"Job ceiling (${j_max:,.0f}) is significantly below candidate requirements (${c_min:,.0f})."
+
+    return {
+        "status": "success",
+        "compatibility_score": score,
+        "salary_fit_status": fit,
+        "delta_annual": delta,
+        "overlap_percentage": overlap_pct,
+        "summary": summary
+    }
+
+
 
 

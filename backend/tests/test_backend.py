@@ -3123,6 +3123,23 @@ class BackendTestCase(unittest.TestCase):
             self.assertIn("difficulty", q)
 
 
+    def test_salary_expectation_fit_calculation(self):
+        """Test calculating compensation alignment score and overlap between candidate and job."""
+        payload = {
+            "candidate_min_salary": 140000.0,
+            "candidate_max_salary": 170000.0,
+            "job_min_salary": 150000.0,
+            "job_max_salary": 180000.0
+        }
+        res = self.client.post("/api/matcher/salary-fit", json=payload)
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "success")
+        self.assertEqual(data["salary_fit_status"], "Exceeds Expectations")
+        self.assertEqual(data["compatibility_score"], 100.0)
+        self.assertGreater(data["overlap_percentage"], 0.0)
+
+
 if __name__ == "__main__":
     unittest.main()
 

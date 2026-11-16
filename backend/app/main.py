@@ -18,6 +18,7 @@ from fastapi.responses import JSONResponse, Response
 from app.agents.matcher_agent import (
     analyze_skill_gap,
     batch_score_jobs,
+    calculate_salary_expectation_fit,
     calculate_weighted_skill_match,
     estimate_interview_difficulty,
     evaluate_skill_proficiency_gaps,
@@ -155,6 +156,8 @@ from app.schemas import (
     SalaryNegotiationScriptRequest,
     SalaryNegotiationScriptResponse,
     SalaryPreferenceResponse,
+    SalaryExpectationMatchRequest,
+    SalaryExpectationMatchResponse,
     SalaryPreferenceUpdateRequest,
     SavedSearch,
     SavedSearchCreateRequest,
@@ -1496,6 +1499,23 @@ async def predict_company_questions_endpoint(
         company=company,
         role_title=role_title,
         skills=skills
+    )
+
+
+@app.post(
+    "/api/matcher/salary-fit",
+    response_model=SalaryExpectationMatchResponse,
+    summary="Evaluate candidate compensation expectations against job salary",
+    tags=["Matcher"]
+)
+async def evaluate_salary_fit_endpoint(payload: SalaryExpectationMatchRequest):
+    """Calculate compensation compatibility, range overlap percentage, and negotiation headroom."""
+    return calculate_salary_expectation_fit(
+        candidate_min=payload.candidate_min_salary,
+        candidate_max=payload.candidate_max_salary,
+        job_id=payload.job_id,
+        job_min=payload.job_min_salary,
+        job_max=payload.job_max_salary
     )
 
 

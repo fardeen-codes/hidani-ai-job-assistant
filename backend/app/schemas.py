@@ -824,6 +824,25 @@ class SalaryPreferenceResponse(BaseModel):
     period: str = Field(default="year")
 
 
+class SalaryExpectationMatchRequest(BaseModel):
+    """Payload to evaluate alignment between candidate expectations and job compensation."""
+    candidate_min_salary: float = Field(..., ge=0, description="Candidate minimum required base compensation")
+    candidate_max_salary: Optional[float] = Field(None, ge=0, description="Candidate target or ideal compensation")
+    job_id: Optional[str] = Field(None, description="Optional job ID to fetch compensation from")
+    job_min_salary: Optional[float] = Field(None, ge=0, description="Job base or floor salary")
+    job_max_salary: Optional[float] = Field(None, ge=0, description="Job ceiling or max salary")
+
+
+class SalaryExpectationMatchResponse(BaseModel):
+    """Evaluation metrics analyzing candidate and job salary alignment."""
+    status: str = Field(default="success")
+    compatibility_score: float = Field(description="Match percentage between 0 and 100")
+    salary_fit_status: str = Field(description="Fit tier: Strong Fit, Exceeds Expectations, Modest Stretch, or Below Range")
+    delta_annual: float = Field(description="Numerical difference between midpoints")
+    overlap_percentage: float = Field(description="Percent overlap of compensation ranges")
+    summary: str = Field(description="Human-readable takeaway summary")
+
+
 class WorkPreferencesUpdateRequest(BaseModel):
     """Candidate company size, industry domain, and remote work preferences."""
     company_sizes: Optional[List[str]] = Field(default_factory=list, description="Target company stages: Startup, Growth, Mid-Market, Enterprise")
