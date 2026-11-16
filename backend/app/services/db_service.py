@@ -3553,6 +3553,66 @@ def update_candidate_location_preferences(
     }
 
 
+def get_candidate_portfolio_links() -> List[Dict[str, Any]]:
+    """Retrieve all external portfolio, repository, and profile links."""
+    profile = load_candidate_profile()
+    return profile.get("portfolio_links", [])
+
+
+def add_candidate_portfolio_link(
+    label: str,
+    url: str,
+    description: Optional[str] = None
+) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
+    """Add an external portfolio or project link to candidate profile."""
+    clean_label = (label or "").strip()
+    clean_url = (url or "").strip()
+    if not clean_label:
+        return False, "Link label cannot be empty.", None
+    if not clean_url or not (clean_url.startswith("http://") or clean_url.startswith("https://")):
+        return False, "A valid http/https URL is required.", None
+
+    link_id = f"link_{int(time.time() * 1000)}"
+    new_link = {
+        "link_id": link_id,
+        "label": clean_label,
+        "url": clean_url,
+        "description": (description or "").strip() or None
+    }
+
+    with _db_lock:
+        profile = load_candidate_profile()
+        links = profile.get("portfolio_links", [])
+        links.append(new_link)
+        profile["portfolio_links"] = links
+        save_candidate_profile(profile)
+
+    logger.info(f"Added portfolio link {clean_label} ({link_id})")
+    return True, f"Link '{clean_label}' added successfully.", new_link
+
+
+def delete_candidate_portfolio_link(link_id: str) -> Tuple[bool, str]:
+    """Delete an external portfolio or project link by its link_id."""
+    clean_id = (link_id or "").strip()
+    if not clean_id:
+        return False, "Link ID cannot be empty."
+
+    with _db_lock:
+        profile = load_candidate_profile()
+        links = profile.get("portfolio_links", [])
+        initial_count = len(links)
+        remaining = [l for l in links if l.get("link_id") != clean_id]
+        if len(remaining) == initial_count:
+            return False, f"Portfolio link with ID '{clean_id}' was not found."
+
+        profile["portfolio_links"] = remaining
+        save_candidate_profile(profile)
+
+    logger.info(f"Deleted portfolio link {clean_id}")
+    return True, f"Portfolio link '{clean_id}' deleted successfully."
+
+
+
 
 
 def analyze_resume_ats_readability(

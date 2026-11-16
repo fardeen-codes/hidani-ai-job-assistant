@@ -2842,6 +2842,44 @@ class BackendTestCase(unittest.TestCase):
         self.assertEqual(get_data["workplace_type"], "Hybrid")
         self.assertTrue(get_data["open_to_relocation"])
 
+    def test_candidate_portfolio_links_lifecycle(self):
+        """Test candidate portfolio and project links creation, retrieval, and deletion."""
+        # 1. Add links
+        link1 = {
+            "label": "GitHub Profile",
+            "url": "https://github.com/developer",
+            "description": "Open source repositories and system design sketches"
+        }
+        res1 = self.client.post("/api/profile/links", json=link1)
+        self.assertEqual(res1.status_code, 201)
+        item1 = res1.json()
+        self.assertEqual(item1["label"], "GitHub Profile")
+        self.assertIn("link_id", item1)
+
+        link2 = {
+            "label": "Live Demo",
+            "url": "https://demo.portfolio.io",
+            "description": "Interactive distributed key-value store simulator"
+        }
+        res2 = self.client.post("/api/profile/links", json=link2)
+        self.assertEqual(res2.status_code, 201)
+        item2 = res2.json()
+
+        # 2. Get links list
+        get_res = self.client.get("/api/profile/links")
+        self.assertEqual(get_res.status_code, 200)
+        links_data = get_res.json()
+        self.assertEqual(links_data["status"], "success")
+        self.assertGreaterEqual(links_data["total_links"], 2)
+
+        # 3. Delete one link
+        del_res = self.client.delete(f"/api/profile/links/{item1['link_id']}")
+        self.assertEqual(del_res.status_code, 200)
+
+        # 4. Invalid URL returns 400
+        inv_res = self.client.post("/api/profile/links", json={"label": "Bad", "url": "not-a-url"})
+        self.assertEqual(inv_res.status_code, 400)
+
 
 if __name__ == "__main__":
     unittest.main()

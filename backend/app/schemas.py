@@ -1217,6 +1217,29 @@ class LocationPreferenceResponse(BaseModel):
     workplace_type: str
 
 
+class CandidatePortfolioLinkItem(BaseModel):
+    """Candidate external portfolio, GitHub, LinkedIn, or project repository link."""
+    link_id: str = Field(description="Unique identifier for portfolio link")
+    label: str = Field(..., description="Link label (e.g. 'GitHub', 'LinkedIn', 'Personal Website', 'Capstone Demo')")
+    url: str = Field(..., description="Destination URL")
+    description: Optional[str] = Field(None, description="Optional brief context on project or profile")
+
+
+class PortfolioLinkCreateRequest(BaseModel):
+    """Payload to add a portfolio or project link."""
+    label: str = Field(..., description="Link label")
+    url: str = Field(..., description="Valid destination URL")
+    description: Optional[str] = Field(None, description="Brief description")
+
+
+class CandidatePortfolioLinksResponse(BaseModel):
+    """Collection of candidate portfolio and project links."""
+    status: str = Field(default="success")
+    total_links: int
+    links: List[CandidatePortfolioLinkItem] = Field(default_factory=list)
+
+
+
 
 
 

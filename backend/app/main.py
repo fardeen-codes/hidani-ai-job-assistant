@@ -86,6 +86,9 @@ from app.schemas import (
     CandidateLanguageItem,
     CandidateLanguagesResponse,
     CandidateLanguagesUpdateRequest,
+    CandidatePortfolioLinkItem,
+    CandidatePortfolioLinksResponse,
+    PortfolioLinkCreateRequest,
     CareerTransitionRequest,
     CareerTransitionResponse,
     CertificationAddRequest,
@@ -161,6 +164,7 @@ from app.services.db_service import (
     add_application_attachment,
     add_application_interview,
     add_candidate_certification,
+    add_candidate_portfolio_link,
     add_interview_question,
     advanced_filter_jobs,
     analyze_resume_ats_readability,
@@ -179,6 +183,7 @@ from app.services.db_service import (
     create_database_backup,
     create_saved_search,
     delete_candidate_certification,
+    delete_candidate_portfolio_link,
     delete_saved_search,
     execute_saved_search,
     export_application_portfolio,
@@ -195,6 +200,7 @@ from app.services.db_service import (
     get_candidate_certifications,
     get_candidate_languages,
     get_candidate_location_preferences,
+    get_candidate_portfolio_links,
     get_candidate_salary_preferences,
     get_candidate_work_preferences,
     get_company_hiring_surges,
@@ -575,6 +581,58 @@ async def update_location_preferences_endpoint(payload: LocationPreferenceUpdate
         workplace_type=payload.workplace_type
     )
     return LocationPreferenceResponse(**res)
+
+
+@app.get(
+    "/api/profile/links",
+    response_model=CandidatePortfolioLinksResponse,
+    summary="List candidate portfolio, GitHub, and project links",
+    tags=["Resume"]
+)
+async def list_portfolio_links_endpoint():
+    """Retrieve all external project links, repositories, and portfolios on candidate profile."""
+    links = get_candidate_portfolio_links()
+    return CandidatePortfolioLinksResponse(
+        status="success",
+        total_links=len(links),
+        links=links
+    )
+
+
+@app.post(
+    "/api/profile/links",
+    response_model=CandidatePortfolioLinkItem,
+    status_code=status.HTTP_201_CREATED,
+    summary="Add an external portfolio or project link",
+    tags=["Resume"]
+)
+async def add_portfolio_link_endpoint(payload: PortfolioLinkCreateRequest):
+    """Add a GitHub, portfolio, or live project link to candidate profile."""
+    success, message, link_item = add_candidate_portfolio_link(
+        label=payload.label,
+        url=payload.url,
+        description=payload.description
+    )
+    if not success or not link_item:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=message)
+    return link_item
+
+
+@app.delete(
+    "/api/profile/links/{link_id}",
+    summary="Delete a candidate portfolio link",
+    tags=["Resume"]
+)
+async def delete_portfolio_link_endpoint(link_id: str):
+    """Remove a portfolio or project link by its link_id."""
+    clean_id = (link_id or "").strip()
+    if not clean_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Link ID cannot be empty.")
+    success, message = delete_candidate_portfolio_link(clean_id)
+    if not success:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=message)
+    return {"status": "success", "message": message}
+
 
 
 
