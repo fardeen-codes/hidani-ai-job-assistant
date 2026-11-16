@@ -1110,6 +1110,82 @@ def calculate_company_culture_index(
     }
 
 
+def calculate_timezone_overlap(
+    candidate_timezone: str,
+    company_timezone: str,
+    core_start_hour: int = 9,
+    core_end_hour: int = 17
+) -> Dict[str, Any]:
+    """
+    Compute synchronous working hours overlap and async coordination suitability score.
+    """
+    tz_offsets = {
+        "utc": 0.0,
+        "gmt": 0.0,
+        "est": -5.0,
+        "edt": -4.0,
+        "cst": -6.0,
+        "cdt": -5.0,
+        "mst": -7.0,
+        "mdt": -6.0,
+        "pst": -8.0,
+        "pdt": -7.0,
+        "akst": -9.0,
+        "hst": -10.0,
+        "wet": 0.0,
+        "cet": 1.0,
+        "cest": 2.0,
+        "eet": 2.0,
+        "eest": 3.0,
+        "msk": 3.0,
+        "gst": 4.0,
+        "ist": 5.5,
+        "ict": 7.0,
+        "cst_asia": 8.0,
+        "sgt": 8.0,
+        "jst": 9.0,
+        "kst": 9.0,
+        "aest": 10.0,
+        "aedt": 11.0,
+        "nzst": 12.0
+    }
+
+    c_tz = (candidate_timezone or "UTC").strip().lower()
+    co_tz = (company_timezone or "UTC").strip().lower()
+
+    c_off = tz_offsets.get(c_tz, 0.0)
+    co_off = tz_offsets.get(co_tz, 0.0)
+
+    diff = abs(c_off - co_off)
+
+    work_duration = max(1, core_end_hour - core_start_hour)
+    overlap = max(0.0, work_duration - diff)
+
+    if overlap >= 6.0:
+        tier = "Full Overlap"
+        async_score = 9.5
+        rec = "Excellent synchronous collaboration window. Real-time pairing and instant messaging easily supported."
+    elif overlap >= 3.0:
+        tier = "Moderate Overlap"
+        async_score = 7.8
+        rec = "Sufficient daily overlap for team standups and unblocking PRs. Supplement with structured asynchronous updates."
+    else:
+        tier = "Async Primary"
+        async_score = 6.0
+        rec = "Predominantly asynchronous workflow required. Ensure thorough architectural RFCs and detailed ticket descriptions."
+
+    return {
+        "candidate_timezone": candidate_timezone.upper(),
+        "company_timezone": company_timezone.upper(),
+        "time_difference_hours": round(diff, 1),
+        "synchronous_overlap_hours": round(overlap, 1),
+        "overlap_tier": tier,
+        "async_suitability_score": async_score,
+        "recommendation": rec
+    }
+
+
+
 
 
 

@@ -3335,6 +3335,25 @@ class BackendTestCase(unittest.TestCase):
         self.assertTrue(toggle_data["todo"]["completed"])
         self.assertIsNotNone(toggle_data["todo"]["completed_at"])
 
+    def test_timezone_overlap_calculator(self):
+        """Test calculating timezone offset, working hours overlap, and async suitability."""
+        payload = {
+            "candidate_timezone": "EST",
+            "company_timezone": "PST",
+            "core_start_hour": 9,
+            "core_end_hour": 17
+        }
+        res = self.client.post("/api/matcher/timezone-overlap", json=payload)
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["candidate_timezone"], "EST")
+        self.assertEqual(data["company_timezone"], "PST")
+        self.assertEqual(data["time_difference_hours"], 3.0)
+        self.assertEqual(data["synchronous_overlap_hours"], 5.0)
+        self.assertEqual(data["overlap_tier"], "Moderate Overlap")
+        self.assertGreaterEqual(data["async_suitability_score"], 7.0)
+        self.assertTrue(len(data["recommendation"]) > 0)
+
 
 if __name__ == "__main__":
     unittest.main()

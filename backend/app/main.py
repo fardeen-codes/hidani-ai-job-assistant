@@ -23,6 +23,7 @@ from app.agents.matcher_agent import (
     batch_score_jobs,
     calculate_company_culture_index,
     calculate_salary_expectation_fit,
+    calculate_timezone_overlap,
     calculate_weighted_skill_match,
     estimate_interview_difficulty,
     evaluate_skill_proficiency_gaps,
@@ -209,6 +210,8 @@ from app.schemas import (
     SystemHealthPingResponse,
     TechnicalCheatSheetRequest,
     TechnicalCheatSheetResponse,
+    TimezoneOverlapRequest,
+    TimezoneOverlapResponse,
     TierSalaryInsightsResponse,
     TitleNormalizationRequest,
     TitleNormalizationResponse,
@@ -1642,6 +1645,22 @@ async def evaluate_salary_fit_endpoint(payload: SalaryExpectationMatchRequest):
 async def normalize_title_endpoint(payload: TitleNormalizationRequest):
     """Classify and normalize arbitrary tech role titles into standard engineering disciplines."""
     return normalize_job_title_semantics(payload.raw_title)
+
+
+@app.post(
+    "/api/matcher/timezone-overlap",
+    response_model=TimezoneOverlapResponse,
+    summary="Calculate timezone overlap and async collaboration suitability",
+    tags=["Matcher"]
+)
+async def calculate_timezone_overlap_endpoint(payload: TimezoneOverlapRequest):
+    """Calculate synchronous working hours overlap and async coordination rating between candidate and company."""
+    return calculate_timezone_overlap(
+        candidate_timezone=payload.candidate_timezone,
+        company_timezone=payload.company_timezone,
+        core_start_hour=payload.core_start_hour or 9,
+        core_end_hour=payload.core_end_hour or 17
+    )
 
 
 

@@ -1637,6 +1637,26 @@ class ApplicationTodoListResponse(BaseModel):
     todos: List[ApplicationTodoItem]
 
 
+class TimezoneOverlapRequest(BaseModel):
+    """Request payload to calculate working hours timezone overlap."""
+    candidate_timezone: str = Field(..., description="Candidate timezone (e.g. UTC, EST, PST, CET, IST, JST)")
+    company_timezone: str = Field(..., description="Company primary timezone")
+    core_start_hour: Optional[int] = Field(9, description="Local core work start hour (0-23)")
+    core_end_hour: Optional[int] = Field(17, description="Local core work end hour (0-23)")
+
+
+class TimezoneOverlapResponse(BaseModel):
+    """Timezone compatibility and working hours overlap analysis."""
+    candidate_timezone: str
+    company_timezone: str
+    time_difference_hours: float
+    synchronous_overlap_hours: float
+    overlap_tier: str = Field(description="'Full Overlap' (>=6h), 'Moderate Overlap' (3-5h), or 'Async Primary' (<3h)")
+    async_suitability_score: float = Field(description="Async suitability index from 0.0 to 10.0")
+    recommendation: str
+
+
+
 
 
 
