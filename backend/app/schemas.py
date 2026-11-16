@@ -323,6 +323,22 @@ class ApplicationStatusUpdateRequest(BaseModel):
     status: str = Field(..., min_length=1, description="Updated status (Applied, Under Review, Interview, Offer, Rejected)")
 
 
+class RejectionReasonLogRequest(BaseModel):
+    """Payload to record rejection feedback and categorization."""
+    reason: str = Field(..., min_length=1, max_length=1000, description="Detailed explanation or feedback for rejection")
+    category: Optional[str] = Field("other", description="Category: skill_mismatch, location_remote, experience_years, hiring_freeze, compensation, cultural_fit, other")
+
+
+class RejectionReasonLogResponse(BaseModel):
+    """Response payload after recording rejection feedback."""
+    job_id: str
+    status: str
+    rejection_reason: str
+    rejection_category: str
+    logged_at: str
+    message: str = "Rejection reason recorded successfully"
+
+
 class BulkApplicationStatusUpdateRequest(BaseModel):
     """Payload for updating status across multiple applications simultaneously."""
     job_ids: List[str] = Field(..., min_length=1, description="List of Job IDs to update")

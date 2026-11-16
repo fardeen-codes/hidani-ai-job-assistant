@@ -2962,6 +2962,28 @@ class BackendTestCase(unittest.TestCase):
         res_404 = self.client.get("/api/jobs/non-existent-job-xyz/freshness")
         self.assertEqual(res_404.status_code, 404)
 
+    def test_application_rejection_reason_logging(self):
+        """Test recording structured rejection reason feedback and category on an application."""
+        # Ensure application exists
+        self.client.post("/api/applications", json={"job_id": self.test_job_id, "notes": "Rejection testing"})
+
+        payload = {
+            "reason": "Position filled internally due to reorganization",
+            "category": "hiring_freeze"
+        }
+        res = self.client.post(f"/api/applications/{self.test_job_id}/rejection-reason", json=payload)
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["job_id"], self.test_job_id)
+        self.assertEqual(data["status"], "Rejected")
+        self.assertEqual(data["rejection_reason"], payload["reason"])
+        self.assertEqual(data["rejection_category"], "hiring_freeze")
+        self.assertTrue(len(data["logged_at"]) > 0)
+
+        # Non-existent job
+        res_404 = self.client.post("/api/applications/non-existent-xyz/rejection-reason", json=payload)
+        self.assertEqual(res_404.status_code, 404)
+
 
 if __name__ == "__main__":
     unittest.main()

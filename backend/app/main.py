@@ -132,6 +132,8 @@ from app.schemas import (
     OfferComparisonRequest,
     OfferComparisonResponse,
     ProfileCompletenessResponse,
+    RejectionReasonLogRequest,
+    RejectionReasonLogResponse,
     RemoteWorkBreakdownResponse,
     RemoteWorkPolicyMetric,
     SalaryInfo,
@@ -232,6 +234,7 @@ from app.services.db_service import (
     has_rollback_snapshot,
     list_hiring_companies,
     load_applications,
+    log_application_rejection_reason,
     load_candidate_profile,
     load_jobs,
     load_saved_searches,
@@ -1724,6 +1727,43 @@ async def update_application_status_endpoint(job_id: str, payload: ApplicationSt
         "status": "success",
         "message": message,
         "application": updated_app
+    }
+
+
+@app.post(
+    "/api/applications/{job_id}/rejection-reason",
+    response_model=RejectionReasonLogResponse,
+    summary="Log rejection feedback and category for an application",
+    tags=["Applications"]
+)
+async def log_application_rejection_reason_endpoint(job_id: str, payload: RejectionReasonLogRequest):
+    """Log structured feedback and reason categorization for a rejected job application."""
+    clean_id = (job_id or "").strip()
+    if not clean_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Job ID cannot be empty."
+        )
+    success, message, updated_app = log_application_rejection_reason(
+        clean_id, payload.reason, payload.category or "other"
+    )
+    if not success or not updated_app:
+        if "cannot be empty" in message:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=message
+            )
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=message
+        )
+    return {
+        "job_id": updated_app.get("job_id", clean_id),
+        "status": updated_app.get("status", "Rejected"),
+        "rejection_reason": updated_app.get("rejection_reason", payload.reason),
+        "rejection_category": updated_app.get("rejection_category", payload.category or "other"),
+        "logged_at": updated_app.get("rejection_logged_at", ""),
+        "message": message
     }
 
 

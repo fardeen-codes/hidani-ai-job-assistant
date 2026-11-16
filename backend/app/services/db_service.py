@@ -942,6 +942,55 @@ def update_application_status(job_id: str, new_status: str) -> Tuple[bool, str, 
     return True, f"Application status for Job ID '{clean_id}' updated to '{canonical_status}'.", updated_app
 
 
+def log_application_rejection_reason(
+    job_id: str,
+    reason: str,
+    category: str = "other"
+) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
+    """
+    Record rejection reason feedback and category on an application, setting status to Rejected.
+    """
+    clean_id = (job_id or "").strip()
+    if not clean_id:
+        return False, "Job ID cannot be empty.", None
+
+    valid_categories = {
+        "skill_mismatch", "location_remote", "experience_years",
+        "hiring_freeze", "compensation", "cultural_fit", "other"
+    }
+    cat = (category or "other").strip().lower()
+    if cat not in valid_categories:
+        cat = "other"
+
+    clean_reason = (reason or "").strip()
+    if not clean_reason:
+        return False, "Rejection reason cannot be empty.", None
+
+    with _db_lock:
+        applications = load_applications()
+        updated_app = None
+        for app in applications:
+            if app.get("job_id", "").strip().lower() == clean_id.lower():
+                _save_rollback_snapshot(app)
+                app["status"] = "Rejected"
+                app["rejection_reason"] = clean_reason
+                app["rejection_category"] = cat
+                now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+                app["rejection_logged_at"] = now_str
+                app["updated_date"] = now_str
+                _record_app_event(app, "REJECTION_LOGGED", f"Logged rejection ({cat}): {clean_reason[:80]}")
+                updated_app = app
+                break
+
+        if not updated_app:
+            return False, f"No existing application found for Job ID '{clean_id}'.", None
+
+        _save_applications(applications)
+
+    logger.info(f"Recorded rejection feedback for job {clean_id}: category={cat}")
+    return True, f"Rejection reason logged for Job ID '{clean_id}'.", updated_app
+
+
 def bulk_update_application_status(
     job_ids: List[str],
     new_status: str
