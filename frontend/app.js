@@ -77,6 +77,9 @@ const elements = {
   drawerSkillsTags: document.getElementById('drawerSkillsTags'),
   drawerSummary: document.getElementById('drawerSummary'),
   drawerRoles: document.getElementById('drawerRoles'),
+  drawerCompletenessBadge: document.getElementById('drawerCompletenessBadge'),
+  drawerCompletenessBar: document.getElementById('drawerCompletenessBar'),
+  drawerCompletenessHint: document.getElementById('drawerCompletenessHint'),
 
   // Notification Toast Container
   toastContainer: document.getElementById('toastContainer')
@@ -1024,8 +1027,57 @@ function openProfileDrawer() {
     `<span class="px-2 py-0.5 rounded bg-neutral-800 text-xs text-neutral-300 border border-neutral-700">${escapeHtml(r)}</span>`
   ).join('');
 
+  // Update Profile Completeness
+  updateProfileCompletenessDrawer(p);
+
   elements.profileDrawer.classList.remove('hidden');
 }
+
+async function updateProfileCompletenessDrawer(profile) {
+  try {
+    const res = await fetch('/api/profile/completeness');
+    if (res.ok) {
+      const data = await res.json();
+      const score = Math.round(data.completeness_score || 0);
+      renderCompleteness(score, data.strength_rating || 'Incomplete');
+      return;
+    }
+  } catch (err) {
+    console.debug('Failed to fetch completeness endpoint, falling back to local calculation');
+  }
+
+  // Local fallback calculation
+  let score = 20; // Base score for having an uploaded document
+  if (profile.name && profile.name !== 'Candidate Profile') score += 20;
+  if (profile.email && profile.email.includes('@')) score += 15;
+  if (profile.skills && profile.skills.length >= 3) score += 25;
+  if (profile.summary && profile.summary.length > 20) score += 20;
+  score = Math.min(score, 100);
+
+  const rating = score >= 85 ? 'Complete' : score >= 65 ? 'Strong' : score >= 40 ? 'Moderate' : 'Incomplete';
+  renderCompleteness(score, rating);
+}
+
+function renderCompleteness(score, rating) {
+  if (!elements.drawerCompletenessBar || !elements.drawerCompletenessBadge) return;
+  elements.drawerCompletenessBar.style.width = `${score}%`;
+  elements.drawerCompletenessBadge.innerText = `${score}% (${rating})`;
+
+  if (score >= 80) {
+    elements.drawerCompletenessBar.className = 'bg-emerald-500 h-2 rounded-full transition-all duration-500';
+    elements.drawerCompletenessBadge.className = 'font-semibold text-emerald-400 font-mono';
+    elements.drawerCompletenessHint.innerText = 'Excellent! Your profile has high ATS readiness and strength.';
+  } else if (score >= 50) {
+    elements.drawerCompletenessBar.className = 'bg-amber-500 h-2 rounded-full transition-all duration-500';
+    elements.drawerCompletenessBadge.className = 'font-semibold text-amber-400 font-mono';
+    elements.drawerCompletenessHint.innerText = 'Good baseline. Add more skills and details to boost your score.';
+  } else {
+    elements.drawerCompletenessBar.className = 'bg-rose-500 h-2 rounded-full transition-all duration-500';
+    elements.drawerCompletenessBadge.className = 'font-semibold text-rose-400 font-mono';
+    elements.drawerCompletenessHint.innerText = 'Upload a detailed resume to unlock personalized matching.';
+  }
+}
+
 
 function closeProfileDrawer() {
   elements.profileDrawer.classList.add('hidden');

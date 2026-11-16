@@ -417,6 +417,18 @@
       </div>
 
       <div class="space-y-5 flex-1">
+        <!-- Profile Strength & Completeness -->
+        <div class="bg-neutral-950 p-3 rounded-lg border border-neutral-800">
+          <div class="flex items-center justify-between text-xs mb-1.5">
+            <span class="font-mono text-neutral-400">Profile Completeness</span>
+            <span id="drawerCompletenessBadge" class="font-semibold text-emerald-400 font-mono">0%</span>
+          </div>
+          <div class="w-full bg-neutral-800 rounded-full h-2 overflow-hidden">
+            <div id="drawerCompletenessBar" class="bg-emerald-500 h-2 rounded-full transition-all duration-500" style="width: 0%"></div>
+          </div>
+          <p id="drawerCompletenessHint" class="text-[11px] text-neutral-400 mt-1.5">Upload a comprehensive resume to achieve 100% profile strength.</p>
+        </div>
+
         <div>
           <label class="text-[11px] font-mono uppercase tracking-wider text-neutral-400">Experience</label>
           <div class="mt-1 flex items-center gap-2">
