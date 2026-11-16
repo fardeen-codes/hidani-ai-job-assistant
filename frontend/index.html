@@ -296,10 +296,20 @@
           <p class="text-xs text-neutral-400 mt-0.5" id="jobsModalSubtitle">1,600+ real positions available in database
           </p>
         </div>
-        <button id="closeJobsModalBtn"
-          class="px-2.5 py-1 text-xs text-neutral-400 hover:text-white rounded hover:bg-neutral-800 border border-neutral-800">
-          Close
-        </button>
+        <div class="flex items-center gap-2">
+          <button id="exportJobsCsvBtn"
+            title="Download currently filtered positions as CSV spreadsheet"
+            class="px-2.5 py-1 text-xs text-neutral-300 hover:text-white rounded hover:bg-neutral-800 border border-neutral-700 flex items-center gap-1.5 transition-colors">
+            <svg class="w-3.5 h-3.5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+            <span>Export CSV</span>
+          </button>
+          <button id="closeJobsModalBtn"
+            class="px-2.5 py-1 text-xs text-neutral-400 hover:text-white rounded hover:bg-neutral-800 border border-neutral-800">
+            Close
+          </button>
+        </div>
       </div>
 
       <!-- Search & Quick Filter Bar -->

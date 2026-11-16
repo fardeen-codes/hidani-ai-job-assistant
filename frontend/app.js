@@ -47,6 +47,7 @@ const elements = {
   // Jobs Modal Elements
   jobsModal: document.getElementById('jobsModal'),
   closeJobsModalBtn: document.getElementById('closeJobsModalBtn'),
+  exportJobsCsvBtn: document.getElementById('exportJobsCsvBtn'),
   jobsSearchInput: document.getElementById('jobsSearchInput'),
   jobsListContainer: document.getElementById('jobsListContainer'),
   jobsModalSubtitle: document.getElementById('jobsModalSubtitle'),
@@ -156,6 +157,21 @@ function setupEventListeners() {
   // Interactive Nav Actions
   elements.navBrowseJobsBtn.addEventListener('click', () => openJobsModal());
   elements.closeJobsModalBtn.addEventListener('click', () => closeJobsModal());
+  if (elements.exportJobsCsvBtn) {
+    elements.exportJobsCsvBtn.addEventListener('click', () => {
+      const q = elements.jobsSearchInput.value.trim();
+      const exportUrl = q
+        ? `${API_BASE}/jobs/export/csv?query=${encodeURIComponent(q)}`
+        : `${API_BASE}/jobs/export/csv`;
+      showToast('Exporting jobs to CSV...', 'info');
+      const a = document.createElement('a');
+      a.href = exportUrl;
+      a.download = 'jobs_export.csv';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    });
+  }
   elements.jobsModal.addEventListener('click', (e) => {
     if (e.target === elements.jobsModal) closeJobsModal();
   });
