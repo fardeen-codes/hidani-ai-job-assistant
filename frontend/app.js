@@ -154,6 +154,11 @@ function setupEventListeners() {
     chipsContainer.addEventListener('click', (e) => {
       const chip = e.target.closest('.quick-chip');
       if (!chip) return;
+      if (chip.id === 'pitchQuickBtn') {
+        e.preventDefault();
+        window.generateElevatorPitch();
+        return;
+      }
       const prompt = chip.getAttribute('data-prompt');
       if (prompt) {
         elements.messageInput.value = prompt;
@@ -450,6 +455,40 @@ function setupEventListeners() {
   window.sendPrompt = (promptText) => {
     elements.messageInput.value = promptText;
     handleSendMessage();
+  };
+
+  // Global helper for 30s/60s elevator pitch generator
+  window.generateElevatorPitch = async (targetRole = null) => {
+    const profile = state.candidateProfile || {};
+    const role = targetRole || (profile.target_roles && profile.target_roles[0]) || 'Software Engineer';
+    try {
+      showToast('Generating elevator pitch...', 'info');
+      const res = await fetch(`${API_BASE}/chat/pitch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          job_title: role,
+          candidate_skills: profile.skills || [],
+          candidate_summary: profile.summary || ''
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const bulletPoints = (data.key_selling_points || []).map(p => `- ${escapeHtml(p)}`).join('\n');
+        appendAssistantMessage(
+          `### 🎤 Tailored Elevator Pitch: ${escapeHtml(data.job_title)}\n\n` +
+          `**⏱️ 30-Second Verbal Pitch:**\n> "${escapeHtml(data.pitch_30s)}"\n\n` +
+          `**⏱️ 60-Second In-Depth Pitch:**\n> "${escapeHtml(data.pitch_60s)}"\n\n` +
+          `**🎯 Key Selling Points:**\n${bulletPoints}\n\n` +
+          `**🗣️ Closing Call-to-Action:**\n* "${escapeHtml(data.call_to_action)}"*`
+        );
+        showToast('Elevator pitch generated!', 'success');
+      } else {
+        showToast('Failed to generate elevator pitch', 'error');
+      }
+    } catch (err) {
+      showToast(`Error: ${err.message}`, 'error');
+    }
   };
 
   // Global helper for applying
