@@ -623,6 +623,25 @@ function getJobFreshnessBadge(job) {
   return '<span class="px-1.5 py-0.5 rounded text-[9px] font-mono font-semibold bg-neutral-800 text-neutral-400 border border-neutral-700">30d+</span>';
 }
 
+function getInterviewDifficultyPill(job) {
+  const title = (job.title || '').toLowerCase();
+  const exp = (job.experience || '').toLowerCase();
+  let tier = 'Standard';
+  let colorClass = 'bg-blue-500/10 text-blue-400 border-blue-500/20';
+
+  if (title.includes('staff') || title.includes('principal') || title.includes('director')) {
+    tier = 'Rigorous';
+    colorClass = 'bg-rose-500/10 text-rose-400 border-rose-500/20';
+  } else if (title.includes('lead') || title.includes('senior') || title.includes('sr.') || exp.includes('senior')) {
+    tier = 'Challenging';
+    colorClass = 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+  } else if (title.includes('junior') || title.includes('intern') || title.includes('entry') || exp.includes('entry')) {
+    tier = 'Accessible';
+    colorClass = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+  }
+  return `<span class="px-1.5 py-0.5 rounded text-[9px] font-mono border ${colorClass}" title="Estimated Interview Loop Difficulty">${tier}</span>`;
+}
+
 function appendUserMessage(text) {
   const msgEl = document.createElement('div');
   msgEl.className = 'flex justify-end message-appear';
@@ -723,6 +742,7 @@ function renderInteractiveJobCards(container, jobs) {
             <span class="text-xs font-mono text-neutral-400">${idx + 1}.</span>
             <h4 class="text-sm font-semibold text-white">${escapeHtml(job.title)}</h4>
             ${getJobFreshnessBadge(job)}
+            ${getInterviewDifficultyPill(job)}
           </div>
           <p class="text-xs text-neutral-400 mt-0.5">${escapeHtml(job.company)} • <span class="text-neutral-300">${escapeHtml(job.location)}</span></p>
         </div>
@@ -1021,6 +1041,7 @@ async function fetchAndRenderJobsList(keyword = '') {
           <div class="flex items-center gap-2">
             <h4 class="text-xs sm:text-sm font-semibold text-white">${escapeHtml(job.title)}</h4>
             ${getJobFreshnessBadge(job)}
+            ${getInterviewDifficultyPill(job)}
             <span class="text-[10px] font-mono px-1.5 py-0.2 rounded bg-neutral-800 text-neutral-400 border border-neutral-700">${escapeHtml(job.experience || 'All Levels')}</span>
           </div>
           <p class="text-xs text-neutral-400 mt-0.5">${escapeHtml(job.company)} • <span class="text-neutral-300">${escapeHtml(job.location)}</span></p>
