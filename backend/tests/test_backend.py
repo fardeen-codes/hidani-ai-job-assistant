@@ -3060,6 +3060,29 @@ class BackendTestCase(unittest.TestCase):
         data_int = res_int.json()
         self.assertIn("Interview", data_int["recommended_steps"][0]["step_name"])
 
+    def test_post_interview_thank_you_email_generator(self):
+        """Test generating customized post-interview thank you email with technical talking points."""
+        payload = {
+            "company": "Vercel",
+            "role_title": "Senior Edge Runtime Engineer",
+            "interviewer_name": "Sarah Connor",
+            "key_discussion_points": [
+                "Serverless cold start mitigations",
+                "WebAssembly isolates on V8"
+            ],
+            "custom_gratitude_note": "I really appreciated your transparent explanation of the on-call rotation culture."
+        }
+        res = self.client.post("/api/chat/tools/thank-you-email", json=payload)
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "success")
+        self.assertEqual(data["company"], "Vercel")
+        self.assertEqual(data["interviewer_name"], "Sarah Connor")
+        self.assertIn("Sarah Connor", data["email_body"])
+        self.assertIn("Serverless cold start mitigations", data["email_body"])
+        self.assertIn("on-call rotation", data["email_body"])
+        self.assertGreater(data["character_count"], 100)
+
 
 if __name__ == "__main__":
     unittest.main()

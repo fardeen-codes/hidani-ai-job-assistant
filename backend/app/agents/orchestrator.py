@@ -1387,3 +1387,49 @@ def generate_recruiter_followup_cadence(
     }
 
 
+def generate_post_interview_thank_you_email(
+    company: str,
+    role_title: str,
+    interviewer_name: Optional[str] = None,
+    key_discussion_points: Optional[List[str]] = None,
+    custom_gratitude_note: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Generate a tailored, high-converting thank you email incorporating specific interview takeaways.
+    """
+    clean_company = (company or "the team").strip()
+    clean_role = (role_title or "this role").strip()
+    clean_interviewer = (interviewer_name or "Hiring Team").strip()
+
+    points = [p.strip() for p in (key_discussion_points or []) if p and p.strip()]
+    if points:
+        takeaway_text = "I particularly enjoyed our discussion around " + ", ".join(points) + ". It reinforced my excitement about how my background in distributed systems can help accelerate your milestones."
+    else:
+        takeaway_text = "I particularly enjoyed learning more about your technical architecture and the team's upcoming roadmap priorities."
+
+    personal_remark = f"\n\n{custom_gratitude_note.strip()}" if custom_gratitude_note and custom_gratitude_note.strip() else ""
+
+    subject = f"Thank you — {clean_role} Interview ({clean_interviewer})"
+    body = f"""Hi {clean_interviewer},
+
+Thank you very much for your time and engaging conversation today about the {clean_role} opportunity at {clean_company}.
+
+{takeaway_text}{personal_remark}
+
+Please feel free to reach out if you need any additional code repositories, design documents, or references. I look forward to hearing about the next steps!
+
+Warm regards,
+Candidate"""
+
+    return {
+        "status": "success",
+        "company": clean_company,
+        "role_title": clean_role,
+        "interviewer_name": clean_interviewer,
+        "subject_line": subject,
+        "email_body": body,
+        "character_count": len(body),
+        "delivery_tip": "Send within 24 hours of your interview, ideally before end of business day."
+    }
+
+

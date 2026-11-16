@@ -561,6 +561,27 @@ class FollowupCadenceRecommendationResponse(BaseModel):
     advisory_note: str = Field(description="Best-practice guidance for cadence outreach")
 
 
+class PostInterviewThankYouRequest(BaseModel):
+    """Payload to generate personalized post-interview thank you email."""
+    company: str = Field(..., min_length=1, description="Company interviewed with")
+    role_title: str = Field(..., min_length=1, description="Role title interviewed for")
+    interviewer_name: Optional[str] = Field("Hiring Team", description="Interviewer or panel name")
+    key_discussion_points: Optional[List[str]] = Field(default_factory=list, description="Specific topics or problems discussed")
+    custom_gratitude_note: Optional[str] = Field(None, max_length=500, description="Optional personal remark or shared rapport detail")
+
+
+class PostInterviewThankYouResponse(BaseModel):
+    """Generated thank-you email draft and delivery recommendations."""
+    status: str = Field(default="success")
+    company: str
+    role_title: str
+    interviewer_name: str
+    subject_line: str
+    email_body: str
+    character_count: int
+    delivery_tip: str
+
+
 class ApplicationVelocityResponse(BaseModel):
     """Application velocity metrics tracking submission rate and momentum."""
     total_applied: int = Field(description="Total lifetime job applications submitted")

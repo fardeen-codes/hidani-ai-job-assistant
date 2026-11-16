@@ -29,6 +29,7 @@ from app.agents.orchestrator import (
     evaluate_intent_confidence_and_clarification,
     export_session_transcript,
     generate_cold_outreach_message,
+    generate_post_interview_thank_you_email,
     generate_recruiter_followup_cadence,
     generate_salary_negotiation_script,
     get_session_metrics,
@@ -139,6 +140,8 @@ from app.schemas import (
     LocationPreferenceUpdateRequest,
     OfferComparisonRequest,
     OfferComparisonResponse,
+    PostInterviewThankYouRequest,
+    PostInterviewThankYouResponse,
     ProfileCompletenessResponse,
     RejectionReasonLogRequest,
     RejectionReasonLogResponse,
@@ -814,6 +817,23 @@ async def get_followup_cadence_endpoint(
         company=company,
         role_title=role_title,
         current_stage=current_stage
+    )
+
+
+@app.post(
+    "/api/chat/tools/thank-you-email",
+    response_model=PostInterviewThankYouResponse,
+    summary="Generate personalized post-interview thank you email",
+    tags=["Chat"]
+)
+async def generate_thank_you_email_endpoint(payload: PostInterviewThankYouRequest):
+    """Generate professional, personalized thank you email mentioning key interview discussions."""
+    return generate_post_interview_thank_you_email(
+        company=payload.company,
+        role_title=payload.role_title,
+        interviewer_name=payload.interviewer_name,
+        key_discussion_points=payload.key_discussion_points,
+        custom_gratitude_note=payload.custom_gratitude_note
     )
 
 
