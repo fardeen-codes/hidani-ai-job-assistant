@@ -3067,6 +3067,38 @@ def get_database_audit_log(limit: int = 50, entity: Optional[str] = None) -> Dic
         }
 
 
+def prune_database_audit_log(max_entries: int = 500, max_age_days: int = 30) -> Tuple[int, int]:
+    """
+    Prune historical audit trail entries exceeding retention age or capacity thresholds.
+    Returns: (pruned_count: int, remaining_count: int)
+    """
+    global _audit_log_entries
+    now = datetime.now(timezone.utc)
+    cutoff = now.timestamp() - (max_age_days * 86400)
+
+    with _db_lock:
+        initial_count = len(_audit_log_entries)
+        kept = []
+        for entry in _audit_log_entries:
+            ts_str = entry.get("timestamp", "")
+            try:
+                entry_dt = datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
+                if entry_dt.timestamp() < cutoff:
+                    continue
+            except Exception:
+                pass
+            kept.append(entry)
+
+        if len(kept) > max_entries:
+            kept = kept[-max_entries:]
+
+        pruned_count = initial_count - len(kept)
+        _audit_log_entries = kept
+
+    logger.info(f"Pruned {pruned_count} audit log entries (retained {len(_audit_log_entries)})")
+    return pruned_count, len(_audit_log_entries)
+
+
 def get_database_storage_metrics() -> Dict[str, Any]:
     """
     Compute storage footprint, record counts, and storage density metrics across all database collections.

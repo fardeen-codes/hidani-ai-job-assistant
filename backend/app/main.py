@@ -84,6 +84,8 @@ from app.schemas import (
     ApplicationVelocityResponse,
     AutoFollowupRequest,
     AutoFollowupResponse,
+    AuditLogPruneRequest,
+    AuditLogPruneResponse,
     BatchScoreRequest,
     BatchScoreResponse,
     BookmarkCategoriesResponse,
@@ -268,6 +270,7 @@ from app.services.db_service import (
     load_jobs,
     load_saved_searches,
     record_interview_difficulty_feedback,
+    prune_database_audit_log,
     record_search_query,
     remove_job_bookmark,
     repair_database_records,
@@ -2686,6 +2689,25 @@ async def get_database_audit_log_endpoint(
 ):
     """Retrieve chronologically ordered audit logs of transactions and multi-entity operations."""
     return get_database_audit_log(limit=limit, entity=entity)
+
+
+@app.post(
+    "/api/admin/db/audit/prune",
+    response_model=AuditLogPruneResponse,
+    summary="Prune database transaction audit trail log based on age or capacity",
+    tags=["Database Admin"]
+)
+async def prune_database_audit_log_endpoint(payload: AuditLogPruneRequest):
+    """Enforce retention policies by removing aged or surplus transaction audit log records."""
+    max_e = payload.max_entries or 500
+    max_a = payload.max_age_days or 30
+    pruned, remaining = prune_database_audit_log(max_entries=max_e, max_age_days=max_a)
+    return {
+        "status": "success",
+        "pruned_count": pruned,
+        "remaining_count": remaining,
+        "message": f"Successfully pruned {pruned} audit log entries. {remaining} entries retained."
+    }
 
 
 @app.get(

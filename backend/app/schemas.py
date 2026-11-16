@@ -648,6 +648,20 @@ class DatabaseAuditLogResponse(BaseModel):
     entries: List[DatabaseAuditEntry] = Field(default_factory=list, description="List of audit log records")
 
 
+class AuditLogPruneRequest(BaseModel):
+    """Payload to configure audit log retention and pruning thresholds."""
+    max_entries: Optional[int] = Field(500, ge=10, le=5000, description="Maximum historical audit entries to retain")
+    max_age_days: Optional[int] = Field(30, ge=1, le=365, description="Maximum retention age in days")
+
+
+class AuditLogPruneResponse(BaseModel):
+    """Result of audit log retention cleanup operation."""
+    status: str = Field(default="success")
+    pruned_count: int = Field(description="Number of pruned historical audit records")
+    remaining_count: int = Field(description="Number of active audit entries retained")
+    message: str = Field(description="Confirmation message")
+
+
 class CollectionStorageMetric(BaseModel):
     """Storage footprint and record density metrics for a database collection."""
     collection: str = Field(description="Collection name")

@@ -3170,6 +3170,20 @@ class BackendTestCase(unittest.TestCase):
         self.assertIsInstance(data["issues"], list)
         self.assertTrue(len(data["checked_at"]) > 0)
 
+    def test_database_audit_log_pruning(self):
+        """Test enforcing audit log retention policies by age and max capacity."""
+        payload = {
+            "max_entries": 100,
+            "max_age_days": 15
+        }
+        res = self.client.post("/api/admin/db/audit/prune", json=payload)
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "success")
+        self.assertGreaterEqual(data["pruned_count"], 0)
+        self.assertGreaterEqual(data["remaining_count"], 0)
+        self.assertIn("Successfully pruned", data["message"])
+
 
 if __name__ == "__main__":
     unittest.main()
