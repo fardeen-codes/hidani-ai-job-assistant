@@ -746,6 +746,15 @@ function getSalaryFitBadge(job) {
   return `<span class="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-950/50 text-emerald-300 border border-emerald-800/60 font-medium" title="Target Compensation">${formatted}</span>`;
 }
 
+function getCompanyCultureBadge(job) {
+  const loc = (job.location || '').toLowerCase();
+  const isRemote = loc.includes('remote') || loc.includes('anywhere') || loc.includes('distributed');
+  if (isRemote) {
+    return `<span class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-teal-500/15 text-teal-300 border border-teal-500/30" title="High autonomy remote-first culture">🌐 Remote-First</span>`;
+  }
+  return `<span class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-neutral-800 text-neutral-400 border border-neutral-700" title="Hybrid / structured office presence">🏢 Hybrid / Office</span>`;
+}
+
 function appendUserMessage(text) {
   const msgEl = document.createElement('div');
   msgEl.className = 'flex justify-end message-appear';
@@ -847,6 +856,7 @@ function renderInteractiveJobCards(container, jobs) {
             <h4 class="text-sm font-semibold text-white">${escapeHtml(job.title)}</h4>
             ${getJobFreshnessBadge(job)}
             ${getInterviewDifficultyPill(job)}
+            ${getCompanyCultureBadge(job)}
           </div>
           <p class="text-xs text-neutral-400 mt-0.5">${escapeHtml(job.company)} • <span class="text-neutral-300">${escapeHtml(job.location)}</span></p>
         </div>
@@ -1147,6 +1157,7 @@ async function fetchAndRenderJobsList(keyword = '') {
             <h4 class="text-xs sm:text-sm font-semibold text-white">${escapeHtml(job.title)}</h4>
             ${getJobFreshnessBadge(job)}
             ${getInterviewDifficultyPill(job)}
+            ${getCompanyCultureBadge(job)}
             <span class="text-[10px] font-mono px-1.5 py-0.2 rounded bg-neutral-800 text-neutral-400 border border-neutral-700">${escapeHtml(job.experience || 'All Levels')}</span>
           </div>
           <p class="text-xs text-neutral-400 mt-0.5">${escapeHtml(job.company)} • <span class="text-neutral-300">${escapeHtml(job.location)}</span></p>
