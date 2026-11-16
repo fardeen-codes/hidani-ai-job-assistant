@@ -3139,6 +3139,25 @@ class BackendTestCase(unittest.TestCase):
         self.assertEqual(data["compatibility_score"], 100.0)
         self.assertGreater(data["overlap_percentage"], 0.0)
 
+    def test_job_title_semantic_normalizer(self):
+        """Test classifying arbitrary tech role titles into canonical families and seniority tiers."""
+        # Test Senior DevOps
+        res = self.client.post("/api/matcher/normalize-title", json={"raw_title": "Lead Cloud Infrastructure & SRE"})
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "success")
+        self.assertEqual(data["canonical_family"], "DevOps / SRE / Cloud Platform")
+        self.assertEqual(data["seniority_level"], "Staff / Principal")
+        self.assertIn("Kubernetes", data["core_competencies"])
+
+        # Test Frontend
+        res_fe = self.client.post("/api/matcher/normalize-title", json={"raw_title": "Senior React / UI Developer"})
+        self.assertEqual(res_fe.status_code, 200)
+        data_fe = res_fe.json()
+        self.assertEqual(data_fe["canonical_family"], "Frontend Engineering")
+        self.assertEqual(data_fe["seniority_level"], "Senior")
+        self.assertIn("React", data_fe["core_competencies"])
+
 
 if __name__ == "__main__":
     unittest.main()

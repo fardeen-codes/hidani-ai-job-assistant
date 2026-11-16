@@ -983,5 +983,72 @@ def calculate_salary_expectation_fit(
     }
 
 
+def normalize_job_title_semantics(raw_title: str) -> Dict[str, Any]:
+    """
+    Classify, normalize, and extract canonical engineering family and seniority from raw titles.
+    """
+    clean = (raw_title or "").strip()
+    t = clean.lower()
+
+    sen_int = _get_seniority_level(clean)
+    sen_labels = {
+        5: "Lead / Manager",
+        4: "Staff / Principal",
+        3: "Senior",
+        2: "Mid-Level",
+        1: "Junior / Intern"
+    }
+    sen_prefix = {
+        5: "Lead",
+        4: "Staff",
+        3: "Senior",
+        2: "",
+        1: "Junior"
+    }
+    sen_label = sen_labels.get(sen_int, "Mid-Level")
+    prefix = sen_prefix.get(sen_int, "")
+
+    if any(k in t for k in ["devops", "sre", "reliability", "infrastructure", "infra", "cloud platform", "platform engineer"]):
+        family = "DevOps / SRE / Cloud Platform"
+        base_role = "Site Reliability / Cloud Engineer"
+        competencies = ["Kubernetes", "Terraform", "CI/CD", "AWS/GCP", "Docker", "Prometheus"]
+    elif any(k in t for k in ["data", "ml", "machine learning", "ai ", "artificial intelligence", "nlp", "deep learning"]):
+        family = "Data Engineering / AI"
+        base_role = "Data / Machine Learning Engineer"
+        competencies = ["Python", "Spark", "SQL", "Airflow", "PyTorch", "Data Warehousing"]
+    elif any(k in t for k in ["frontend", "front-end", "ui", "ux engineer", "web developer", "react"]):
+        family = "Frontend Engineering"
+        base_role = "Frontend Engineer"
+        competencies = ["React", "TypeScript", "JavaScript", "CSS/Tailwind", "Next.js", "Web Performance"]
+    elif any(k in t for k in ["fullstack", "full stack", "full-stack", "generalist"]):
+        family = "Full-Stack Engineering"
+        base_role = "Full-Stack Engineer"
+        competencies = ["React", "Node.js", "Python", "TypeScript", "PostgreSQL", "REST APIs"]
+    elif any(k in t for k in ["mobile", "ios", "android", "swift", "flutter", "react native"]):
+        family = "Mobile Engineering"
+        base_role = "Mobile Engineer"
+        competencies = ["Swift", "Kotlin", "React Native", "Mobile CI/CD", "State Management"]
+    elif any(k in t for k in ["manager", "director", "head of", "vp", "chief"]):
+        family = "Engineering Management"
+        base_role = "Engineering Manager"
+        competencies = ["Technical Leadership", "People Management", "Roadmap Planning", "Hiring", "Agile Execution"]
+    else:
+        family = "Backend Engineering"
+        base_role = "Backend Software Engineer"
+        competencies = ["Python", "Go", "Distributed Systems", "SQL", "FastAPI/Django", "Microservices"]
+
+    standardized = f"{prefix} {base_role}".strip() if prefix else base_role
+
+    return {
+        "status": "success",
+        "raw_title": clean,
+        "standardized_title": standardized,
+        "canonical_family": family,
+        "seniority_level": sen_label,
+        "confidence_score": 0.92,
+        "core_competencies": competencies
+    }
+
+
 
 

@@ -438,6 +438,22 @@ class SkillProficiencyGapResponse(BaseModel):
     breakdown: List[SkillProficiencyGapItem] = Field(default_factory=list, description="Per-skill level comparisons")
 
 
+class TitleNormalizationRequest(BaseModel):
+    """Payload to normalize a job title to canonical tech family and seniority."""
+    raw_title: str = Field(..., min_length=2, max_length=150, description="Job title to normalize")
+
+
+class TitleNormalizationResponse(BaseModel):
+    """Normalized canonical title, domain family, seniority, and key competencies."""
+    status: str = Field(default="success")
+    raw_title: str
+    standardized_title: str
+    canonical_family: str
+    seniority_level: str
+    confidence_score: float
+    core_competencies: List[str]
+
+
 class LocationCount(BaseModel):
     location: str
     count: int

@@ -23,6 +23,7 @@ from app.agents.matcher_agent import (
     estimate_interview_difficulty,
     evaluate_skill_proficiency_gaps,
     generate_learning_roadmap,
+    normalize_job_title_semantics,
     predict_company_interview_questions,
     score_career_transition,
 )
@@ -183,6 +184,8 @@ from app.schemas import (
     StorageSpeedBenchmark,
     SystemDiagnosticsResponse,
     TierSalaryInsightsResponse,
+    TitleNormalizationRequest,
+    TitleNormalizationResponse,
     UploadResumeResponse,
     WeightedSkillScoreRequest,
     WeightedSkillScoreResponse,
@@ -1517,6 +1520,17 @@ async def evaluate_salary_fit_endpoint(payload: SalaryExpectationMatchRequest):
         job_min=payload.job_min_salary,
         job_max=payload.job_max_salary
     )
+
+
+@app.post(
+    "/api/matcher/normalize-title",
+    response_model=TitleNormalizationResponse,
+    summary="Normalize job title to canonical tech family, seniority, and competencies",
+    tags=["Matcher"]
+)
+async def normalize_title_endpoint(payload: TitleNormalizationRequest):
+    """Classify and normalize arbitrary tech role titles into standard engineering disciplines."""
+    return normalize_job_title_semantics(payload.raw_title)
 
 
 
