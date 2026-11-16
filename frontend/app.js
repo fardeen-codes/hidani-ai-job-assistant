@@ -1255,11 +1255,28 @@ async function updateApplicationsBadge(knownCount = null) {
 /**
  * Diagnostics Modal
  */
-function openDiagnosticsModal() {
+async function openDiagnosticsModal() {
   elements.diagSessionId.innerText = state.sessionId;
   elements.diagAppsCount.innerText = `${state.appliedJobIds.size} tracked in session`;
   elements.diagnosticsModal.classList.remove('hidden');
   fetchSystemHealth();
+
+  const diskSpeedEl = document.getElementById('diagDiskReadSpeed');
+  const integrityEl = document.getElementById('diagDbIntegrity');
+  try {
+    const res = await fetch(`${API_BASE}/db/diagnostics`);
+    if (res.ok) {
+      const data = await res.json();
+      if (diskSpeedEl && data.storage_read_benchmark) {
+        diskSpeedEl.innerText = `${data.storage_read_benchmark.read_megabytes_per_sec.toFixed(1)} MB/s (${data.storage_read_benchmark.benchmark_duration_ms.toFixed(1)}ms)`;
+      }
+      if (integrityEl && data.collection_checksums) {
+        integrityEl.innerText = `OK (${data.collection_checksums.length} collections)`;
+      }
+    }
+  } catch (err) {
+    if (diskSpeedEl) diskSpeedEl.innerText = 'Offline';
+  }
 }
 
 function closeDiagnosticsModal() {
