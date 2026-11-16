@@ -3507,6 +3507,53 @@ def update_candidate_languages(languages: List[Dict[str, Any]]) -> Dict[str, Any
     }
 
 
+def get_candidate_location_preferences() -> Dict[str, Any]:
+    """Retrieve candidate location, workplace type, and relocation preferences."""
+    profile = load_candidate_profile()
+    prefs = profile.get("location_preferences", {})
+    return {
+        "status": "success",
+        "preferred_locations": prefs.get("preferred_locations", []),
+        "open_to_relocation": prefs.get("open_to_relocation", False),
+        "relocation_destinations": prefs.get("relocation_destinations", []),
+        "workplace_type": prefs.get("workplace_type", "Any")
+    }
+
+
+def update_candidate_location_preferences(
+    preferred_locations: Optional[List[str]] = None,
+    open_to_relocation: Optional[bool] = None,
+    relocation_destinations: Optional[List[str]] = None,
+    workplace_type: Optional[str] = None
+) -> Dict[str, Any]:
+    """Update and persist candidate geographic and relocation preferences."""
+    with _db_lock:
+        profile = load_candidate_profile()
+        prefs = profile.get("location_preferences", {})
+        if preferred_locations is not None:
+            prefs["preferred_locations"] = [loc.strip() for loc in preferred_locations if loc and loc.strip()]
+        if open_to_relocation is not None:
+            prefs["open_to_relocation"] = bool(open_to_relocation)
+        if relocation_destinations is not None:
+            prefs["relocation_destinations"] = [dest.strip() for dest in relocation_destinations if dest and dest.strip()]
+        if workplace_type is not None:
+            clean_type = workplace_type.strip().capitalize()
+            prefs["workplace_type"] = clean_type if clean_type in ("Remote", "Hybrid", "Onsite", "Any") else "Any"
+        
+        prefs["updated_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+        profile["location_preferences"] = prefs
+        save_candidate_profile(profile)
+
+    return {
+        "status": "success",
+        "preferred_locations": prefs.get("preferred_locations", []),
+        "open_to_relocation": prefs.get("open_to_relocation", False),
+        "relocation_destinations": prefs.get("relocation_destinations", []),
+        "workplace_type": prefs.get("workplace_type", "Any")
+    }
+
+
+
 
 def analyze_resume_ats_readability(
     resume_text: str,

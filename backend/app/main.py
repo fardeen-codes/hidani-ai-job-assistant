@@ -121,6 +121,8 @@ from app.schemas import (
     JobBookmark,
     JobStatsResponse,
     JobTagCloudResponse,
+    LocationPreferenceResponse,
+    LocationPreferenceUpdateRequest,
     OfferComparisonRequest,
     OfferComparisonResponse,
     ProfileCompletenessResponse,
@@ -192,6 +194,7 @@ from app.services.db_service import (
     get_bookmarked_jobs,
     get_candidate_certifications,
     get_candidate_languages,
+    get_candidate_location_preferences,
     get_candidate_salary_preferences,
     get_candidate_work_preferences,
     get_company_hiring_surges,
@@ -237,6 +240,7 @@ from app.services.db_service import (
     update_application_status,
     update_application_tags,
     update_candidate_languages,
+    update_candidate_location_preferences,
     update_candidate_salary_preferences,
     update_candidate_work_preferences,
     update_job_bookmark,
@@ -542,6 +546,36 @@ async def update_candidate_languages_endpoint(payload: CandidateLanguagesUpdateR
     """Set and persist language proficiencies on candidate profile."""
     res = update_candidate_languages([item.model_dump() for item in payload.languages])
     return CandidateLanguagesResponse(**res)
+
+
+@app.get(
+    "/api/profile/location-preferences",
+    response_model=LocationPreferenceResponse,
+    summary="Get candidate location and relocation preferences",
+    tags=["Resume"]
+)
+async def get_location_preferences_endpoint():
+    """Retrieve geographic, workplace type, and relocation willingness preferences."""
+    prefs = get_candidate_location_preferences()
+    return LocationPreferenceResponse(**prefs)
+
+
+@app.patch(
+    "/api/profile/location-preferences",
+    response_model=LocationPreferenceResponse,
+    summary="Update candidate location and relocation preferences",
+    tags=["Resume"]
+)
+async def update_location_preferences_endpoint(payload: LocationPreferenceUpdateRequest):
+    """Update preferred locations, relocation destinations, and workplace model."""
+    res = update_candidate_location_preferences(
+        preferred_locations=payload.preferred_locations,
+        open_to_relocation=payload.open_to_relocation,
+        relocation_destinations=payload.relocation_destinations,
+        workplace_type=payload.workplace_type
+    )
+    return LocationPreferenceResponse(**res)
+
 
 
 

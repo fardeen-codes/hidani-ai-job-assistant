@@ -2819,6 +2819,29 @@ class BackendTestCase(unittest.TestCase):
         self.assertIn("Japanese", langs)
         self.assertEqual(langs["Japanese"], "Conversational")
 
+    def test_candidate_location_preferences_lifecycle(self):
+        """Test candidate location preferences and relocation willingness."""
+        payload = {
+            "preferred_locations": ["San Francisco, CA", "Seattle, WA", "Remote"],
+            "open_to_relocation": True,
+            "relocation_destinations": ["New York, NY", "London, UK"],
+            "workplace_type": "Hybrid"
+        }
+        patch_res = self.client.patch("/api/profile/location-preferences", json=payload)
+        self.assertEqual(patch_res.status_code, 200)
+        data = patch_res.json()
+        self.assertEqual(data["status"], "success")
+        self.assertTrue(data["open_to_relocation"])
+        self.assertEqual(data["workplace_type"], "Hybrid")
+        self.assertIn("San Francisco, CA", data["preferred_locations"])
+        self.assertIn("London, UK", data["relocation_destinations"])
+
+        get_res = self.client.get("/api/profile/location-preferences")
+        self.assertEqual(get_res.status_code, 200)
+        get_data = get_res.json()
+        self.assertEqual(get_data["workplace_type"], "Hybrid")
+        self.assertTrue(get_data["open_to_relocation"])
+
 
 if __name__ == "__main__":
     unittest.main()

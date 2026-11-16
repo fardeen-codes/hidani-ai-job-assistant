@@ -1200,6 +1200,24 @@ class CandidateLanguagesResponse(BaseModel):
     languages: List[CandidateLanguageItem] = Field(default_factory=list)
 
 
+class LocationPreferenceUpdateRequest(BaseModel):
+    """Payload to update candidate geographic and relocation preferences."""
+    preferred_locations: List[str] = Field(default_factory=list, description="Target metropolitan areas or countries")
+    open_to_relocation: bool = Field(default=False, description="Whether candidate is willing to relocate")
+    relocation_destinations: List[str] = Field(default_factory=list, description="Preferred relocation regions")
+    workplace_type: str = Field(default="Any", description="'Remote', 'Hybrid', 'Onsite', or 'Any'")
+
+
+class LocationPreferenceResponse(BaseModel):
+    """Candidate geographic and relocation preference settings."""
+    status: str = Field(default="success")
+    preferred_locations: List[str] = Field(default_factory=list)
+    open_to_relocation: bool
+    relocation_destinations: List[str] = Field(default_factory=list)
+    workplace_type: str
+
+
+
 
 
 
