@@ -4949,6 +4949,107 @@ def get_prioritized_applications_queue() -> Dict[str, Any]:
     }
 
 
+def get_application_todos(job_id: str) -> List[Dict[str, Any]]:
+    """Retrieve checklist tasks for an application."""
+    clean_id = (job_id or "").strip()
+    if not clean_id:
+        return []
+    with _db_lock:
+        apps = load_applications()
+        for app in apps:
+            if str(app.get("job_id", "")).strip().lower() == clean_id.lower():
+                return list(app.get("todo_checklist", []))
+    return []
+
+
+def add_application_todo(
+    job_id: str,
+    task: str
+) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
+    """
+    Append a new checklist item to an application.
+    Returns: (success: bool, message: str, todo_item: Optional[dict])
+    """
+    clean_id = (job_id or "").strip()
+    clean_task = (task or "").strip()
+    if not clean_id:
+        return False, "Job ID cannot be empty.", None
+    if not clean_task:
+        return False, "Task description cannot be empty.", None
+
+    now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    import uuid
+    todo_id = f"todo-{uuid.uuid4().hex[:8]}"
+    todo_item = {
+        "id": todo_id,
+        "task": clean_task,
+        "completed": False,
+        "created_at": now_str,
+        "completed_at": None
+    }
+
+    with _db_lock:
+        apps = load_applications()
+        target_app = None
+        for app in apps:
+            if str(app.get("job_id", "")).strip().lower() == clean_id.lower():
+                if "todo_checklist" not in app or not isinstance(app["todo_checklist"], list):
+                    app["todo_checklist"] = []
+                app["todo_checklist"].append(todo_item)
+                target_app = app
+                break
+
+        if not target_app:
+            return False, f"No application found for Job ID '{clean_id}'.", None
+
+        _save_applications(apps)
+
+    logger.info(f"Added todo task '{clean_task}' to job {clean_id}")
+    return True, f"Checklist item added to Job ID '{clean_id}'.", todo_item
+
+
+def toggle_application_todo(
+    job_id: str,
+    todo_id: str,
+    completed: bool
+) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
+    """
+    Update completion state of an application checklist item.
+    Returns: (success: bool, message: str, updated_todo: Optional[dict])
+    """
+    clean_id = (job_id or "").strip()
+    clean_tid = (todo_id or "").strip()
+    if not clean_id or not clean_tid:
+        return False, "Job ID and Todo ID cannot be empty.", None
+
+    now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    with _db_lock:
+        apps = load_applications()
+        target_todo = None
+        found_app = False
+        for app in apps:
+            if str(app.get("job_id", "")).strip().lower() == clean_id.lower():
+                found_app = True
+                todos = app.get("todo_checklist", [])
+                for t in todos:
+                    if t.get("id") == clean_tid:
+                        t["completed"] = bool(completed)
+                        t["completed_at"] = now_str if completed else None
+                        target_todo = t
+                        break
+                break
+
+        if not found_app:
+            return False, f"No application found for Job ID '{clean_id}'.", None
+        if not target_todo:
+            return False, f"No checklist item found with ID '{clean_tid}'.", None
+
+        _save_applications(apps)
+
+    return True, f"Checklist item updated successfully.", target_todo
+
+
+
 
 
 

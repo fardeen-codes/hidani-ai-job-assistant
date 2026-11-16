@@ -3301,6 +3301,40 @@ class BackendTestCase(unittest.TestCase):
         self.assertIn("q", data["high_probability_questions"][0])
         self.assertIn("a", data["high_probability_questions"][0])
 
+    def test_application_todo_checklist(self):
+        """Test adding, listing, and toggling custom application checklist todos."""
+        # Ensure application exists
+        self.client.post("/api/applications", json={"job_id": self.test_job_id})
+
+        # Add todo
+        add_res = self.client.post(
+            f"/api/applications/{self.test_job_id}/todos",
+            json={"task": "Review system design notes before phone screen"}
+        )
+        self.assertEqual(add_res.status_code, 201)
+        add_data = add_res.json()
+        self.assertEqual(add_data["status"], "success")
+        todo = add_data["todo"]
+        self.assertEqual(todo["task"], "Review system design notes before phone screen")
+        self.assertFalse(todo["completed"])
+        todo_id = todo["id"]
+
+        # List todos
+        list_res = self.client.get(f"/api/applications/{self.test_job_id}/todos")
+        self.assertEqual(list_res.status_code, 200)
+        list_data = list_res.json()
+        self.assertGreaterEqual(list_data["total_todos"], 1)
+
+        # Toggle todo to completed
+        toggle_res = self.client.patch(
+            f"/api/applications/{self.test_job_id}/todos/{todo_id}",
+            json={"completed": True}
+        )
+        self.assertEqual(toggle_res.status_code, 200)
+        toggle_data = toggle_res.json()
+        self.assertTrue(toggle_data["todo"]["completed"])
+        self.assertIsNotNone(toggle_data["todo"]["completed_at"])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1609,6 +1609,35 @@ class TechnicalCheatSheetResponse(BaseModel):
     architecture_tips: List[str]
 
 
+class ApplicationTodoItem(BaseModel):
+    """Checklist action item for a specific job application."""
+    id: str
+    task: str
+    completed: bool = False
+    created_at: str
+    completed_at: Optional[str] = None
+
+
+class ApplicationTodoCreateRequest(BaseModel):
+    """Request payload to add a new checklist item to an application."""
+    task: str = Field(..., description="Action item description")
+
+
+class ApplicationTodoToggleRequest(BaseModel):
+    """Request payload to toggle completion of a checklist item."""
+    completed: bool = Field(..., description="Completed state")
+
+
+class ApplicationTodoListResponse(BaseModel):
+    """Checklist items associated with an application."""
+    status: str = Field(default="success")
+    job_id: str
+    total_todos: int
+    completed_todos: int
+    todos: List[ApplicationTodoItem]
+
+
+
 
 
 

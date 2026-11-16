@@ -91,6 +91,10 @@ from app.schemas import (
     ApplicationThankYouNoteResponse,
     ApplicationThankYouNoteUpdateRequest,
     ApplicationTimelineResponse,
+    ApplicationTodoCreateRequest,
+    ApplicationTodoItem,
+    ApplicationTodoListResponse,
+    ApplicationTodoToggleRequest,
     ApplicationVelocityResponse,
     AutoFollowupRequest,
     AutoFollowupResponse,
@@ -217,6 +221,7 @@ from app.schemas import (
 from app.services.db_service import (
     add_application_attachment,
     add_application_interview,
+    add_application_todo,
     add_candidate_certification,
     add_candidate_portfolio_link,
     add_interview_question,
@@ -250,6 +255,7 @@ from app.services.db_service import (
     get_application_stats,
     get_application_status,
     get_application_timeline,
+    get_application_todos,
     get_application_velocity_metrics,
     get_bookmark_categories,
     get_bookmarked_jobs,
@@ -315,6 +321,7 @@ from app.services.db_service import (
     update_candidate_soft_skills,
     update_candidate_work_preferences,
     update_application_thank_you_status,
+    toggle_application_todo,
     update_job_bookmark,
     update_saved_search,
     vacuum_database_collections,
@@ -2523,6 +2530,68 @@ async def update_application_thank_you_endpoint(
         "thank_you_sent_at": app.get("thank_you_sent_at"),
         "notes": app.get("thank_you_notes"),
         "message": message
+    }
+
+
+@app.get(
+    "/api/applications/{job_id}/todos",
+    response_model=ApplicationTodoListResponse,
+    summary="Get checklist todos for an application",
+    tags=["Applications"]
+)
+async def get_application_todos_endpoint(job_id: str):
+    """Retrieve all checklist action items recorded for an application."""
+    clean_id = (job_id or "").strip()
+    todos = get_application_todos(clean_id)
+    completed_count = sum(1 for t in todos if t.get("completed"))
+    return {
+        "status": "success",
+        "job_id": clean_id,
+        "total_todos": len(todos),
+        "completed_todos": completed_count,
+        "todos": todos
+    }
+
+
+@app.post(
+    "/api/applications/{job_id}/todos",
+    response_model=dict,
+    status_code=status.HTTP_201_CREATED,
+    summary="Add a checklist todo item to an application",
+    tags=["Applications"]
+)
+async def add_application_todo_endpoint(job_id: str, payload: ApplicationTodoCreateRequest):
+    """Add a new checklist action item to an active job application."""
+    clean_id = (job_id or "").strip()
+    success, message, item = add_application_todo(clean_id, payload.task)
+    if not success or not item:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=message)
+    return {
+        "status": "success",
+        "job_id": clean_id,
+        "message": message,
+        "todo": item
+    }
+
+
+@app.patch(
+    "/api/applications/{job_id}/todos/{todo_id}",
+    response_model=dict,
+    summary="Toggle completion state of an application checklist todo",
+    tags=["Applications"]
+)
+async def toggle_application_todo_endpoint(job_id: str, todo_id: str, payload: ApplicationTodoToggleRequest):
+    """Toggle completion status of an application checklist item."""
+    clean_id = (job_id or "").strip()
+    clean_tid = (todo_id or "").strip()
+    success, message, item = toggle_application_todo(clean_id, clean_tid, payload.completed)
+    if not success or not item:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=message)
+    return {
+        "status": "success",
+        "job_id": clean_id,
+        "message": message,
+        "todo": item
     }
 
 
