@@ -399,6 +399,40 @@ function setupEventListeners() {
     });
   }
 
+  // Audit Log Modal
+  const auditLogBtn = document.getElementById('auditLogBtn');
+  if (auditLogBtn) {
+    auditLogBtn.addEventListener('click', () => openAuditLogModal());
+  }
+  const closeAuditLogBtn = document.getElementById('closeAuditLogBtn');
+  if (closeAuditLogBtn) {
+    closeAuditLogBtn.addEventListener('click', () => closeAuditLogModal());
+  }
+  const auditLogModal = document.getElementById('auditLogModal');
+  if (auditLogModal) {
+    auditLogModal.addEventListener('click', (e) => {
+      if (e.target === auditLogModal) closeAuditLogModal();
+    });
+  }
+  const pruneAuditLogBtn = document.getElementById('pruneAuditLogBtn');
+  if (pruneAuditLogBtn) {
+    pruneAuditLogBtn.addEventListener('click', async () => {
+      try {
+        const res = await fetch(`${API_BASE}/admin/db/audit/prune`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ max_entries: 50, max_age_days: 7 })
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        showToast(data.message || 'Audit log pruned', 'success');
+        fetchAndRenderAuditLog();
+      } catch (err) {
+        showToast(`Prune failed: ${err.message}`, 'error');
+      }
+    });
+  }
+
   // Global keydown shortcuts
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
@@ -1459,6 +1493,60 @@ function closeAllModals() {
   closeDiagnosticsModal();
   closeProfileDrawer();
   closeShortcutsModal();
+  closeAuditLogModal();
+}
+
+function openAuditLogModal() {
+  const modal = document.getElementById('auditLogModal');
+  if (modal) {
+    modal.classList.remove('hidden');
+    fetchAndRenderAuditLog();
+  }
+}
+
+function closeAuditLogModal() {
+  const modal = document.getElementById('auditLogModal');
+  if (modal) modal.classList.add('hidden');
+}
+
+async function fetchAndRenderAuditLog() {
+  const container = document.getElementById('auditListContainer');
+  const subtitle = document.getElementById('auditModalSubtitle');
+  if (!container) return;
+
+  container.innerHTML = '<div class="p-8 text-center text-xs text-neutral-500 font-mono">Loading audit events...</div>';
+  try {
+    const res = await fetch(`${API_BASE}/admin/db/audit-log?limit=50`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    const entries = data.entries || [];
+    if (subtitle) subtitle.innerText = `${data.total_entries || 0} recorded transaction events`;
+
+    if (entries.length === 0) {
+      container.innerHTML = '<div class="p-8 text-center text-xs text-neutral-500">No audit entries recorded yet.</div>';
+      return;
+    }
+
+    container.innerHTML = '';
+    entries.forEach(entry => {
+      const card = document.createElement('div');
+      card.className = 'p-2.5 rounded bg-neutral-950 border border-neutral-800 text-xs flex items-center justify-between gap-3';
+      const actionBadge = `<span class="px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold bg-neutral-800 text-neutral-300 border border-neutral-700">${escapeHtml(entry.action || 'TRANSACTION')}</span>`;
+      card.innerHTML = `
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2">
+            ${actionBadge}
+            <span class="text-neutral-300 truncate">${escapeHtml(entry.details || '')}</span>
+          </div>
+          <div class="text-[10px] text-neutral-500 font-mono mt-1">Entity: ${escapeHtml(entry.entity || 'db')} • ID: ${escapeHtml(entry.entity_id || '')}</div>
+        </div>
+        <span class="text-[10px] font-mono text-neutral-500 flex-shrink-0">${escapeHtml((entry.timestamp || '').slice(0, 19).replace('T', ' '))}</span>
+      `;
+      container.appendChild(card);
+    });
+  } catch (err) {
+    container.innerHTML = `<div class="p-6 text-center text-xs text-rose-400">Failed to load audit log: ${escapeHtml(err.message)}</div>`;
+  }
 }
 
 window.rollbackApplicationFromModal = async (jobId) => {
