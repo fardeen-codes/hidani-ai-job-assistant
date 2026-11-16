@@ -309,8 +309,15 @@
       </form>
 
       <div class="flex items-center justify-between mt-2 px-1 text-[11px] text-neutral-400">
-        <span>Drop PDF or DOCX files anywhere to parse</span>
-        <span class="font-mono text-[10px]">Enter to send</span>
+        <div class="flex items-center gap-2">
+          <span>Drop PDF or DOCX files anywhere to parse</span>
+          <button type="button" id="clearDraftBtn" class="hidden text-neutral-400 hover:text-neutral-200 text-[10px] font-mono transition-colors border-b border-neutral-700">Clear</button>
+        </div>
+        <div class="flex items-center gap-2 font-mono text-[10px]">
+          <span id="messageCharCount" class="text-neutral-500">0 chars</span>
+          <span class="text-neutral-600">•</span>
+          <span>Enter to send</span>
+        </div>
       </div>
     </div>
   </footer>

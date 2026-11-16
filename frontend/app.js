@@ -122,11 +122,31 @@ function setupEventListeners() {
     }
   });
 
-  // Auto-resize input
+  // Auto-resize input & char counter
+  const messageCharCount = document.getElementById('messageCharCount');
+  const clearDraftBtn = document.getElementById('clearDraftBtn');
+
   elements.messageInput.addEventListener('input', () => {
     elements.messageInput.style.height = 'auto';
     elements.messageInput.style.height = Math.min(elements.messageInput.scrollHeight, 120) + 'px';
+    const len = elements.messageInput.value.length;
+    if (messageCharCount) {
+      messageCharCount.textContent = `${len.toLocaleString()} chars`;
+    }
+    if (clearDraftBtn) {
+      clearDraftBtn.classList.toggle('hidden', len === 0);
+    }
   });
+
+  if (clearDraftBtn) {
+    clearDraftBtn.addEventListener('click', () => {
+      elements.messageInput.value = '';
+      elements.messageInput.style.height = 'auto';
+      if (messageCharCount) messageCharCount.textContent = '0 chars';
+      clearDraftBtn.classList.add('hidden');
+      elements.messageInput.focus();
+    });
+  }
 
   // Quick prompt chips
   const chipsContainer = document.getElementById('chatQuickPromptChips');
