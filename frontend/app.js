@@ -498,6 +498,16 @@ async function handleFileUpload(file) {
 /**
  * Message Renderers
  */
+function getJobFreshnessBadge(job) {
+  const badge = job.freshness_badge || job.freshness || 'New';
+  if (badge === 'New') {
+    return '<span class="px-1.5 py-0.5 rounded text-[9px] font-mono font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">NEW</span>';
+  } else if (badge === 'Recent') {
+    return '<span class="px-1.5 py-0.5 rounded text-[9px] font-mono font-semibold bg-blue-500/15 text-blue-400 border border-blue-500/30">RECENT</span>';
+  }
+  return '<span class="px-1.5 py-0.5 rounded text-[9px] font-mono font-semibold bg-neutral-800 text-neutral-400 border border-neutral-700">30d+</span>';
+}
+
 function appendUserMessage(text) {
   const msgEl = document.createElement('div');
   msgEl.className = 'flex justify-end message-appear';
@@ -570,6 +580,7 @@ function renderInteractiveJobCards(container, jobs) {
           <div class="flex items-center gap-2">
             <span class="text-xs font-mono text-neutral-400">${idx + 1}.</span>
             <h4 class="text-sm font-semibold text-white">${escapeHtml(job.title)}</h4>
+            ${getJobFreshnessBadge(job)}
           </div>
           <p class="text-xs text-neutral-400 mt-0.5">${escapeHtml(job.company)} • <span class="text-neutral-300">${escapeHtml(job.location)}</span></p>
         </div>
@@ -860,6 +871,7 @@ async function fetchAndRenderJobsList(keyword = '') {
         <div class="flex-1">
           <div class="flex items-center gap-2">
             <h4 class="text-xs sm:text-sm font-semibold text-white">${escapeHtml(job.title)}</h4>
+            ${getJobFreshnessBadge(job)}
             <span class="text-[10px] font-mono px-1.5 py-0.2 rounded bg-neutral-800 text-neutral-400 border border-neutral-700">${escapeHtml(job.experience || 'All Levels')}</span>
           </div>
           <p class="text-xs text-neutral-400 mt-0.5">${escapeHtml(job.company)} • <span class="text-neutral-300">${escapeHtml(job.location)}</span></p>
