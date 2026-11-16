@@ -4848,5 +4848,42 @@ def get_database_schema_migrations() -> Dict[str, Any]:
     }
 
 
+def update_application_thank_you_status(
+    job_id: str,
+    thank_you_sent: bool,
+    sent_at: Optional[str] = None,
+    notes: Optional[str] = None
+) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
+    """
+    Record thank-you note dispatch status and timestamp for an application.
+    Returns: (success: bool, message: str, updated_app: Optional[dict])
+    """
+    clean_id = (job_id or "").strip()
+    if not clean_id:
+        return False, "Job ID cannot be empty.", None
+
+    now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    with _db_lock:
+        apps = load_applications()
+        target_app = None
+        for app in apps:
+            if str(app.get("job_id", "")).strip().lower() == clean_id.lower():
+                app["thank_you_sent"] = bool(thank_you_sent)
+                app["thank_you_sent_at"] = sent_at or (now_str if thank_you_sent else None)
+                if notes is not None:
+                    app["thank_you_notes"] = notes.strip() or None
+                target_app = app
+                break
+
+        if not target_app:
+            return False, f"No application found for Job ID '{clean_id}'.", None
+
+        _save_applications(apps)
+
+    logger.info(f"Updated thank-you note status for job {clean_id}: sent={thank_you_sent}")
+    return True, f"Thank-you note status for Job ID '{clean_id}' updated successfully.", target_app
+
+
+
 
 

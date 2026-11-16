@@ -84,6 +84,8 @@ from app.schemas import (
     ApplicationStatsResponse,
     ApplicationStatusUpdateRequest,
     ApplicationTagsUpdateRequest,
+    ApplicationThankYouNoteResponse,
+    ApplicationThankYouNoteUpdateRequest,
     ApplicationTimelineResponse,
     ApplicationVelocityResponse,
     AutoFollowupRequest,
@@ -304,6 +306,7 @@ from app.services.db_service import (
     update_candidate_salary_preferences,
     update_candidate_soft_skills,
     update_candidate_work_preferences,
+    update_application_thank_you_status,
     update_job_bookmark,
     update_saved_search,
     vacuum_database_collections,
@@ -2441,6 +2444,35 @@ async def rollback_application_endpoint(job_id: str):
         "restored_status": restored.get("status"),
         "restored_notes": restored.get("notes"),
         "snapshot_timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    }
+
+
+@app.post(
+    "/api/applications/{job_id}/thank-you",
+    response_model=ApplicationThankYouNoteResponse,
+    summary="Record thank-you note dispatch status for an application",
+    tags=["Applications"]
+)
+async def update_application_thank_you_endpoint(
+    job_id: str,
+    payload: ApplicationThankYouNoteUpdateRequest
+):
+    """Record whether a post-interview thank you email or letter was sent to hiring team."""
+    success, message, app = update_application_thank_you_status(
+        job_id=job_id,
+        thank_you_sent=payload.thank_you_sent,
+        sent_at=payload.sent_at,
+        notes=payload.notes
+    )
+    if not success:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=message)
+    return {
+        "status": "success",
+        "job_id": job_id,
+        "thank_you_sent": app.get("thank_you_sent", False),
+        "thank_you_sent_at": app.get("thank_you_sent_at"),
+        "notes": app.get("thank_you_notes"),
+        "message": message
     }
 
 

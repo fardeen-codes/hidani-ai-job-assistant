@@ -3227,6 +3227,29 @@ class BackendTestCase(unittest.TestCase):
         self.assertGreaterEqual(len(data["key_selling_points"]), 2)
         self.assertTrue(len(data["call_to_action"]) > 0)
 
+    def test_application_thank_you_status_tracker(self):
+        """Test recording and updating post-interview thank you note dispatch status."""
+        # Ensure test job application exists
+        self.client.post("/api/applications", json={"job_id": self.test_job_id})
+
+        payload = {
+            "thank_you_sent": True,
+            "sent_at": "2026-11-16 14:00:00 UTC",
+            "notes": "Sent personalized email to lead interviewer via Gmail"
+        }
+        res = self.client.post(f"/api/applications/{self.test_job_id}/thank-you", json=payload)
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "success")
+        self.assertEqual(data["job_id"], self.test_job_id)
+        self.assertTrue(data["thank_you_sent"])
+        self.assertEqual(data["thank_you_sent_at"], "2026-11-16 14:00:00 UTC")
+        self.assertIn("personalized email", data["notes"])
+
+        # Test 404 on nonexistent job id
+        res_404 = self.client.post("/api/applications/invalid-job-99999/thank-you", json={"thank_you_sent": False})
+        self.assertEqual(res_404.status_code, 404)
+
 
 if __name__ == "__main__":
     unittest.main()

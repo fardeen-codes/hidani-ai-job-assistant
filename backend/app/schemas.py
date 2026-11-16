@@ -1544,6 +1544,23 @@ class ElevatorPitchResponse(BaseModel):
     call_to_action: str
 
 
+class ApplicationThankYouNoteUpdateRequest(BaseModel):
+    """Payload to record or update thank-you note sent status for an application."""
+    thank_you_sent: bool = Field(..., description="Whether thank-you note has been sent")
+    sent_at: Optional[str] = Field(None, description="ISO timestamp or date string of dispatch")
+    notes: Optional[str] = Field(None, description="Optional brief remarks or recipient details")
+
+
+class ApplicationThankYouNoteResponse(BaseModel):
+    """Response returned upon updating thank-you note tracking state."""
+    status: str = Field(default="success")
+    job_id: str
+    thank_you_sent: bool
+    thank_you_sent_at: Optional[str] = None
+    notes: Optional[str] = None
+    message: str
+
+
 
 
 
