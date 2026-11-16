@@ -18,7 +18,8 @@ const state = {
   bookmarkedJobIds: new Set(JSON.parse(localStorage.getItem('hidani_bookmarked_jobs') || '[]')),
   systemHealth: null,
   activeFilter: '',
-  minSalary: 0
+  minSalary: 0,
+  appStatusFilter: 'ALL'
 };
 
 // Persist session ID
@@ -229,6 +230,20 @@ function setupEventListeners() {
   elements.applicationsModal.addEventListener('click', (e) => {
     if (e.target === elements.applicationsModal) closeApplicationsModal();
   });
+
+  const appStatusFilterBar = document.getElementById('appsStatusFilterBar');
+  if (appStatusFilterBar) {
+    appStatusFilterBar.addEventListener('click', (e) => {
+      const btn = e.target.closest('.app-status-filter-pill');
+      if (!btn) return;
+      appStatusFilterBar.querySelectorAll('.app-status-filter-pill').forEach(b => {
+        b.className = 'app-status-filter-pill px-2.5 py-1 rounded text-xs font-mono transition-colors bg-neutral-800 hover:bg-neutral-700 text-neutral-300';
+      });
+      btn.className = 'app-status-filter-pill px-2.5 py-1 rounded text-xs font-mono transition-colors bg-neutral-100 text-neutral-950 font-semibold';
+      state.appStatusFilter = btn.getAttribute('data-status') || 'ALL';
+      fetchAndRenderApplicationsList();
+    });
+  }
 
   // Diagnostics Modal
   elements.systemStatusBtn.addEventListener('click', () => openDiagnosticsModal());
@@ -953,10 +968,15 @@ async function fetchAndRenderApplicationsList() {
   try {
     const res = await fetch(`${API_BASE}/applications`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const apps = await res.json();
+    let apps = await res.json();
 
-    elements.appsModalSubtitle.innerText = `${apps.length} total applications submitted`;
-    updateApplicationsBadge(apps.length);
+    const totalCount = apps.length;
+    if (state.appStatusFilter && state.appStatusFilter !== 'ALL') {
+      apps = apps.filter(a => (a.status || 'Applied').toLowerCase() === state.appStatusFilter.toLowerCase());
+    }
+
+    elements.appsModalSubtitle.innerText = `${totalCount} total applications submitted (${apps.length} showing)`;
+    updateApplicationsBadge(totalCount);
 
     if (apps.length === 0) {
       elements.appsListContainer.innerHTML = `
