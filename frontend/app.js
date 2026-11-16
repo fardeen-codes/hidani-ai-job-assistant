@@ -792,6 +792,21 @@ function getCompanyCultureBadge(job) {
   return `<span class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-neutral-800 text-neutral-400 border border-neutral-700" title="Hybrid / structured office presence">🏢 Hybrid / Office</span>`;
 }
 
+function getTimezoneCompatibilityPill(job) {
+  const loc = (job.location || '').toLowerCase();
+  if (loc.includes('remote') || loc.includes('anywhere') || loc.includes('distributed')) {
+    if (loc.includes('us') || loc.includes('americas') || loc.includes('sf') || loc.includes('nyc') || loc.includes('new york')) {
+      return '<span class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-sky-500/15 text-sky-300 border border-sky-500/30" title="Core overlap in US Timezones (EST/PST)">🕒 US TZ</span>';
+    } else if (loc.includes('eu') || loc.includes('europe') || loc.includes('uk') || loc.includes('london') || loc.includes('berlin')) {
+      return '<span class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-indigo-500/15 text-indigo-300 border border-indigo-500/30" title="Core overlap in European Timezones (CET/GMT)">🕒 EU TZ</span>';
+    } else if (loc.includes('apac') || loc.includes('asia') || loc.includes('india') || loc.includes('tokyo') || loc.includes('singapore')) {
+      return '<span class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-violet-500/15 text-violet-300 border border-violet-500/30" title="Core overlap in APAC Timezones (IST/JST/SGT)">🕒 APAC TZ</span>';
+    }
+    return '<span class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-emerald-500/15 text-emerald-300 border border-emerald-500/30" title="Worldwide Async Remote Collaboration">🌐 Global TZ</span>';
+  }
+  return '';
+}
+
 function appendUserMessage(text) {
   const msgEl = document.createElement('div');
   msgEl.className = 'flex justify-end message-appear';
@@ -894,6 +909,7 @@ function renderInteractiveJobCards(container, jobs) {
             ${getJobFreshnessBadge(job)}
             ${getInterviewDifficultyPill(job)}
             ${getCompanyCultureBadge(job)}
+            ${getTimezoneCompatibilityPill(job)}
           </div>
           <p class="text-xs text-neutral-400 mt-0.5">${escapeHtml(job.company)} • <span class="text-neutral-300">${escapeHtml(job.location)}</span></p>
         </div>
@@ -1195,6 +1211,7 @@ async function fetchAndRenderJobsList(keyword = '') {
             ${getJobFreshnessBadge(job)}
             ${getInterviewDifficultyPill(job)}
             ${getCompanyCultureBadge(job)}
+            ${getTimezoneCompatibilityPill(job)}
             <span class="text-[10px] font-mono px-1.5 py-0.2 rounded bg-neutral-800 text-neutral-400 border border-neutral-700">${escapeHtml(job.experience || 'All Levels')}</span>
           </div>
           <p class="text-xs text-neutral-400 mt-0.5">${escapeHtml(job.company)} • <span class="text-neutral-300">${escapeHtml(job.location)}</span></p>
