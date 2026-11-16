@@ -9,7 +9,10 @@ from datetime import datetime, timezone
 import io
 import logging
 from pathlib import Path
+import time
 from typing import Any, Dict, List, Optional
+
+_SERVER_START_TIME = time.time()
 
 from fastapi import FastAPI, File, HTTPException, Query, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -189,6 +192,7 @@ from app.schemas import (
     StarAnswerCoachResponse,
     StorageSpeedBenchmark,
     SystemDiagnosticsResponse,
+    SystemHealthPingResponse,
     TierSalaryInsightsResponse,
     TitleNormalizationRequest,
     TitleNormalizationResponse,
@@ -344,6 +348,35 @@ async def health_check():
             "total_jobs": jobs_count,
             "total_applications": apps_count
         }
+    }
+
+
+@app.get(
+    "/api/system/ping",
+    response_model=SystemHealthPingResponse,
+    summary="System diagnostics health ping monitor with uptime",
+    tags=["System"]
+)
+async def system_ping_endpoint():
+    """Retrieve operational health ping, active uptime duration, and loaded record telemetry."""
+    now = time.time()
+    uptime_sec = round(max(0.0, now - _SERVER_START_TIME), 2)
+    mins = int(uptime_sec // 60)
+    hours = int(mins // 60)
+    if hours > 0:
+        human_uptime = f"{hours}h {mins % 60}m"
+    elif mins > 0:
+        human_uptime = f"{mins}m {int(uptime_sec % 60)}s"
+    else:
+        human_uptime = f"{uptime_sec:.1f}s"
+
+    return {
+        "status": "ok",
+        "uptime_seconds": uptime_sec,
+        "uptime_human": human_uptime,
+        "server_time": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
+        "total_jobs": len(load_jobs()),
+        "total_applications": len(load_applications())
     }
 
 

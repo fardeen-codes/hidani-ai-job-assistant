@@ -1420,6 +1420,16 @@ class SystemDiagnosticsResponse(BaseModel):
     total_database_records: int
 
 
+class SystemHealthPingResponse(BaseModel):
+    """System health ping monitor payload with uptime and operational telemetry."""
+    status: str = Field(default="ok")
+    uptime_seconds: float = Field(description="Uptime of server process in seconds")
+    uptime_human: str = Field(description="Human readable uptime duration")
+    server_time: str = Field(description="Current server UTC timestamp")
+    total_jobs: int = Field(description="Total loaded jobs in database")
+    total_applications: int = Field(description="Total submitted applications")
+
+
 class CandidateLanguageItem(BaseModel):
     """Candidate spoken or written language proficiency."""
     language: str = Field(..., description="Language name (e.g. English, Japanese, Spanish)")

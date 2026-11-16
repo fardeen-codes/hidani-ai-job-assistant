@@ -3198,6 +3198,16 @@ class BackendTestCase(unittest.TestCase):
             self.assertIn("name", m)
             self.assertIn("applied_at", m)
 
+    def test_system_health_ping_endpoint(self):
+        """Test retrieving system health ping, uptime seconds, and operational stats."""
+        res = self.client.get("/api/system/ping")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "ok")
+        self.assertGreaterEqual(data["uptime_seconds"], 0.0)
+        self.assertTrue(len(data["uptime_human"]) > 0)
+        self.assertGreaterEqual(data["total_jobs"], 1)
+
 
 if __name__ == "__main__":
     unittest.main()

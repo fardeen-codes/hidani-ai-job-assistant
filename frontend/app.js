@@ -1626,6 +1626,16 @@ async function fetchSystemHealth() {
       if (elements.diagLlmStatus) elements.diagLlmStatus.innerText = data.openai_configured ? 'Active (Live LLM)' : 'Autonomous Fallback';
       if (elements.diagApiStatus) elements.diagApiStatus.innerText = 'Online (200 OK)';
     }
+
+    try {
+      const pingRes = await fetch(`${API_BASE}/system/ping`);
+      if (pingRes.ok) {
+        const pingData = await pingRes.json();
+        if (elements.diagApiStatus) {
+          elements.diagApiStatus.innerText = `Online (${pingData.uptime_human} uptime)`;
+        }
+      }
+    } catch (e) {}
   } catch (e) {
     elements.jobsCountLabel.innerText = 'Offline';
     if (elements.diagApiStatus) elements.diagApiStatus.innerText = 'Offline / Connecting...';
