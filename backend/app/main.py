@@ -120,6 +120,8 @@ from app.schemas import (
     ExperienceTierMetric,
     FollowupTemplateResponse,
     InterviewDifficultyResponse,
+    InterviewDifficultyFeedbackRequest,
+    InterviewDifficultyFeedbackResponse,
     JobApplication,
     LearningRoadmapRequest,
     LearningRoadmapResponse,
@@ -238,6 +240,7 @@ from app.services.db_service import (
     load_candidate_profile,
     load_jobs,
     load_saved_searches,
+    record_interview_difficulty_feedback,
     record_search_query,
     remove_job_bookmark,
     repair_database_records,
@@ -1763,6 +1766,43 @@ async def log_application_rejection_reason_endpoint(job_id: str, payload: Reject
         "rejection_reason": updated_app.get("rejection_reason", payload.reason),
         "rejection_category": updated_app.get("rejection_category", payload.category or "other"),
         "logged_at": updated_app.get("rejection_logged_at", ""),
+        "message": message
+    }
+
+
+@app.post(
+    "/api/applications/{job_id}/interview-feedback",
+    response_model=InterviewDifficultyFeedbackResponse,
+    summary="Log interview difficulty score and notes for an application",
+    tags=["Applications"]
+)
+async def log_interview_difficulty_feedback_endpoint(job_id: str, payload: InterviewDifficultyFeedbackRequest):
+    """Log interview difficulty score (1-5) and qualitative candidate feedback notes."""
+    clean_id = (job_id or "").strip()
+    if not clean_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Job ID cannot be empty."
+        )
+    success, message, updated_app = record_interview_difficulty_feedback(
+        clean_id, payload.difficulty_score, payload.feedback_notes
+    )
+    if not success or not updated_app:
+        if "between 1 and 5" in message or "cannot be empty" in message:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=message
+            )
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=message
+        )
+    return {
+        "job_id": updated_app.get("job_id", clean_id),
+        "difficulty_score": updated_app.get("interview_difficulty_score", payload.difficulty_score),
+        "difficulty_tier": updated_app.get("interview_difficulty_tier", "Moderate"),
+        "feedback_notes": updated_app.get("interview_feedback_notes", payload.feedback_notes),
+        "logged_at": updated_app.get("interview_feedback_logged_at", ""),
         "message": message
     }
 

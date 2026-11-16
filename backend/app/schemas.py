@@ -339,6 +339,22 @@ class RejectionReasonLogResponse(BaseModel):
     message: str = "Rejection reason recorded successfully"
 
 
+class InterviewDifficultyFeedbackRequest(BaseModel):
+    """Payload to rate interview difficulty and provide qualitative feedback."""
+    difficulty_score: int = Field(..., ge=1, le=5, description="Difficulty score from 1 (easy) to 5 (rigorous)")
+    feedback_notes: Optional[str] = Field(None, max_length=1500, description="Qualitative feedback notes on the interview")
+
+
+class InterviewDifficultyFeedbackResponse(BaseModel):
+    """Response payload after logging interview difficulty feedback."""
+    job_id: str
+    difficulty_score: int
+    difficulty_tier: str
+    feedback_notes: Optional[str] = None
+    logged_at: str
+    message: str = "Interview feedback logged successfully"
+
+
 class BulkApplicationStatusUpdateRequest(BaseModel):
     """Payload for updating status across multiple applications simultaneously."""
     job_ids: List[str] = Field(..., min_length=1, description="List of Job IDs to update")

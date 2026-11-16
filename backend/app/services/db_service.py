@@ -991,6 +991,57 @@ def log_application_rejection_reason(
     return True, f"Rejection reason logged for Job ID '{clean_id}'.", updated_app
 
 
+def record_interview_difficulty_feedback(
+    job_id: str,
+    difficulty_score: int,
+    feedback_notes: Optional[str] = None
+) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
+    """
+    Record candidate interview difficulty feedback (1-5) and qualitative notes on an application.
+    """
+    clean_id = (job_id or "").strip()
+    if not clean_id:
+        return False, "Job ID cannot be empty.", None
+
+    if not isinstance(difficulty_score, int) or difficulty_score < 1 or difficulty_score > 5:
+        return False, "Difficulty score must be an integer between 1 and 5.", None
+
+    tier_map = {
+        1: "Accessible",
+        2: "Approachable",
+        3: "Moderate",
+        4: "Challenging",
+        5: "Rigorous"
+    }
+    tier = tier_map.get(difficulty_score, "Moderate")
+    clean_notes = (feedback_notes or "").strip()
+
+    with _db_lock:
+        applications = load_applications()
+        updated_app = None
+        for app in applications:
+            if app.get("job_id", "").strip().lower() == clean_id.lower():
+                _save_rollback_snapshot(app)
+                app["interview_difficulty_score"] = difficulty_score
+                app["interview_difficulty_tier"] = tier
+                if clean_notes:
+                    app["interview_feedback_notes"] = clean_notes
+                now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+                app["interview_feedback_logged_at"] = now_str
+                app["updated_date"] = now_str
+                _record_app_event(app, "INTERVIEW_FEEDBACK", f"Difficulty {difficulty_score}/5 ({tier}) recorded")
+                updated_app = app
+                break
+
+        if not updated_app:
+            return False, f"No existing application found for Job ID '{clean_id}'.", None
+
+        _save_applications(applications)
+
+    logger.info(f"Recorded interview feedback for job {clean_id}: score={difficulty_score} ({tier})")
+    return True, f"Interview difficulty feedback recorded for Job ID '{clean_id}'.", updated_app
+
+
 def bulk_update_application_status(
     job_ids: List[str],
     new_status: str

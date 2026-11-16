@@ -2984,6 +2984,31 @@ class BackendTestCase(unittest.TestCase):
         res_404 = self.client.post("/api/applications/non-existent-xyz/rejection-reason", json=payload)
         self.assertEqual(res_404.status_code, 404)
 
+    def test_interview_difficulty_feedback_logging(self):
+        """Test logging interview difficulty rating and qualitative notes."""
+        self.client.post("/api/applications", json={"job_id": self.test_job_id, "notes": "Interview difficulty test"})
+
+        payload = {
+            "difficulty_score": 4,
+            "feedback_notes": "Focused heavily on distributed consensus protocols and concurrency primitives."
+        }
+        res = self.client.post(f"/api/applications/{self.test_job_id}/interview-feedback", json=payload)
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["job_id"], self.test_job_id)
+        self.assertEqual(data["difficulty_score"], 4)
+        self.assertEqual(data["difficulty_tier"], "Challenging")
+        self.assertEqual(data["feedback_notes"], payload["feedback_notes"])
+        self.assertTrue(len(data["logged_at"]) > 0)
+
+        # Invalid difficulty score (out of range)
+        res_bad = self.client.post(f"/api/applications/{self.test_job_id}/interview-feedback", json={"difficulty_score": 6})
+        self.assertEqual(res_bad.status_code, 422)
+
+        # 404 for non-existent job
+        res_404 = self.client.post("/api/applications/non-existent-abc/interview-feedback", json=payload)
+        self.assertEqual(res_404.status_code, 404)
+
 
 if __name__ == "__main__":
     unittest.main()
