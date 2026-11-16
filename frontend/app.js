@@ -78,6 +78,7 @@ const elements = {
   drawerLanguagesTags: document.getElementById('drawerLanguagesTags'),
   drawerSummary: document.getElementById('drawerSummary'),
   drawerRoles: document.getElementById('drawerRoles'),
+  drawerLinksList: document.getElementById('drawerLinksList'),
   drawerCompletenessBadge: document.getElementById('drawerCompletenessBadge'),
   drawerCompletenessBar: document.getElementById('drawerCompletenessBar'),
   drawerCompletenessHint: document.getElementById('drawerCompletenessHint'),
@@ -1031,6 +1032,9 @@ function openProfileDrawer() {
     `<span class="px-2 py-0.5 rounded bg-neutral-800 text-xs text-neutral-300 border border-neutral-700">${escapeHtml(r)}</span>`
   ).join('');
 
+  // Render portfolio links
+  renderDrawerLinks(p.portfolio_links);
+
   // Update Profile Completeness
   updateProfileCompletenessDrawer(p);
 
@@ -1049,6 +1053,27 @@ function renderDrawerLanguages(languages) {
     </span>`
   ).join('');
 }
+
+function renderDrawerLinks(links) {
+  if (!elements.drawerLinksList) return;
+  if (!links || links.length === 0) {
+    elements.drawerLinksList.innerHTML = '<p class="text-xs text-neutral-400 italic">No external portfolio links saved yet.</p>';
+    return;
+  }
+  elements.drawerLinksList.innerHTML = links.map(l =>
+    `<a href="${escapeHtml(l.url)}" target="_blank" rel="noopener noreferrer" 
+        class="flex items-center justify-between p-2 rounded bg-neutral-950 hover:bg-neutral-800 border border-neutral-800 text-xs text-neutral-200 transition-colors group">
+      <span class="flex items-center gap-2 font-medium">
+        <svg class="w-3.5 h-3.5 text-neutral-400 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+        </svg>
+        ${escapeHtml(l.label)}
+      </span>
+      <span class="text-[10px] text-neutral-400 truncate max-w-[150px] font-mono">${escapeHtml(l.url.replace(/^https?:\/\//, ''))}</span>
+    </a>`
+  ).join('');
+}
+
 
 
 async function updateProfileCompletenessDrawer(profile) {
