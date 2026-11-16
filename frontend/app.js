@@ -304,6 +304,48 @@ function setupEventListeners() {
   // Reset Session
   elements.resetChatBtn.addEventListener('click', () => resetSession());
 
+  // Export Chat Transcript
+  const exportChatBtn = document.getElementById('exportChatBtn');
+  if (exportChatBtn) {
+    exportChatBtn.addEventListener('click', async () => {
+      try {
+        const res = await fetch(`${API_BASE}/chat/session/${encodeURIComponent(state.sessionId)}/export?format=markdown`);
+        if (!res.ok) {
+          const msgs = Array.from(elements.messagesContainer.children).map(c => c.innerText.trim()).filter(Boolean);
+          if (msgs.length === 0) {
+            showToast('No messages in current session to export', 'info');
+            return;
+          }
+          const mdFallback = `# Job Assistant Chat Transcript\n*Exported: ${new Date().toISOString()}*\n\n` + msgs.join('\n\n---\n\n');
+          const blob = new Blob([mdFallback], { type: 'text/markdown' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `chat_transcript_${new Date().toISOString().slice(0, 10)}.md`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+          showToast('Chat exported as Markdown', 'success');
+          return;
+        }
+        const text = await res.text();
+        const blob = new Blob([text], { type: 'text/markdown' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `chat_transcript_${new Date().toISOString().slice(0, 10)}.md`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        showToast('Chat exported as Markdown', 'success');
+      } catch (err) {
+        showToast(`Failed to export chat: ${err.message}`, 'error');
+      }
+    });
+  }
+
   // Shortcuts Modal
   if (elements.shortcutsBtn) {
     elements.shortcutsBtn.addEventListener('click', () => openShortcutsModal());
