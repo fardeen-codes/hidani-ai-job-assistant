@@ -20,6 +20,7 @@ from app.agents.matcher_agent import (
     batch_score_jobs,
     calculate_weighted_skill_match,
     estimate_interview_difficulty,
+    evaluate_skill_proficiency_gaps,
     generate_learning_roadmap,
     score_career_transition,
 )
@@ -164,6 +165,8 @@ from app.schemas import (
     SkillCoOccurrenceItem,
     SkillCorrelationResponse,
     SkillGapAnalysisResponse,
+    SkillProficiencyGapRequest,
+    SkillProficiencyGapResponse,
     SkillSalaryInsightsResponse,
     SoftSkillsResponse,
     SoftSkillsUpdateRequest,
@@ -1442,6 +1445,21 @@ async def calculate_weighted_skill_match_endpoint(payload: WeightedSkillScoreReq
             detail=f"Job with ID '{payload.job_id}' was not found in the database."
         )
     return result
+
+
+@app.post(
+    "/api/matcher/proficiency-gap",
+    response_model=SkillProficiencyGapResponse,
+    summary="Evaluate candidate skill proficiency level gaps against job expectations",
+    tags=["Matcher"]
+)
+async def evaluate_skill_proficiency_gaps_endpoint(payload: SkillProficiencyGapRequest):
+    """Assess whether candidate skill proficiencies meet, exceed, or fall short of role requirements."""
+    return evaluate_skill_proficiency_gaps(
+        candidate_proficiencies=payload.candidate_proficiencies,
+        job_id=payload.job_id,
+        job_required_skills=payload.job_required_skills
+    )
 
 
 @app.post(

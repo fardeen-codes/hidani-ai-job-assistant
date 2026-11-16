@@ -760,5 +760,94 @@ def estimate_interview_difficulty(job_id: str) -> Optional[Dict[str, Any]]:
     }
 
 
+def evaluate_skill_proficiency_gaps(
+    candidate_proficiencies: Dict[str, str],
+    job_id: Optional[str] = None,
+    job_required_skills: Optional[List[str]] = None
+) -> Dict[str, Any]:
+    """
+    Weight skill proficiencies (Beginner=1, Intermediate=2, Expert=3) against required skills.
+    """
+    level_weights = {
+        "beginner": 1,
+        "intermediate": 2,
+        "expert": 3,
+        "advanced": 3,
+        "proficient": 2,
+        "familiar": 1
+    }
+
+    req_skills = []
+    if job_id:
+        job = get_job_by_id(job_id)
+        if job and job.get("skills"):
+            req_skills.extend(job.get("skills", []))
+    if job_required_skills:
+        req_skills.extend(job_required_skills)
+
+    normalized_req = []
+    seen = set()
+    for s in req_skills:
+        norm = _normalize_skill(s)
+        if norm and norm not in seen:
+            seen.add(norm)
+            normalized_req.append(s)
+
+    if not normalized_req:
+        normalized_req = ["Python", "SQL", "Git"]
+
+    cand_norm = {}
+    for k, v in candidate_proficiencies.items():
+        cand_norm[_normalize_skill(k)] = (v or "Intermediate").strip().lower()
+
+    breakdown = []
+    total_weights = 0.0
+    matching_count = 0
+    gaps_count = 0
+    missing_count = 0
+
+    for req in normalized_req:
+        norm_r = _normalize_skill(req)
+        req_level = "Intermediate"
+        req_val = 2
+
+        if norm_r in cand_norm:
+            cand_lvl_str = cand_norm[norm_r]
+            cand_val = level_weights.get(cand_lvl_str, 2)
+            cand_display = cand_lvl_str.capitalize()
+            if cand_val >= req_val:
+                status = "Exceeds" if cand_val > req_val else "Matches"
+                weight = 1.0
+                matching_count += 1
+            else:
+                status = "Minor Gap"
+                weight = 0.7
+                gaps_count += 1
+        else:
+            cand_display = None
+            status = "Missing"
+            weight = 0.0
+            missing_count += 1
+
+        total_weights += weight
+        breakdown.append({
+            "skill": req,
+            "candidate_level": cand_display,
+            "required_level": req_level,
+            "weight_score": round(weight, 2),
+            "gap_status": status
+        })
+
+    overall_score = round((total_weights / len(normalized_req)) * 100.0, 1) if normalized_req else 100.0
+
+    return {
+        "overall_proficiency_score": overall_score,
+        "matching_skills_count": matching_count,
+        "gaps_count": gaps_count,
+        "missing_count": missing_count,
+        "breakdown": breakdown
+    }
+
+
 
 

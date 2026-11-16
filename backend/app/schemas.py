@@ -413,6 +413,31 @@ class SkillSalaryInsightsResponse(BaseModel):
     insights: List[SkillSalaryInsight] = Field(default_factory=list, description="Top skill salary benchmarks")
 
 
+class SkillProficiencyGapItem(BaseModel):
+    """Comparison item for a single skill proficiency level."""
+    skill: str = Field(description="Evaluated skill name")
+    candidate_level: Optional[str] = Field(None, description="Candidate level: Beginner, Intermediate, Expert")
+    required_level: str = Field(description="Expected level for the position")
+    weight_score: float = Field(description="Weight contribution between 0.0 and 1.0")
+    gap_status: str = Field(description="Gap status: Exceeds, Matches, Minor Gap, or Missing")
+
+
+class SkillProficiencyGapRequest(BaseModel):
+    """Payload to evaluate proficiency level weighting between candidate skills and job requirements."""
+    candidate_proficiencies: Dict[str, str] = Field(..., description="Mapping of skill names to proficiency level")
+    job_id: Optional[str] = Field(None, description="Optional job ID to compare against")
+    job_required_skills: Optional[List[str]] = Field(None, description="Optional explicit required skill list")
+
+
+class SkillProficiencyGapResponse(BaseModel):
+    """Weighted skill proficiency gap breakdown and aggregate score."""
+    overall_proficiency_score: float = Field(description="Calibrated proficiency alignment score out of 100")
+    matching_skills_count: int = Field(description="Skills meeting or exceeding expectations")
+    gaps_count: int = Field(description="Skills present but below target proficiency")
+    missing_count: int = Field(description="Required skills entirely missing")
+    breakdown: List[SkillProficiencyGapItem] = Field(default_factory=list, description="Per-skill level comparisons")
+
+
 class LocationCount(BaseModel):
     location: str
     count: int

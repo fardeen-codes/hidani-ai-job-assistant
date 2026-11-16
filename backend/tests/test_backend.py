@@ -3083,6 +3083,30 @@ class BackendTestCase(unittest.TestCase):
         self.assertIn("on-call rotation", data["email_body"])
         self.assertGreater(data["character_count"], 100)
 
+    def test_skill_proficiency_gap_evaluation(self):
+        """Test assessing candidate proficiency tiers (Beginner, Intermediate, Expert) against job skills."""
+        payload = {
+            "candidate_proficiencies": {
+                "Python": "Expert",
+                "SQL": "Intermediate",
+                "Kubernetes": "Beginner"
+            },
+            "job_required_skills": [
+                "Python",
+                "SQL",
+                "Kubernetes",
+                "AWS"
+            ]
+        }
+        res = self.client.post("/api/matcher/proficiency-gap", json=payload)
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertGreaterEqual(data["overall_proficiency_score"], 0.0)
+        self.assertEqual(data["matching_skills_count"], 2)  # Python (Exceeds), SQL (Matches)
+        self.assertEqual(data["gaps_count"], 1)             # Kubernetes (Beginner < Intermediate)
+        self.assertEqual(data["missing_count"], 1)          # AWS (Missing)
+        self.assertEqual(len(data["breakdown"]), 4)
+
 
 if __name__ == "__main__":
     unittest.main()
