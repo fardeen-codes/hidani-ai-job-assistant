@@ -1345,11 +1345,29 @@ async function fetchAndRenderApplicationsList() {
       const urgencyBadge = priorityInfo && priorityInfo.urgency_tier === 'Critical'
         ? `<span class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-rose-500/15 text-rose-300 border border-rose-500/30" title="${escapeHtml(priorityInfo.recommended_action)}">⚡ Urgent Action</span>`
         : '';
+      const todos = Array.isArray(app.todo_checklist) ? app.todo_checklist : [];
+      const completedTodos = todos.filter(t => t.completed).length;
+      const todoBadge = todos.length > 0
+        ? `<span class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-neutral-800 text-neutral-300 border border-neutral-700" title="${completedTodos} of ${todos.length} tasks completed">✓ ${completedTodos}/${todos.length} Tasks</span>`
+        : '';
+      const addTodoBtn = `<button onclick="promptAddApplicationTodo('${escapeHtml(app.job_id)}')" title="Add checklist task" class="px-1.5 py-0.5 rounded text-[9px] font-mono text-neutral-400 hover:text-neutral-200 bg-neutral-900 border border-neutral-800 hover:border-neutral-700 transition-colors">+ Task</button>`;
+      
+      let todosHtml = '';
+      if (todos.length > 0) {
+        const todoItems = todos.slice(-3).map(t =>
+          `<div class="flex items-center gap-1.5 text-[11px] text-neutral-300">
+            <input type="checkbox" ${t.completed ? 'checked' : ''} onchange="toggleApplicationTodoItem('${escapeHtml(app.job_id)}', '${escapeHtml(t.id)}', this.checked)" class="w-3 h-3 rounded bg-neutral-800 border-neutral-700 text-emerald-500 focus:ring-0 cursor-pointer">
+            <span class="${t.completed ? 'line-through text-neutral-500' : ''}">${escapeHtml(t.task)}</span>
+          </div>`
+        ).join('');
+        todosHtml = `<div class="mt-2 pt-2 border-t border-neutral-900 space-y-1">${todoItems}</div>`;
+      }
+
       const statusOptions = statuses.map(s =>
         `<option value="${s}" ${s === currentStatus ? 'selected' : ''}>${s}</option>`
       ).join('');
       card.innerHTML = `
-        <div>
+        <div class="flex-1">
           <div class="flex items-center gap-2 flex-wrap">
             <span class="text-xs font-mono text-neutral-400">#${idx + 1}</span>
             <h4 class="text-xs sm:text-sm font-semibold text-white">${escapeHtml(app.job_title || 'Software Role')}</h4>
@@ -1357,9 +1375,12 @@ async function fetchAndRenderApplicationsList() {
             ${questionBadge}
             ${difficultyBadge}
             ${thankYouBadge}
+            ${todoBadge}
+            ${addTodoBtn}
           </div>
           <p class="text-xs text-neutral-400 mt-0.5">${escapeHtml(app.company || 'Tech Company')} • <span class="text-neutral-300">${escapeHtml(app.location || 'Remote')}</span></p>
           <p class="text-[11px] font-mono text-neutral-500 mt-1">Submitted on ${escapeHtml(app.applied_date || 'Recent')}</p>
+          ${todosHtml}
         </div>
         <div class="text-right flex-shrink-0 flex flex-col items-end gap-2">
           <select
@@ -1734,6 +1755,44 @@ window.toggleThankYouStatus = async (jobId, markSent) => {
       throw new Error(err.detail || `Failed to update status (${res.status})`);
     }
     showToast(markSent ? 'Marked thank-you note as sent!' : 'Thank-you note marked as pending', 'success');
+    fetchAndRenderApplicationsList();
+  } catch (err) {
+    showToast(`Error: ${err.message}`, 'error');
+  }
+};
+
+window.promptAddApplicationTodo = async (jobId) => {
+  const task = prompt('Enter a new checklist task for this application:');
+  if (!task || !task.trim()) return;
+  try {
+    const res = await fetch(`${API_BASE}/applications/${encodeURIComponent(jobId)}/todos`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ task: task.trim() })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `Failed to add task (${res.status})`);
+    }
+    showToast('Checklist task added!', 'success');
+    fetchAndRenderApplicationsList();
+  } catch (err) {
+    showToast(`Error: ${err.message}`, 'error');
+  }
+};
+
+window.toggleApplicationTodoItem = async (jobId, todoId, completed) => {
+  try {
+    const res = await fetch(`${API_BASE}/applications/${encodeURIComponent(jobId)}/todos/${encodeURIComponent(todoId)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ completed: Boolean(completed) })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `Failed to update task (${res.status})`);
+    }
+    showToast(completed ? 'Task completed' : 'Task pending', 'info');
     fetchAndRenderApplicationsList();
   } catch (err) {
     showToast(`Error: ${err.message}`, 'error');
