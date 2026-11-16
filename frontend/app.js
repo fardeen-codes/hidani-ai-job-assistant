@@ -1408,6 +1408,15 @@ async function fetchAndRenderApplicationsList() {
             ${statusOptions}
           </select>
           <div class="flex items-center gap-1.5">
+            ${currentStatus === 'Offer' ? `
+              <button
+                onclick="openCounterOfferCalculator('${escapeHtml(app.job_id)}', '${escapeHtml(app.company || 'Company')}', '${escapeHtml(app.job_title || 'Role')}')"
+                title="Calculate data-backed counter-offer package"
+                class="px-2 py-0.5 rounded text-[10px] text-emerald-300 hover:text-white bg-emerald-950/60 hover:bg-emerald-900 border border-emerald-800/80 transition-colors"
+              >
+                💰 Counter-Offer
+              </button>
+            ` : ''}
             <button
               onclick="rollbackApplicationFromModal('${escapeHtml(app.job_id)}')"
               title="Revert to previous status snapshot"
@@ -1811,6 +1820,52 @@ window.toggleApplicationTodoItem = async (jobId, todoId, completed) => {
     }
     showToast(completed ? 'Task completed' : 'Task pending', 'info');
     fetchAndRenderApplicationsList();
+  } catch (err) {
+    showToast(`Error: ${err.message}`, 'error');
+  }
+};
+
+window.openCounterOfferCalculator = async (jobId, company, role) => {
+  const baseInput = prompt(`Enter annual base salary offered for ${role} at ${company} ($):`, "150000");
+  if (!baseInput) return;
+  const base = parseFloat(baseInput.replace(/[^0-9.]/g, ''));
+  if (isNaN(base) || base <= 0) {
+    showToast('Invalid base salary entered', 'error');
+    return;
+  }
+  const equityInput = prompt('Enter equity value offered ($ optional, e.g. 30000):', "30000");
+  const equity = equityInput ? parseFloat(equityInput.replace(/[^0-9.]/g, '')) || 0 : 0;
+
+  try {
+    showToast('Calculating counter-offer proposal...', 'info');
+    const res = await fetch(`${API_BASE}/applications/${encodeURIComponent(jobId)}/counter-offer`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        base_salary_offered: base,
+        equity_offered: equity,
+        target_strategy: 'balanced'
+      })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      closeApplicationsModal();
+      const pointsList = (data.negotiation_talking_points || []).map(p => `- ${escapeHtml(p)}`).join('\n');
+      appendAssistantMessage(
+        `### 💰 Data-Backed Counter-Offer Strategy: ${escapeHtml(company)} — ${escapeHtml(role)}\n\n` +
+        `| Component | Offered | Recommended Counter |\n` +
+        `|---|---|---|\n` +
+        `| **Base Salary** | $${data.original_base.toLocaleString()} | **$${data.recommended_counter_base.toLocaleString()}** |\n` +
+        `| **Equity Target** | $${(equity || 0).toLocaleString()} | **$${data.recommended_equity.toLocaleString()}** |\n` +
+        `| **Target Signing Bonus** | $0 | **$${data.recommended_sign_on.toLocaleString()}** |\n` +
+        `| **Total First Year Comp** | $${(base + equity).toLocaleString()} | **$${data.total_counter_comp_value.toLocaleString()}** (+${data.percentage_increase}%) |\n\n` +
+        `#### 🎯 Key Negotiation Leverage Points\n${pointsList}\n\n` +
+        `#### ✉️ Suggested Response Email Script\n> "${escapeHtml(data.suggested_email_opening)}"`
+      );
+      showToast('Counter-offer proposal generated in chat!', 'success');
+    } else {
+      showToast('Failed to generate counter-proposal', 'error');
+    }
   } catch (err) {
     showToast(`Error: ${err.message}`, 'error');
   }
