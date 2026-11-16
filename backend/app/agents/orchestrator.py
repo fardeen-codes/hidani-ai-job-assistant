@@ -1482,4 +1482,104 @@ def generate_elevator_pitch(
     }
 
 
+def generate_technical_interview_cheatsheet(
+    technology: str,
+    seniority: Optional[str] = "Senior",
+    focus_areas: Optional[List[str]] = None
+) -> Dict[str, Any]:
+    """
+    Generate high-yield technical mechanics, pitfalls, and interview Q&As for a specific tool or tech stack.
+    """
+    clean_tech = (technology or "Python").strip()
+    clean_sen = (seniority or "Senior").strip()
+    t_lower = clean_tech.lower()
+
+    if "python" in t_lower:
+        mechanics = [
+            "GIL & Concurrency: Understand asyncio event loop vs multiprocessing for CPU-bound tasks.",
+            "Memory Management: Reference counting combined with generational cyclic GC.",
+            "Data Model & Dunder: __enter__/__exit__ protocols, generators yield from, __slots__ for memory optimization."
+        ]
+        pitfalls = [
+            "Mutable default arguments (def f(arg=[]) evaluated once at definition time).",
+            "Blocking calls inside async coroutines starving the asyncio event loop.",
+            "Misunderstanding late binding in Python closures inside loops."
+        ]
+        questions = [
+            {"q": "How does asyncio differ from threading in Python?", "a": "Asyncio uses single-threaded cooperative multitasking with an event loop, avoiding OS thread overhead and race conditions on GIL, ideal for high-concurrency I/O."},
+            {"q": "When should you use generators over list comprehensions?", "a": "Generators provide lazy stream evaluation yielding one item at a time, keeping memory footprint O(1) across massive datasets."}
+        ]
+        tips = [
+            "Always profile memory allocations with tracemalloc and CPU with cProfile before optimizing.",
+            "Use Pydantic v2 or dataclasses for strict runtime data validation contracts."
+        ]
+    elif any(k in t_lower for k in ["k8s", "kube", "kubernetes"]):
+        mechanics = [
+            "Control Plane Reconciliation: API Server, etcd quorum, Kube-Controller-Manager reconcilers.",
+            "Networking: CNI overlays, kube-proxy iptables/IPVS mode, Ingress routing.",
+            "Pod Lifecycle: initContainers, preStop lifecycle hooks, liveness vs readiness vs startup probes."
+        ]
+        pitfalls = [
+            "Setting CPU limits triggering aggressive CFS kernel throttling.",
+            "Missing readiness probes causing traffic black-holing during rolling deployments.",
+            "Hardcoding pod IPs rather than relying on CoreDNS ClusterIP services."
+        ]
+        questions = [
+            {"q": "Explain the difference between Liveness and Readiness probes.", "a": "Liveness probes restart a deadlocked container; Readiness probes temporarily remove the pod from Service endpoints until it can serve traffic."},
+            {"q": "How does etcd ensure consensus during network partitions?", "a": "etcd uses the Raft protocol requiring a strict majority quorum ((N/2) + 1) to commit state transitions."}
+        ]
+        tips = [
+            "Always implement PodDisruptionBudgets (PDB) and topology spread constraints for zero-downtime nodes draining.",
+            "Leverage Horizontal Pod Autoscaler (HPA) using custom Prometheus metrics over raw CPU/RAM."
+        ]
+    elif any(k in t_lower for k in ["react", "next", "frontend"]):
+        mechanics = [
+            "Fiber Reconciler: Work-in-progress trees, double buffering, and prioritization queues.",
+            "State & Effects: Batching updates, dependency arrays, cleanup functions.",
+            "SSR / Server Components: Streaming HTML hydration, selective boundary Suspense."
+        ]
+        pitfalls = [
+            "Unstable object references passed as props triggering cascading child re-renders.",
+            "Mutating state directly instead of creating new immutable references.",
+            "Stale closures capturing outdated state inside useEffect or useCallback callbacks."
+        ]
+        questions = [
+            {"q": "How does React 18 Concurrent Mode handle high-priority user input?", "a": "It uses startTransition to interrupt non-urgent renders, keeping typing and clicking responsive."},
+            {"q": "What is the benefit of React Server Components (RSC)?", "a": "RSCs execute solely on the server, zero client bundle size impact, direct DB access without client API boilerplate."}
+        ]
+        tips = [
+            "Keep state as local as possible; avoid premature global state libraries.",
+            "Use React DevTools Profiler to identify commit phase bottlenecks."
+        ]
+    else:
+        mechanics = [
+            f"Core Architecture: Fundamental execution model, state handling, and lifecycle of {clean_tech}.",
+            f"Concurrency & Scalability: Horizontal scaling boundaries and resource constraints in {clean_tech}.",
+            "Interface Contracts: Strong boundary typing, versioning, and backwards compatibility."
+        ]
+        pitfalls = [
+            f"Premature optimization without profiling real {clean_tech} bottlenecks in staging.",
+            "Ignoring failure domains and distributed split-brain scenarios.",
+            "Lack of observability, telemetry, and structured tracing."
+        ]
+        questions = [
+            {"q": f"How do you design for high availability in {clean_tech}?", "a": "Decouple services using asynchronous messaging queues, stateless service replicas, and idempotent retry policies."},
+            {"q": f"What is the most critical operational metric when monitoring {clean_tech}?", "a": "The 4 Golden Signals: Latency (p99), Traffic, Error Rate, and Saturation."}
+        ]
+        tips = [
+            f"Follow 12-factor application methodology when shipping {clean_tech} services to production.",
+            "Implement automated regression testing and canary rollouts."
+        ]
+
+    return {
+        "technology": clean_tech,
+        "seniority": clean_sen,
+        "core_mechanics": mechanics,
+        "frequent_pitfalls": pitfalls,
+        "high_probability_questions": questions,
+        "architecture_tips": tips
+    }
+
+
+
 

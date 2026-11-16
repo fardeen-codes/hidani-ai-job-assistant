@@ -1592,6 +1592,24 @@ class ApplicationPriorityRankingResponse(BaseModel):
     queue: List[ApplicationPriorityRankItem]
 
 
+class TechnicalCheatSheetRequest(BaseModel):
+    """Request payload to generate a technical interview cheat-sheet."""
+    technology: str = Field(..., description="Target tech (e.g., Python, Kubernetes, PostgreSQL, React)")
+    seniority: Optional[str] = Field("Senior", description="Target seniority tier")
+    focus_areas: Optional[List[str]] = Field(default_factory=list, description="Specific topics or niches")
+
+
+class TechnicalCheatSheetResponse(BaseModel):
+    """High-yield technical interview preparation cheat-sheet."""
+    technology: str
+    seniority: str
+    core_mechanics: List[str]
+    frequent_pitfalls: List[str]
+    high_probability_questions: List[Dict[str, str]]
+    architecture_tips: List[str]
+
+
+
 
 
 

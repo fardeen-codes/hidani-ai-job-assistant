@@ -41,6 +41,7 @@ from app.agents.orchestrator import (
     generate_post_interview_thank_you_email,
     generate_recruiter_followup_cadence,
     generate_salary_negotiation_script,
+    generate_technical_interview_cheatsheet,
     get_session_metrics,
     get_session_preferences,
     get_session_state,
@@ -202,6 +203,8 @@ from app.schemas import (
     StorageSpeedBenchmark,
     SystemDiagnosticsResponse,
     SystemHealthPingResponse,
+    TechnicalCheatSheetRequest,
+    TechnicalCheatSheetResponse,
     TierSalaryInsightsResponse,
     TitleNormalizationRequest,
     TitleNormalizationResponse,
@@ -916,6 +919,21 @@ async def generate_elevator_pitch_endpoint(payload: ElevatorPitchRequest):
         candidate_summary=payload.candidate_summary,
         candidate_skills=payload.candidate_skills,
         tone=payload.tone
+    )
+
+
+@app.post(
+    "/api/chat/cheatsheet",
+    response_model=TechnicalCheatSheetResponse,
+    summary="Generate high-yield technical interview preparation cheat-sheet",
+    tags=["Chat"]
+)
+async def generate_cheatsheet_endpoint(payload: TechnicalCheatSheetRequest):
+    """Generate high-yield mechanics, common traps, and interview Q&As for target technology."""
+    return generate_technical_interview_cheatsheet(
+        technology=payload.technology,
+        seniority=payload.seniority or "Senior",
+        focus_areas=payload.focus_areas
     )
 
 

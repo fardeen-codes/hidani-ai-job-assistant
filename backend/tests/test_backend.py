@@ -3282,6 +3282,25 @@ class BackendTestCase(unittest.TestCase):
             self.assertIn("priority_score", first_item)
             self.assertIn("recommended_action", first_item)
 
+    def test_technical_interview_cheatsheet_generator(self):
+        """Test generating technical interview preparation cheat-sheet."""
+        payload = {
+            "technology": "Python",
+            "seniority": "Staff",
+            "focus_areas": ["Concurrency", "Memory"]
+        }
+        res = self.client.post("/api/chat/cheatsheet", json=payload)
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["technology"], "Python")
+        self.assertEqual(data["seniority"], "Staff")
+        self.assertGreaterEqual(len(data["core_mechanics"]), 2)
+        self.assertGreaterEqual(len(data["frequent_pitfalls"]), 2)
+        self.assertGreaterEqual(len(data["high_probability_questions"]), 2)
+        self.assertGreaterEqual(len(data["architecture_tips"]), 1)
+        self.assertIn("q", data["high_probability_questions"][0])
+        self.assertIn("a", data["high_probability_questions"][0])
+
 
 if __name__ == "__main__":
     unittest.main()
