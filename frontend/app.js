@@ -128,6 +128,21 @@ function setupEventListeners() {
     elements.messageInput.style.height = Math.min(elements.messageInput.scrollHeight, 120) + 'px';
   });
 
+  // Quick prompt chips
+  const chipsContainer = document.getElementById('chatQuickPromptChips');
+  if (chipsContainer) {
+    chipsContainer.addEventListener('click', (e) => {
+      const chip = e.target.closest('.quick-chip');
+      if (!chip) return;
+      const prompt = chip.getAttribute('data-prompt');
+      if (prompt) {
+        elements.messageInput.value = prompt;
+        elements.messageInput.focus();
+        elements.messageInput.dispatchEvent(new Event('input'));
+      }
+    });
+  }
+
   // File upload triggers
   elements.attachBtn.addEventListener('click', () => elements.fileInput.click());
   elements.fileInput.addEventListener('change', (e) => {

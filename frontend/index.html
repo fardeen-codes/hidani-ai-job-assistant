@@ -262,6 +262,22 @@
   <!-- Sticky Bottom Input Bar -->
   <footer class="flex-shrink-0 bg-neutral-950 border-t border-neutral-800/80 p-3 sm:p-4 z-20">
     <div class="max-w-3xl mx-auto">
+      <!-- Quick Prompt Chips -->
+      <div class="flex items-center gap-1.5 overflow-x-auto pb-2 scrollbar-none text-[11px]" id="chatQuickPromptChips">
+        <button type="button" data-prompt="Help me negotiate a salary offer of $145,000 to $165,000 base at Acme Corp" class="quick-chip px-2.5 py-1 rounded-full bg-neutral-900 hover:bg-neutral-800 text-neutral-300 hover:text-white border border-neutral-800 hover:border-neutral-700 whitespace-nowrap transition-colors flex items-center gap-1">
+          <span>💼</span> Negotiate Offer
+        </button>
+        <button type="button" data-prompt="Draft a cold outreach message to an engineering recruiter on LinkedIn for a Staff Backend role" class="quick-chip px-2.5 py-1 rounded-full bg-neutral-900 hover:bg-neutral-800 text-neutral-300 hover:text-white border border-neutral-800 hover:border-neutral-700 whitespace-nowrap transition-colors flex items-center gap-1">
+          <span>✉️</span> Recruiter Outreach
+        </button>
+        <button type="button" data-prompt="Coach my behavioral interview answer using the STAR method for: Tell me about a time you handled a critical outage" class="quick-chip px-2.5 py-1 rounded-full bg-neutral-900 hover:bg-neutral-800 text-neutral-300 hover:text-white border border-neutral-800 hover:border-neutral-700 whitespace-nowrap transition-colors flex items-center gap-1">
+          <span>⭐</span> STAR Coach
+        </button>
+        <button type="button" data-prompt="What technical skills am I missing for Senior Cloud Architect positions?" class="quick-chip px-2.5 py-1 rounded-full bg-neutral-900 hover:bg-neutral-800 text-neutral-300 hover:text-white border border-neutral-800 hover:border-neutral-700 whitespace-nowrap transition-colors flex items-center gap-1">
+          <span>🎯</span> Skill Gap Analysis
+        </button>
+      </div>
+
       <form id="chatForm"
         class="relative flex items-center bg-neutral-900 border border-neutral-800 rounded-xl p-1.5 focus-within:border-neutral-600 transition-colors shadow-sm">
 
