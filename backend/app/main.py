@@ -116,6 +116,8 @@ from app.schemas import (
     DatabaseVacuumCollectionResult,
     DatabaseVacuumResponse,
     DisambiguationResponse,
+    ExperienceTierBreakdownResponse,
+    ExperienceTierMetric,
     FollowupTemplateResponse,
     InterviewDifficultyResponse,
     JobApplication,
@@ -210,6 +212,7 @@ from app.services.db_service import (
     get_company_profile,
     get_database_audit_log,
     get_database_storage_metrics,
+    get_experience_tier_breakdown,
     get_interview_questions,
     get_job_by_id,
     get_job_stats,
@@ -1197,6 +1200,18 @@ async def get_skill_correlations_endpoint(
 async def get_remote_work_breakdown_endpoint():
     """Analyze the distribution of remote, hybrid, and onsite job listings with average salary benchmarks."""
     return get_remote_work_breakdown()
+
+
+@app.get(
+    "/api/jobs/analytics/experience-tiers",
+    response_model=ExperienceTierBreakdownResponse,
+    summary="Get experience tier distribution analytics and salary ranges",
+    tags=["Jobs"]
+)
+async def get_experience_tier_breakdown_endpoint():
+    """Analyze the distribution of job listings across seniority tiers with top categories and compensation benchmarks."""
+    return get_experience_tier_breakdown()
+
 
 
 @app.get("/api/jobs/export/csv", summary="Export jobs as CSV", tags=["Jobs"])

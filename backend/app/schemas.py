@@ -1251,6 +1251,24 @@ class SoftSkillsResponse(BaseModel):
     soft_skills: List[str] = Field(default_factory=list)
 
 
+class ExperienceTierMetric(BaseModel):
+    """Distribution metrics for an experience level tier."""
+    tier: str = Field(description="Tier name (e.g. 'Entry-Level', 'Mid-Level', 'Senior', 'Lead / Staff')")
+    job_count: int
+    percentage: float
+    top_categories: List[str] = Field(default_factory=list)
+    avg_min_salary: Optional[float] = None
+    avg_max_salary: Optional[float] = None
+
+
+class ExperienceTierBreakdownResponse(BaseModel):
+    """Aggregate distribution breakdown of job postings across experience tiers."""
+    status: str = Field(default="success")
+    total_jobs: int
+    tiers: List[ExperienceTierMetric] = Field(default_factory=list)
+
+
+
 
 
 

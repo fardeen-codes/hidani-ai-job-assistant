@@ -2929,6 +2929,24 @@ class BackendTestCase(unittest.TestCase):
             if sal:
                 self.assertEqual(sal.get("currency"), "EUR")
 
+    def test_experience_tier_breakdown_analytics(self):
+        """Test experience tier distribution breakdown and salary metrics."""
+        res = self.client.get("/api/jobs/analytics/experience-tiers")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "success")
+        self.assertGreater(data["total_jobs"], 0)
+        
+        tier_names = {t["tier"] for t in data["tiers"]}
+        self.assertIn("Entry-Level", tier_names)
+        self.assertIn("Mid-Level", tier_names)
+        self.assertIn("Senior", tier_names)
+        
+        for t in data["tiers"]:
+            self.assertGreaterEqual(t["job_count"], 0)
+            self.assertGreaterEqual(t["percentage"], 0.0)
+            self.assertIsInstance(t["top_categories"], list)
+
 
 if __name__ == "__main__":
     unittest.main()

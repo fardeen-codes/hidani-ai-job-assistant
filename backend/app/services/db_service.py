@@ -4012,6 +4012,85 @@ def get_remote_work_breakdown() -> Dict[str, Any]:
     }
 
 
+def get_experience_tier_breakdown() -> Dict[str, Any]:
+    """
+    Compute distribution of jobs, top categories, and salary ranges grouped by experience tier.
+    """
+    jobs = load_jobs()
+    total_jobs = len(jobs)
+    if total_jobs == 0:
+        return {
+            "status": "success",
+            "total_jobs": 0,
+            "tiers": []
+        }
+
+    groups: Dict[str, List[Dict[str, Any]]] = {
+        "Entry-Level": [],
+        "Mid-Level": [],
+        "Senior": [],
+        "Lead / Staff": [],
+        "Executive": []
+    }
+
+    for job in jobs:
+        exp_raw = (job.get("experience") or "").lower()
+        title_raw = (job.get("title") or "").lower()
+
+        if any(w in title_raw for w in ["head", "director", "vp", "chief", "cto", "ceo"]):
+            groups["Executive"].append(job)
+        elif any(w in title_raw for w in ["lead", "staff", "principal", "architect"]) or "lead" in exp_raw:
+            groups["Lead / Staff"].append(job)
+        elif "senior" in exp_raw or any(w in title_raw for w in ["senior", "sr"]):
+            groups["Senior"].append(job)
+        elif "entry" in exp_raw or any(w in title_raw for w in ["intern", "junior", "graduate"]):
+            groups["Entry-Level"].append(job)
+        else:
+            groups["Mid-Level"].append(job)
+
+    results = []
+    for tier_name, tier_jobs in groups.items():
+        count = len(tier_jobs)
+        pct = round((count / total_jobs) * 100.0, 1) if total_jobs > 0 else 0.0
+
+        cat_counts = Counter()
+        min_sals = []
+        max_sals = []
+        for j in tier_jobs:
+            cat = j.get("category") or "Engineering"
+            cat_counts[cat] += 1
+            sal = j.get("salary")
+            if isinstance(sal, dict):
+                min_s = sal.get("min_salary")
+                max_s = sal.get("max_salary")
+                p = sal.get("period", "year")
+                mult = 2000.0 if p == "hour" else (12.0 if p == "month" else 1.0)
+                if min_s:
+                    min_sals.append(min_s * mult)
+                if max_s:
+                    max_sals.append(max_s * mult)
+
+        top_cats = [c for c, _ in cat_counts.most_common(3)]
+        avg_min = round(sum(min_sals) / len(min_sals), 0) if min_sals else None
+        avg_max = round(sum(max_sals) / len(max_sals), 0) if max_sals else None
+
+        results.append({
+            "tier": tier_name,
+            "job_count": count,
+            "percentage": pct,
+            "top_categories": top_cats,
+            "avg_min_salary": avg_min,
+            "avg_max_salary": avg_max
+        })
+
+    return {
+        "status": "success",
+        "total_jobs": total_jobs,
+        "tiers": results
+    }
+
+
+
 def get_application_channel_analytics() -> Dict[str, Any]:
     """
     Evaluate conversion rates and performance across different application submission sources.
