@@ -69,6 +69,11 @@ const elements = {
   diagSessionId: document.getElementById('diagSessionId'),
   copySessionIdBtn: document.getElementById('copySessionIdBtn'),
 
+  // Shortcuts Modal Elements
+  shortcutsBtn: document.getElementById('shortcutsBtn'),
+  shortcutsModal: document.getElementById('shortcutsModal'),
+  closeShortcutsBtn: document.getElementById('closeShortcutsBtn'),
+
   // Profile Drawer Elements
   profileDrawer: document.getElementById('profileDrawer'),
   closeDrawerBtn: document.getElementById('closeDrawerBtn'),
@@ -246,10 +251,29 @@ function setupEventListeners() {
   // Reset Session
   elements.resetChatBtn.addEventListener('click', () => resetSession());
 
-  // Close open modals and drawers on Escape key
+  // Shortcuts Modal
+  if (elements.shortcutsBtn) {
+    elements.shortcutsBtn.addEventListener('click', () => openShortcutsModal());
+  }
+  if (elements.closeShortcutsBtn) {
+    elements.closeShortcutsBtn.addEventListener('click', () => closeShortcutsModal());
+  }
+  if (elements.shortcutsModal) {
+    elements.shortcutsModal.addEventListener('click', (e) => {
+      if (e.target === elements.shortcutsModal) closeShortcutsModal();
+    });
+  }
+
+  // Global keydown shortcuts
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       closeAllModals();
+    } else if (e.key === '?' && !['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) {
+      e.preventDefault();
+      openShortcutsModal();
+    } else if (e.key === '/' && !['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) {
+      e.preventDefault();
+      elements.messageInput.focus();
     }
   });
 
@@ -1162,11 +1186,20 @@ function closeProfileDrawer() {
   elements.profileDrawer.classList.add('hidden');
 }
 
+function openShortcutsModal() {
+  if (elements.shortcutsModal) elements.shortcutsModal.classList.remove('hidden');
+}
+
+function closeShortcutsModal() {
+  if (elements.shortcutsModal) elements.shortcutsModal.classList.add('hidden');
+}
+
 function closeAllModals() {
   closeJobsModal();
   closeApplicationsModal();
   closeDiagnosticsModal();
   closeProfileDrawer();
+  closeShortcutsModal();
 }
 
 window.withdrawApplicationFromModal = async (jobId) => {
