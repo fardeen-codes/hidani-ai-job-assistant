@@ -560,6 +560,43 @@ async function handleSendMessage() {
 
   // Render User Message
   appendUserMessage(text);
+
+  // Check for client-side /cheatsheet slash command
+  if (text.toLowerCase().startsWith('/cheatsheet')) {
+    const tech = text.substring(11).trim() || 'Python';
+    setSending(true);
+    const typingIndicatorId = showTypingIndicator();
+    scrollToBottom();
+    try {
+      showToast(`Generating ${tech} cheatsheet...`, 'info');
+      const res = await fetch(`${API_BASE}/chat/cheatsheet`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ technology: tech, seniority: 'Senior' })
+      });
+      removeTypingIndicator(typingIndicatorId);
+      if (res.ok) {
+        const data = await res.json();
+        const mechanicsList = (data.core_mechanics || []).map(m => `- ${escapeHtml(m)}`).join('\n');
+        const pitfallsList = (data.frequent_pitfalls || []).map(p => `- ⚠️ ${escapeHtml(p)}`).join('\n');
+        const qasList = (data.high_probability_questions || []).map(q => `**Q: ${escapeHtml(q.q)}**\n> ${escapeHtml(q.a)}`).join('\n\n');
+        const tipsList = (data.architecture_tips || []).map(t => `- 💡 ${escapeHtml(t)}`).join('\n');
+        appendAssistantMessage(
+          `### ⚡ Technical Interview Cheat-Sheet: ${escapeHtml(data.technology)} (${escapeHtml(data.seniority)})\n\n` +
+          `#### ⚙️ Core Mechanics\n${mechanicsList}\n\n` +
+          `#### 🚫 High-Risk Traps & Pitfalls\n${pitfallsList}\n\n` +
+          `#### 🎯 Target Interview Q&As\n${qasList}\n\n` +
+          `#### 🏗️ Architecture Tips\n${tipsList}`
+        );
+        showToast('Cheatsheet generated!', 'success');
+        setSending(false);
+        return;
+      }
+    } catch (e) {
+      removeTypingIndicator(typingIndicatorId);
+    }
+  }
+
   setSending(true);
 
   // Show typing indicator
