@@ -370,10 +370,19 @@
           <p class="text-xs text-neutral-400 mt-0.5" id="appsModalSubtitle">Recorded submissions in persistent storage
           </p>
         </div>
-        <button id="closeAppsModalBtn"
-          class="px-2.5 py-1 text-xs text-neutral-400 hover:text-white rounded hover:bg-neutral-800 border border-neutral-800">
-          Close
-        </button>
+        <div class="flex items-center gap-2">
+          <button id="exportPortfolioJsonBtn"
+            class="px-2.5 py-1 text-xs text-neutral-300 hover:text-white rounded bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 flex items-center gap-1.5 transition-colors">
+            <svg class="w-3.5 h-3.5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+            </svg>
+            Export JSON
+          </button>
+          <button id="closeAppsModalBtn"
+            class="px-2.5 py-1 text-xs text-neutral-400 hover:text-white rounded hover:bg-neutral-800 border border-neutral-800">
+            Close
+          </button>
+        </div>
       </div>
 
       <!-- Status Filter Pills -->

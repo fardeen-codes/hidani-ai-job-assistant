@@ -231,6 +231,29 @@ function setupEventListeners() {
     if (e.target === elements.applicationsModal) closeApplicationsModal();
   });
 
+  const exportPortfolioBtn = document.getElementById('exportPortfolioJsonBtn');
+  if (exportPortfolioBtn) {
+    exportPortfolioBtn.addEventListener('click', async () => {
+      try {
+        const res = await fetch(`${API_BASE}/applications/export/portfolio`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `application_portfolio_${new Date().toISOString().slice(0, 10)}.json`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        showToast('Application portfolio exported as JSON', 'success');
+      } catch (err) {
+        showToast(`Portfolio export failed: ${err.message}`, 'error');
+      }
+    });
+  }
+
   const appStatusFilterBar = document.getElementById('appsStatusFilterBar');
   if (appStatusFilterBar) {
     appStatusFilterBar.addEventListener('click', (e) => {
