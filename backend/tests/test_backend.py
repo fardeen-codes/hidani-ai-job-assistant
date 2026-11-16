@@ -3041,6 +3041,25 @@ class BackendTestCase(unittest.TestCase):
         self.assertIn("Result:", data["full_structured_answer"])
         self.assertGreaterEqual(len(data["coaching_tips"]), 3)
 
+    def test_recruiter_followup_cadence_tool(self):
+        """Test generating multi-step cadence intervals and templates for recruiter follow-ups."""
+        res = self.client.get("/api/chat/tools/followup-cadence?company=Stripe&role_title=Staff+Engineer&current_stage=applied")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "success")
+        self.assertEqual(data["company"], "Stripe")
+        self.assertEqual(data["role_title"], "Staff Engineer")
+        self.assertEqual(data["total_steps"], 3)
+        self.assertEqual(len(data["recommended_steps"]), 3)
+        self.assertEqual(data["recommended_steps"][0]["step_number"], 1)
+        self.assertGreaterEqual(data["recommended_steps"][0]["days_after_event"], 1)
+
+        # Interview stage
+        res_int = self.client.get("/api/chat/tools/followup-cadence?company=Stripe&role_title=Staff+Engineer&current_stage=interview")
+        self.assertEqual(res_int.status_code, 200)
+        data_int = res_int.json()
+        self.assertIn("Interview", data_int["recommended_steps"][0]["step_name"])
+
 
 if __name__ == "__main__":
     unittest.main()

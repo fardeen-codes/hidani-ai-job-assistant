@@ -1307,3 +1307,83 @@ def coach_star_behavioral_answer(
     }
 
 
+def generate_recruiter_followup_cadence(
+    company: str,
+    role_title: str,
+    current_stage: str = "applied"
+) -> Dict[str, Any]:
+    """
+    Generate an optimal multi-step recruiter follow-up schedule and tailored email templates.
+    """
+    clean_company = (company or "Target Company").strip()
+    clean_role = (role_title or "Software Engineer").strip()
+    stage = (current_stage or "applied").strip().lower()
+
+    if stage in ("interview", "interviews"):
+        steps = [
+            {
+                "step_number": 1,
+                "days_after_event": 1,
+                "step_name": "Post-Interview Thank You Note",
+                "recommended_channel": "Email",
+                "subject_line": f"Thank You — {clean_role} Interview at {clean_company}",
+                "template_body": f"Hi Team,\n\nThank you for the thoughtful conversation today regarding the {clean_role} role at {clean_company}. I enjoyed learning more about your technical roadmap and team goals.\n\nLooking forward to hearing about the next steps!\n\nBest regards,\nCandidate"
+            },
+            {
+                "step_number": 2,
+                "days_after_event": 7,
+                "step_name": "Stage Status Check-in",
+                "recommended_channel": "Email",
+                "subject_line": f"Checking In — {clean_role} Application at {clean_company}",
+                "template_body": f"Hi Team,\n\nI hope your week is going well! I am writing to check in on the status of my {clean_role} application following our recent discussion. Please let me know if there are any additional materials or code samples I can provide.\n\nWarm regards,\nCandidate"
+            },
+            {
+                "step_number": 3,
+                "days_after_event": 14,
+                "step_name": "Final Gentle Ping & Timeline Sync",
+                "recommended_channel": "Email",
+                "subject_line": f"Following Up — {clean_role} Role at {clean_company}",
+                "template_body": f"Hi Team,\n\nI wanted to gently follow up on our interview for {clean_role}. I remain very enthusiastic about {clean_company}'s engineering work. If the team has moved in another direction, I completely understand and appreciate your feedback.\n\nBest regards,\nCandidate"
+            }
+        ]
+        advisory = "For interview follow-ups, send Step 1 within 24 hours while discussions are fresh. Avoid messaging more frequently than once every 5-7 business days."
+    else:
+        steps = [
+            {
+                "step_number": 1,
+                "days_after_event": 5,
+                "step_name": "Initial Application Confirmation",
+                "recommended_channel": "Email / LinkedIn",
+                "subject_line": f"Application Follow-up: {clean_role} — {clean_company}",
+                "template_body": f"Hi Recruiting Team,\n\nI recently submitted my application for the {clean_role} position at {clean_company} and wanted to briefly reiterate my excitement for the role. With my background in high-scale systems, I would love the chance to connect.\n\nBest regards,\nCandidate"
+            },
+            {
+                "step_number": 2,
+                "days_after_event": 12,
+                "step_name": "Mid-Cadence Inbound Check",
+                "recommended_channel": "Email",
+                "subject_line": f"Checking In: {clean_role} Opening at {clean_company}",
+                "template_body": f"Hi Team,\n\nI am writing to inquire if you are still actively reviewing candidates for the {clean_role} vacancy. I am happy to answer any questions or provide a quick overview of recent project deliverables.\n\nWarm regards,\nCandidate"
+            },
+            {
+                "step_number": 3,
+                "days_after_event": 21,
+                "step_name": "Final Polite Close",
+                "recommended_channel": "Email",
+                "subject_line": f"Status Update on {clean_role} Application — {clean_company}",
+                "template_body": f"Hi Team,\n\nI wanted to check one last time regarding my submission for {clean_role}. If the position has been filled, thank you for your consideration, and I hope we can stay in touch for future openings.\n\nBest,\nCandidate"
+            }
+        ]
+        advisory = "For submitted applications, allow recruiters 4-5 business days before the first touchpoint. Always keep check-ins concise, polite, and value-oriented."
+
+    return {
+        "status": "success",
+        "company": clean_company,
+        "role_title": clean_role,
+        "current_stage": stage,
+        "total_steps": len(steps),
+        "recommended_steps": steps,
+        "advisory_note": advisory
+    }
+
+

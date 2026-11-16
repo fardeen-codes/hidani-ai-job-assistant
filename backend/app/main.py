@@ -29,6 +29,7 @@ from app.agents.orchestrator import (
     evaluate_intent_confidence_and_clarification,
     export_session_transcript,
     generate_cold_outreach_message,
+    generate_recruiter_followup_cadence,
     generate_salary_negotiation_script,
     get_session_metrics,
     get_session_preferences,
@@ -122,6 +123,8 @@ from app.schemas import (
     ExperienceTierBreakdownResponse,
     ExperienceTierMetric,
     FollowupTemplateResponse,
+    FollowupCadenceStep,
+    FollowupCadenceRecommendationResponse,
     InterviewDifficultyResponse,
     InterviewDifficultyFeedbackRequest,
     InterviewDifficultyFeedbackResponse,
@@ -794,6 +797,24 @@ async def coach_star_answer_endpoint(payload: StarAnswerCoachRequest):
         target_role=payload.target_role
     )
 
+
+@app.get(
+    "/api/chat/tools/followup-cadence",
+    response_model=FollowupCadenceRecommendationResponse,
+    summary="Get optimal recruiter follow-up cadence schedule and drafts",
+    tags=["Chat"]
+)
+async def get_followup_cadence_endpoint(
+    company: str = Query(..., description="Target company"),
+    role_title: str = Query(..., description="Target role title"),
+    current_stage: str = Query("applied", description="Current stage: applied or interview")
+):
+    """Generate multi-stage recruiter follow-up schedule and pre-written message templates."""
+    return generate_recruiter_followup_cadence(
+        company=company,
+        role_title=role_title,
+        current_stage=current_stage
+    )
 
 
 @app.get(

@@ -540,6 +540,27 @@ class FollowupTemplateResponse(BaseModel):
     body: str = Field(description="Polite, personalized email body text")
 
 
+class FollowupCadenceStep(BaseModel):
+    """Single step in an automated or recommended outreach cadence."""
+    step_number: int = Field(description="Sequential cadence step order")
+    days_after_event: int = Field(description="Days to wait before sending this follow-up")
+    step_name: str = Field(description="Step title, e.g. First Follow-Up, Second Check-In, Final Outreach")
+    recommended_channel: str = Field(default="Email", description="Recommended channel: Email, LinkedIn, etc.")
+    subject_line: str = Field(description="Suggested email subject line")
+    template_body: str = Field(description="Template message body with appropriate tone and urgency")
+
+
+class FollowupCadenceRecommendationResponse(BaseModel):
+    """Complete cadence recommendation pipeline with scheduling and message drafts."""
+    status: str = Field(default="success")
+    company: str = Field(description="Target company name")
+    role_title: str = Field(description="Target role title")
+    current_stage: str = Field(description="Pipeline stage being followed up on")
+    total_steps: int = Field(description="Total steps in recommended cadence")
+    recommended_steps: List[FollowupCadenceStep] = Field(default_factory=list, description="Cadence timeline steps")
+    advisory_note: str = Field(description="Best-practice guidance for cadence outreach")
+
+
 class ApplicationVelocityResponse(BaseModel):
     """Application velocity metrics tracking submission rate and momentum."""
     total_applied: int = Field(description="Total lifetime job applications submitted")
