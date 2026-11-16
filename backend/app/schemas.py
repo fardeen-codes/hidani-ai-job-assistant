@@ -1382,6 +1382,23 @@ class DatabaseIntegrityReportResponse(BaseModel):
     checked_at: str = Field(description="Timestamp when integrity scan was completed")
 
 
+class SchemaMigrationEntry(BaseModel):
+    """Database schema evolution migration record."""
+    version: str = Field(description="Semantic migration version identifier")
+    name: str = Field(description="Migration purpose or name")
+    applied_at: str = Field(description="Timestamp when migration was applied")
+    description: str = Field(description="Details on schema transformation applied")
+
+
+class DatabaseSchemaVersionResponse(BaseModel):
+    """Collection schema evolution and migration manifest."""
+    status: str = Field(default="success")
+    current_schema_version: str = Field(description="Current active database schema version")
+    is_up_to_date: bool = Field(description="Whether all available schema migrations are applied")
+    total_migrations_applied: int = Field(description="Count of successfully applied migrations")
+    migrations: List[SchemaMigrationEntry] = Field(default_factory=list, description="Chronological migration list")
+
+
 class StorageSpeedBenchmark(BaseModel):
     """Storage I/O write and read throughput benchmarking."""
     write_speed_mb_s: float

@@ -3184,6 +3184,20 @@ class BackendTestCase(unittest.TestCase):
         self.assertGreaterEqual(data["remaining_count"], 0)
         self.assertIn("Successfully pruned", data["message"])
 
+    def test_database_schema_migration_tracker(self):
+        """Test retrieving schema migration versions, compatibility, and change logs."""
+        res = self.client.get("/api/admin/db/schema/version")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "success")
+        self.assertTrue(data["is_up_to_date"])
+        self.assertGreaterEqual(data["total_migrations_applied"], 3)
+        self.assertTrue(len(data["current_schema_version"]) > 0)
+        for m in data["migrations"]:
+            self.assertIn("version", m)
+            self.assertIn("name", m)
+            self.assertIn("applied_at", m)
+
 
 if __name__ == "__main__":
     unittest.main()

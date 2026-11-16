@@ -126,6 +126,8 @@ from app.schemas import (
     DatabaseIntegrityReportResponse,
     DatabaseRepairResponse,
     DatabaseRestoreResponse,
+    DatabaseSchemaVersionResponse,
+    SchemaMigrationEntry,
     DatabaseStorageMetricsResponse,
     DatabaseVacuumCollectionResult,
     DatabaseVacuumResponse,
@@ -245,6 +247,7 @@ from app.services.db_service import (
     get_company_hiring_surges,
     get_company_profile,
     get_database_audit_log,
+    get_database_schema_migrations,
     get_database_storage_metrics,
     get_experience_tier_breakdown,
     get_interview_questions,
@@ -2708,6 +2711,17 @@ async def prune_database_audit_log_endpoint(payload: AuditLogPruneRequest):
         "remaining_count": remaining,
         "message": f"Successfully pruned {pruned} audit log entries. {remaining} entries retained."
     }
+
+
+@app.get(
+    "/api/admin/db/schema/version",
+    response_model=DatabaseSchemaVersionResponse,
+    summary="Get database collection schema version and migration history",
+    tags=["Database Admin"]
+)
+async def get_schema_version_endpoint():
+    """Retrieve database schema evolution status, applied migrations, and version compatibility."""
+    return get_database_schema_migrations()
 
 
 @app.get(
