@@ -2880,6 +2880,29 @@ class BackendTestCase(unittest.TestCase):
         inv_res = self.client.post("/api/profile/links", json={"label": "Bad", "url": "not-a-url"})
         self.assertEqual(inv_res.status_code, 400)
 
+    def test_candidate_soft_skills_lifecycle(self):
+        """Test candidate soft skills and interpersonal strengths tracking."""
+        payload = {
+            "soft_skills": [
+                "Cross-Functional Team Leadership",
+                "Technical Mentorship",
+                "Incident Management & Postmortems",
+                "System Architecture Communication"
+            ]
+        }
+        put_res = self.client.put("/api/profile/soft-skills", json=payload)
+        self.assertEqual(put_res.status_code, 200)
+        data = put_res.json()
+        self.assertEqual(data["status"], "success")
+        self.assertEqual(data["total_skills"], 4)
+        self.assertIn("Technical Mentorship", data["soft_skills"])
+
+        get_res = self.client.get("/api/profile/soft-skills")
+        self.assertEqual(get_res.status_code, 200)
+        get_data = get_res.json()
+        self.assertEqual(get_data["total_skills"], 4)
+        self.assertIn("Incident Management & Postmortems", get_data["soft_skills"])
+
 
 if __name__ == "__main__":
     unittest.main()

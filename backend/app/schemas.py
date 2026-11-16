@@ -1239,6 +1239,19 @@ class CandidatePortfolioLinksResponse(BaseModel):
     links: List[CandidatePortfolioLinkItem] = Field(default_factory=list)
 
 
+class SoftSkillsUpdateRequest(BaseModel):
+    """Payload to update candidate soft skills and interpersonal strengths."""
+    soft_skills: List[str] = Field(..., description="List of interpersonal strengths e.g. Cross-Functional Collaboration, Mentorship, Incident Management")
+
+
+class SoftSkillsResponse(BaseModel):
+    """Candidate soft skills and strengths response."""
+    status: str = Field(default="success")
+    total_skills: int
+    soft_skills: List[str] = Field(default_factory=list)
+
+
+
 
 
 

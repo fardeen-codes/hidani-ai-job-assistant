@@ -149,6 +149,8 @@ from app.schemas import (
     SkillCorrelationResponse,
     SkillGapAnalysisResponse,
     SkillSalaryInsightsResponse,
+    SoftSkillsResponse,
+    SoftSkillsUpdateRequest,
     StaleJobItem,
     StaleJobsResponse,
     StorageSpeedBenchmark,
@@ -202,6 +204,7 @@ from app.services.db_service import (
     get_candidate_location_preferences,
     get_candidate_portfolio_links,
     get_candidate_salary_preferences,
+    get_candidate_soft_skills,
     get_candidate_work_preferences,
     get_company_hiring_surges,
     get_company_profile,
@@ -248,6 +251,7 @@ from app.services.db_service import (
     update_candidate_languages,
     update_candidate_location_preferences,
     update_candidate_salary_preferences,
+    update_candidate_soft_skills,
     update_candidate_work_preferences,
     update_job_bookmark,
     update_saved_search,
@@ -632,6 +636,35 @@ async def delete_portfolio_link_endpoint(link_id: str):
     if not success:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=message)
     return {"status": "success", "message": message}
+
+
+@app.get(
+    "/api/profile/soft-skills",
+    response_model=SoftSkillsResponse,
+    summary="Get candidate soft skills and interpersonal strengths",
+    tags=["Resume"]
+)
+async def get_soft_skills_endpoint():
+    """Retrieve all candidate recorded soft skills and collaboration strengths."""
+    skills = get_candidate_soft_skills()
+    return SoftSkillsResponse(
+        status="success",
+        total_skills=len(skills),
+        soft_skills=skills
+    )
+
+
+@app.put(
+    "/api/profile/soft-skills",
+    response_model=SoftSkillsResponse,
+    summary="Update candidate soft skills and strengths",
+    tags=["Resume"]
+)
+async def update_soft_skills_endpoint(payload: SoftSkillsUpdateRequest):
+    """Update and persist candidate interpersonal and leadership strengths."""
+    res = update_candidate_soft_skills(payload.soft_skills)
+    return SoftSkillsResponse(**res)
+
 
 
 

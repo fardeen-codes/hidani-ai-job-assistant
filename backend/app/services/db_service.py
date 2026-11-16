@@ -3612,6 +3612,35 @@ def delete_candidate_portfolio_link(link_id: str) -> Tuple[bool, str]:
     return True, f"Portfolio link '{clean_id}' deleted successfully."
 
 
+def get_candidate_soft_skills() -> List[str]:
+    """Retrieve candidate recorded soft skills and interpersonal competencies."""
+    profile = load_candidate_profile()
+    return profile.get("soft_skills", [])
+
+
+def update_candidate_soft_skills(soft_skills: List[str]) -> Dict[str, Any]:
+    """Update and persist candidate soft skills."""
+    seen = set()
+    cleaned = []
+    for s in soft_skills:
+        clean = (s or "").strip()
+        if clean and clean.lower() not in seen:
+            seen.add(clean.lower())
+            cleaned.append(clean)
+
+    with _db_lock:
+        profile = load_candidate_profile()
+        profile["soft_skills"] = cleaned
+        save_candidate_profile(profile)
+
+    return {
+        "status": "success",
+        "total_skills": len(cleaned),
+        "soft_skills": cleaned
+    }
+
+
+
 
 
 
