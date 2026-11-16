@@ -875,6 +875,7 @@ async def get_jobs_list(
     tier: Optional[str] = Query(None, description="Optional standardized career tier filter (Entry-Level, Mid-Level, Senior, Lead)"),
     has_salary: Optional[bool] = Query(None, description="Optional filter for jobs with disclosed compensation"),
     min_salary: Optional[float] = Query(None, ge=0, description="Optional minimum annual salary filter"),
+    salary_currency: Optional[str] = Query(None, description="Optional currency filter (USD, EUR, GBP)"),
     sort_by: Optional[str] = Query(None, description="Optional field to sort by (title, company, experience, location, salary)"),
     order: Optional[str] = Query("asc", description="Sort direction (asc, desc)"),
     limit: int = Query(20, ge=1, le=100),
@@ -892,7 +893,7 @@ async def get_jobs_list(
     clean_sort = (sort_by or "").strip().lower()
     is_desc = (order or "asc").strip().lower() == "desc"
 
-    if clean_query or clean_loc or clean_exp or clean_company or clean_category or clean_freshness or clean_mode or clean_tier or clean_sort or has_salary is not None or min_salary is not None:
+    if clean_query or clean_loc or clean_exp or clean_company or clean_category or clean_freshness or clean_mode or clean_tier or clean_sort or has_salary is not None or min_salary is not None or salary_currency:
         all_jobs = search_jobs(
             query=clean_query or None,
             location=clean_loc or None,
@@ -904,6 +905,7 @@ async def get_jobs_list(
             tier=clean_tier or None,
             has_salary=has_salary,
             min_salary=min_salary,
+            salary_currency=salary_currency,
             sort_by=clean_sort or None,
             order="desc" if is_desc else "asc",
             limit=None

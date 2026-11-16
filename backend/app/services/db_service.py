@@ -532,6 +532,7 @@ def search_jobs(
     tier: Optional[str] = None,
     has_salary: Optional[bool] = None,
     min_salary: Optional[float] = None,
+    salary_currency: Optional[str] = None,
     sort_by: Optional[str] = None,
     order: Optional[str] = "asc",
     limit: Optional[int] = 10
@@ -612,16 +613,27 @@ def search_jobs(
         # Strict minimum salary filter
         if min_salary is not None:
             job_sal = job.get("salary")
-            if not job_sal:
-                continue
-            eff_sal = job_sal.get("max_salary") or job_sal.get("min_salary") or 0.0
-            p = job_sal.get("period", "year")
-            if p == "hour":
-                eff_sal *= 2000.0
-            elif p == "month":
-                eff_sal *= 12.0
+            eff_sal = 0.0
+            if job_sal:
+                eff_sal = job_sal.get("max_salary") or job_sal.get("min_salary") or 0.0
+                p = job_sal.get("period", "year")
+                if p == "hour":
+                    eff_sal *= 2000.0
+                elif p == "month":
+                    eff_sal *= 12.0
+            elif job.get("salary_max") or job.get("salary_min"):
+                eff_sal = float(job.get("salary_max") or job.get("salary_min") or 0.0)
+
             if eff_sal < min_salary:
                 continue
+
+        # Strict currency filter
+        if salary_currency:
+            clean_curr = salary_currency.strip().upper()
+            job_sal = job.get("salary")
+            if not job_sal or (job_sal.get("currency") or "").upper() != clean_curr:
+                continue
+
 
         score = 0.0
 

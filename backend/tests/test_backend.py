@@ -2903,6 +2903,32 @@ class BackendTestCase(unittest.TestCase):
         self.assertEqual(get_data["total_skills"], 4)
         self.assertIn("Incident Management & Postmortems", get_data["soft_skills"])
 
+    def test_jobs_search_with_min_salary_filter(self):
+        """Test searching jobs filtered by minimum salary threshold and currency."""
+        # 1. Query with min_salary
+        res = self.client.get("/api/jobs?min_salary=70000&limit=10")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertIn("jobs", data)
+        for job in data["jobs"]:
+            sal = job.get("salary")
+            if sal:
+                eff = sal.get("max_salary") or sal.get("min_salary") or 0.0
+                if sal.get("period") == "month":
+                    eff *= 12.0
+                elif sal.get("period") == "hour":
+                    eff *= 2000.0
+                self.assertGreaterEqual(eff, 70000)
+
+        # 2. Query with currency filter
+        res_curr = self.client.get("/api/jobs?salary_currency=EUR&limit=5")
+        self.assertEqual(res_curr.status_code, 200)
+        data_curr = res_curr.json()
+        for job in data_curr["jobs"]:
+            sal = job.get("salary")
+            if sal:
+                self.assertEqual(sal.get("currency"), "EUR")
+
 
 if __name__ == "__main__":
     unittest.main()
