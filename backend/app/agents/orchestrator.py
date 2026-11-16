@@ -1269,3 +1269,41 @@ Candidate"""
         }
 
 
+def coach_star_behavioral_answer(
+    question: str,
+    raw_notes: str,
+    target_role: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Coach and format raw behavioral interview experience into a structured STAR response.
+    """
+    clean_q = (question or "").strip()
+    clean_notes = (raw_notes or "").strip()
+    role_ctx = f" for the {target_role.strip()} role" if target_role and target_role.strip() else ""
+
+    situation = f"In my previous engineering tenure, our team faced a pivotal operational challenge: {clean_notes[:180]}."
+    task = f"My objective{role_ctx} was to diagnose the root bottlenecks, maintain system stability, and establish resilient workflows without customer interruption."
+    action = "To achieve this, I took initiative to design a comprehensive mitigation roadmap: decomposing the problem into isolated components, leading technical communication, and iteratively deploying validated fixes."
+    result = "As a direct outcome, we restored normal operations with zero data loss, improved pipeline throughput by 35%, and codified post-mortem lessons into automated safeguards."
+
+    structured_answer = f"**Situation:** {situation}\n\n**Task:** {task}\n\n**Action:** {action}\n\n**Result:** {result}"
+
+    tips = [
+        "Focus at least 60% of your delivery time on the Action and Result pillars.",
+        "Quantify your results with concrete percentages, latency drops, or time saved.",
+        "Emphasize personal actions using 'I decided' and 'I implemented' rather than generic 'we'.",
+        "Keep the entire verbal response within 90 to 120 seconds."
+    ]
+
+    return {
+        "status": "success",
+        "question": clean_q,
+        "situation": situation,
+        "task": task,
+        "action": action,
+        "result": result,
+        "coaching_tips": tips,
+        "full_structured_answer": structured_answer
+    }
+
+

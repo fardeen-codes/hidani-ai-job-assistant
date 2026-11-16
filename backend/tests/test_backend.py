@@ -3023,6 +3023,24 @@ class BackendTestCase(unittest.TestCase):
             self.assertGreaterEqual(stage_m["count"], 0)
             self.assertGreaterEqual(stage_m["avg_days_in_stage"], 0.0)
 
+    def test_star_behavioral_answer_coach(self):
+        """Test formatting unstructured behavioral story into STAR components with coaching tips."""
+        payload = {
+            "question": "Tell me about a difficult outage you resolved",
+            "raw_notes": "Database replication lag caused high checkout latency on Black Friday. We isolated shard 3, re-routed traffic, and updated indexes.",
+            "target_role": "Staff Infrastructure Engineer"
+        }
+        res = self.client.post("/api/chat/coach/star", json=payload)
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "success")
+        self.assertEqual(data["question"], payload["question"])
+        self.assertIn("Situation:", data["full_structured_answer"])
+        self.assertIn("Task:", data["full_structured_answer"])
+        self.assertIn("Action:", data["full_structured_answer"])
+        self.assertIn("Result:", data["full_structured_answer"])
+        self.assertGreaterEqual(len(data["coaching_tips"]), 3)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -374,6 +374,25 @@ class ApplicationNotesUpdateRequest(BaseModel):
     notes: str = Field(..., max_length=2000, description="Candidate notes, interview logs, or remarks")
 
 
+class StarAnswerCoachRequest(BaseModel):
+    """Payload to structure raw behavioral interview response into STAR format."""
+    question: str = Field(..., min_length=5, description="Behavioral interview question being answered")
+    raw_notes: str = Field(..., min_length=10, description="Unstructured notes, context, or draft story")
+    target_role: Optional[str] = Field(None, description="Optional target job role for tailored coaching")
+
+
+class StarAnswerCoachResponse(BaseModel):
+    """Structured STAR framework response and actionable coaching tips."""
+    status: str = Field(default="success")
+    question: str
+    situation: str
+    task: str
+    action: str
+    result: str
+    coaching_tips: List[str]
+    full_structured_answer: str
+
+
 class SkillCount(BaseModel):
     skill: str
     count: int

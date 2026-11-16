@@ -25,6 +25,7 @@ from app.agents.matcher_agent import (
 )
 from app.agents.orchestrator import (
     clear_session_state,
+    coach_star_behavioral_answer,
     evaluate_intent_confidence_and_clarification,
     export_session_transcript,
     generate_cold_outreach_message,
@@ -162,6 +163,8 @@ from app.schemas import (
     SoftSkillsUpdateRequest,
     StaleJobItem,
     StaleJobsResponse,
+    StarAnswerCoachRequest,
+    StarAnswerCoachResponse,
     StorageSpeedBenchmark,
     SystemDiagnosticsResponse,
     TierSalaryInsightsResponse,
@@ -774,6 +777,21 @@ async def generate_cold_outreach_endpoint(payload: ColdOutreachMessageRequest):
         recipient_type=payload.recipient_type,
         candidate_background=payload.candidate_background,
         channel=payload.channel
+    )
+
+
+@app.post(
+    "/api/chat/coach/star",
+    response_model=StarAnswerCoachResponse,
+    summary="Structure behavioral interview response into STAR format",
+    tags=["Chat"]
+)
+async def coach_star_answer_endpoint(payload: StarAnswerCoachRequest):
+    """Structure unstructured candidate experiences into Situation, Task, Action, Result framework."""
+    return coach_star_behavioral_answer(
+        question=payload.question,
+        raw_notes=payload.raw_notes,
+        target_role=payload.target_role
     )
 
 
