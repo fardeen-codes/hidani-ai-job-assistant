@@ -642,6 +642,17 @@ function getInterviewDifficultyPill(job) {
   return `<span class="px-1.5 py-0.5 rounded text-[9px] font-mono border ${colorClass}" title="Estimated Interview Loop Difficulty">${tier}</span>`;
 }
 
+function getSalaryFitBadge(job) {
+  const sMin = job.salary_min;
+  const sMax = job.salary_max;
+  if (!sMin && !sMax) return '';
+  const currency = job.salary_currency || '$';
+  const formatted = sMax && sMin && sMax !== sMin
+    ? `${currency}${(sMin/1000).toFixed(0)}k - ${(sMax/1000).toFixed(0)}k`
+    : `${currency}${((sMax || sMin)/1000).toFixed(0)}k`;
+  return `<span class="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-950/50 text-emerald-300 border border-emerald-800/60 font-medium" title="Target Compensation">${formatted}</span>`;
+}
+
 function appendUserMessage(text) {
   const msgEl = document.createElement('div');
   msgEl.className = 'flex justify-end message-appear';
@@ -759,6 +770,7 @@ function renderInteractiveJobCards(container, jobs) {
       </div>
 
       <div class="flex flex-wrap items-center gap-1.5 mb-3">
+        ${getSalaryFitBadge(job)}
         <span class="px-2 py-0.5 rounded bg-neutral-800 text-neutral-300 border border-neutral-700 text-[10px] font-mono uppercase">${escapeHtml(job.experience || 'Mid-Level')}</span>
         ${skillPills}
       </div>
@@ -1045,7 +1057,7 @@ async function fetchAndRenderJobsList(keyword = '') {
             <span class="text-[10px] font-mono px-1.5 py-0.2 rounded bg-neutral-800 text-neutral-400 border border-neutral-700">${escapeHtml(job.experience || 'All Levels')}</span>
           </div>
           <p class="text-xs text-neutral-400 mt-0.5">${escapeHtml(job.company)} • <span class="text-neutral-300">${escapeHtml(job.location)}</span></p>
-          <div class="flex flex-wrap gap-1 mt-2">${skillPills}</div>
+          <div class="flex flex-wrap items-center gap-1.5 mt-2">${getSalaryFitBadge(job)}${skillPills}</div>
         </div>
         <div class="flex items-center gap-2 flex-shrink-0">
           <button
