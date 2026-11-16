@@ -916,6 +916,23 @@ class ApplicationChannelAnalyticsResponse(BaseModel):
     channels: List[ApplicationChannelMetric] = Field(default_factory=list)
 
 
+class ApplicationStageDurationMetric(BaseModel):
+    """Duration analytics for a single pipeline stage."""
+    stage: str = Field(description="Pipeline stage name")
+    count: int = Field(description="Number of applications evaluated in this stage")
+    avg_days_in_stage: float = Field(description="Average duration spent in this stage in days")
+    min_days_in_stage: float = Field(description="Minimum days observed in this stage")
+    max_days_in_stage: float = Field(description="Maximum days observed in this stage")
+
+
+class ApplicationStageDurationResponse(BaseModel):
+    """Aggregated turnaround and dwell time analytics across candidate application stages."""
+    total_applications_analyzed: int = Field(description="Total applications analyzed")
+    stage_durations: List[ApplicationStageDurationMetric] = Field(default_factory=list, description="Per-stage duration metrics")
+    median_pipeline_days: float = Field(description="Estimated overall pipeline duration in days")
+    generated_at: str = Field(description="Timestamp of analytics generation")
+
+
 class OfferPackageItem(BaseModel):
     """Compensation breakdown for an employment offer."""
     job_id: str = Field(description="Associated job ID")

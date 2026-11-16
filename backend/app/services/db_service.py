@@ -4294,6 +4294,64 @@ def get_application_channel_analytics() -> Dict[str, Any]:
     }
 
 
+def get_application_stage_durations() -> Dict[str, Any]:
+    """
+    Calculate average dwell time and duration metrics across application pipeline stages.
+    """
+    apps = load_applications()
+    total_apps = len(apps)
+
+    stages_order = ["Applied", "Under Review", "Interview", "Offer", "Rejected"]
+    stage_durations: Dict[str, List[float]] = {s: [] for s in stages_order}
+
+    for app in apps:
+        app_status = app.get("status", "Applied")
+        applied_str = app.get("applied_date", "")
+        updated_str = app.get("updated_date", "")
+
+        days = 1.0
+        if applied_str and updated_str:
+            try:
+                d1 = datetime.strptime(applied_str.replace(" UTC", ""), "%Y-%m-%d %H:%M:%S") if len(applied_str) > 10 else datetime.strptime(applied_str, "%Y-%m-%d")
+                d2 = datetime.strptime(updated_str.replace(" UTC", ""), "%Y-%m-%d %H:%M:%S") if len(updated_str) > 10 else datetime.strptime(updated_str, "%Y-%m-%d")
+                delta_days = max(0.1, (d2 - d1).total_seconds() / 86400.0)
+                days = round(delta_days, 1)
+            except Exception:
+                days = 2.0
+
+        target_stage = app_status if app_status in stage_durations else "Applied"
+        stage_durations[target_stage].append(days)
+
+    metrics = []
+    all_days = []
+    for s in stages_order:
+        vals = stage_durations[s]
+        if vals:
+            avg_d = round(sum(vals) / len(vals), 1)
+            min_d = round(min(vals), 1)
+            max_d = round(max(vals), 1)
+            all_days.extend(vals)
+        else:
+            avg_d, min_d, max_d = 0.0, 0.0, 0.0
+
+        metrics.append({
+            "stage": s,
+            "count": len(vals),
+            "avg_days_in_stage": avg_d,
+            "min_days_in_stage": min_d,
+            "max_days_in_stage": max_d
+        })
+
+    median_days = round(sorted(all_days)[len(all_days) // 2], 1) if all_days else 0.0
+
+    return {
+        "total_applications_analyzed": total_apps,
+        "stage_durations": metrics,
+        "median_pipeline_days": median_days,
+        "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    }
+
+
 def compare_offer_packages(offers: List[Dict[str, Any]]) -> Dict[str, Any]:
     """
     Compare compensation packages across job offers, calculating total first-year and recurring TC.

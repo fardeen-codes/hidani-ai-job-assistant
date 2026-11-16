@@ -3009,6 +3009,20 @@ class BackendTestCase(unittest.TestCase):
         res_404 = self.client.post("/api/applications/non-existent-abc/interview-feedback", json=payload)
         self.assertEqual(res_404.status_code, 404)
 
+    def test_application_stage_duration_analytics(self):
+        """Test retrieving average dwell time and pipeline duration analytics."""
+        res = self.client.get("/api/applications/analytics/stage-durations")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertGreaterEqual(data["total_applications_analyzed"], 0)
+        self.assertIsInstance(data["stage_durations"], list)
+        self.assertGreaterEqual(data["median_pipeline_days"], 0.0)
+        self.assertTrue(len(data["generated_at"]) > 0)
+        for stage_m in data["stage_durations"]:
+            self.assertIn("stage", stage_m)
+            self.assertGreaterEqual(stage_m["count"], 0)
+            self.assertGreaterEqual(stage_m["avg_days_in_stage"], 0.0)
+
 
 if __name__ == "__main__":
     unittest.main()

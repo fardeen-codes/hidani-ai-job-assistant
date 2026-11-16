@@ -68,6 +68,8 @@ from app.schemas import (
     ApplicationRollbackResponse,
     ApplicationReminderUpdateRequest,
     ApplicationSourceUpdateRequest,
+    ApplicationStageDurationMetric,
+    ApplicationStageDurationResponse,
     ApplicationStatsResponse,
     ApplicationStatusUpdateRequest,
     ApplicationTagsUpdateRequest,
@@ -200,6 +202,7 @@ from app.services.db_service import (
     generate_followup_template,
     get_application_channel_analytics,
     get_application_funnel_metrics,
+    get_application_stage_durations,
     get_application_stats,
     get_application_status,
     get_application_timeline,
@@ -1554,6 +1557,17 @@ async def get_applications_rejections_endpoint():
 async def get_application_channel_analytics_endpoint():
     """Analyze application interview and offer conversion performance grouped by channel."""
     return get_application_channel_analytics()
+
+
+@app.get(
+    "/api/applications/analytics/stage-durations",
+    response_model=ApplicationStageDurationResponse,
+    summary="Get interview stage duration and time-in-stage analytics",
+    tags=["Applications"]
+)
+async def get_application_stage_durations_endpoint():
+    """Calculate average dwell time and duration metrics across application pipeline stages."""
+    return get_application_stage_durations()
 
 
 @app.post(
