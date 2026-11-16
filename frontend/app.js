@@ -75,6 +75,7 @@ const elements = {
   drawerExpLevel: document.getElementById('drawerExpLevel'),
   drawerExpYears: document.getElementById('drawerExpYears'),
   drawerSkillsTags: document.getElementById('drawerSkillsTags'),
+  drawerLanguagesTags: document.getElementById('drawerLanguagesTags'),
   drawerSummary: document.getElementById('drawerSummary'),
   drawerRoles: document.getElementById('drawerRoles'),
   drawerCompletenessBadge: document.getElementById('drawerCompletenessBadge'),
@@ -1022,6 +1023,9 @@ function openProfileDrawer() {
     `<span class="px-2 py-0.5 rounded bg-neutral-800 text-xs font-mono text-neutral-300 border border-neutral-700">${escapeHtml(s)}</span>`
   ).join('');
 
+  // Render language tags
+  renderDrawerLanguages(p.languages);
+
   // Render roles
   elements.drawerRoles.innerHTML = (p.preferred_roles || ['Software Engineer']).map(r =>
     `<span class="px-2 py-0.5 rounded bg-neutral-800 text-xs text-neutral-300 border border-neutral-700">${escapeHtml(r)}</span>`
@@ -1032,6 +1036,20 @@ function openProfileDrawer() {
 
   elements.profileDrawer.classList.remove('hidden');
 }
+
+function renderDrawerLanguages(languages) {
+  if (!elements.drawerLanguagesTags) return;
+  const langs = (languages && languages.length > 0) 
+    ? languages 
+    : [{ language: 'English', proficiency: 'Professional Working' }];
+  elements.drawerLanguagesTags.innerHTML = langs.map(l =>
+    `<span class="px-2 py-0.5 rounded bg-neutral-800 text-xs text-neutral-200 border border-neutral-700 flex items-center gap-1.5">
+      <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+      ${escapeHtml(l.language)} <span class="text-[10px] text-neutral-400 font-mono">(${escapeHtml(l.proficiency)})</span>
+    </span>`
+  ).join('');
+}
+
 
 async function updateProfileCompletenessDrawer(profile) {
   try {
