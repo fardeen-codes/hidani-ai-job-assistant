@@ -314,6 +314,26 @@ function setupEventListeners() {
     showToast('Session ID copied to clipboard');
   });
 
+  const compactDbBtn = document.getElementById('compactDbBtn');
+  if (compactDbBtn) {
+    compactDbBtn.addEventListener('click', async () => {
+      compactDbBtn.disabled = true;
+      compactDbBtn.textContent = 'Compacting...';
+      try {
+        const res = await fetch(`${API_BASE}/db/compact`, { method: 'POST' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        showToast(data.message || 'Database compacted successfully', 'success');
+        openDiagnosticsModal();
+      } catch (err) {
+        showToast(`Compaction failed: ${err.message}`, 'error');
+      } finally {
+        compactDbBtn.disabled = false;
+        compactDbBtn.textContent = 'Compact';
+      }
+    });
+  }
+
   // Profile Drawer
   elements.navProfileBtn.addEventListener('click', () => openProfileDrawer());
   elements.closeDrawerBtn.addEventListener('click', () => closeProfileDrawer());
