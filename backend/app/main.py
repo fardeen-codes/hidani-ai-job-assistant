@@ -36,6 +36,7 @@ from app.agents.orchestrator import (
     evaluate_intent_confidence_and_clarification,
     export_session_transcript,
     generate_cold_outreach_message,
+    generate_elevator_pitch,
     generate_post_interview_thank_you_email,
     generate_recruiter_followup_cadence,
     generate_salary_negotiation_script,
@@ -123,6 +124,8 @@ from app.schemas import (
     DatabaseBackupSnapshot,
     DatabaseBenchmarkResponse,
     DatabaseChecksumResponse,
+    ElevatorPitchRequest,
+    ElevatorPitchResponse,
     DatabaseCompactionResponse,
     DatabaseHealthResponse,
     DatabaseIntegrityIssue,
@@ -888,6 +891,23 @@ async def generate_thank_you_email_endpoint(payload: PostInterviewThankYouReques
         interviewer_name=payload.interviewer_name,
         key_discussion_points=payload.key_discussion_points,
         custom_gratitude_note=payload.custom_gratitude_note
+    )
+
+
+@app.post(
+    "/api/chat/pitch",
+    response_model=ElevatorPitchResponse,
+    summary="Generate tailored candidate elevator pitch",
+    tags=["Chat"]
+)
+async def generate_elevator_pitch_endpoint(payload: ElevatorPitchRequest):
+    """Generate verbal 30-second and 60-second elevator pitches highlighting matching skills."""
+    return generate_elevator_pitch(
+        job_title=payload.job_title,
+        target_skills=payload.target_skills,
+        candidate_summary=payload.candidate_summary,
+        candidate_skills=payload.candidate_skills,
+        tone=payload.tone
     )
 
 

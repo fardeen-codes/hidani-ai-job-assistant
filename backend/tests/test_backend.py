@@ -3208,6 +3208,25 @@ class BackendTestCase(unittest.TestCase):
         self.assertTrue(len(data["uptime_human"]) > 0)
         self.assertGreaterEqual(data["total_jobs"], 1)
 
+    def test_generate_elevator_pitch(self):
+        """Test generating tailored 30s and 60s elevator pitch summaries."""
+        payload = {
+            "job_title": "Senior Backend Engineer",
+            "target_skills": ["Python", "FastAPI", "PostgreSQL"],
+            "candidate_skills": ["Python", "FastAPI", "Docker", "AWS"],
+            "candidate_summary": "senior backend developer with 6 years building distributed microservices",
+            "tone": "confident"
+        }
+        res = self.client.post("/api/chat/pitch", json=payload)
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["job_title"], "Senior Backend Engineer")
+        self.assertIn("Python", data["pitch_30s"])
+        self.assertIn("Senior Backend Engineer", data["pitch_30s"])
+        self.assertTrue(len(data["pitch_60s"]) > len(data["pitch_30s"]))
+        self.assertGreaterEqual(len(data["key_selling_points"]), 2)
+        self.assertTrue(len(data["call_to_action"]) > 0)
+
 
 if __name__ == "__main__":
     unittest.main()

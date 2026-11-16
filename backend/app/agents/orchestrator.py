@@ -1433,3 +1433,53 @@ Candidate"""
     }
 
 
+def generate_elevator_pitch(
+    job_title: str,
+    target_skills: Optional[List[str]] = None,
+    candidate_summary: Optional[str] = None,
+    candidate_skills: Optional[List[str]] = None,
+    tone: Optional[str] = "confident"
+) -> Dict[str, Any]:
+    """
+    Generate tailored 30-second and 60-second verbal elevator pitches highlighting skill alignment.
+    """
+    clean_title = (job_title or "Software Engineer").strip()
+    c_skills = [s.strip() for s in (candidate_skills or []) if s and s.strip()]
+    t_skills = [s.strip() for s in (target_skills or []) if s and s.strip()]
+
+    overlap = [s for s in c_skills if any(s.lower() == t.lower() for t in t_skills)]
+    featured_skills = overlap[:3] if overlap else (c_skills[:3] or t_skills[:3] or ["modern software engineering", "problem solving"])
+    skills_phrase = ", ".join(featured_skills)
+
+    summary_phrase = (candidate_summary or "experienced engineering professional with a strong track record of delivery").strip()
+    if summary_phrase.endswith('.'):
+        summary_phrase = summary_phrase[:-1]
+
+    pitch_30s = (
+        f"I'm an {summary_phrase}, specializing in {skills_phrase}. "
+        f"I focus on designing reliable, high-performance systems and am excited about the {clean_title} role because it directly leverages my strengths in shipping impactful features."
+    )
+
+    pitch_60s = (
+        f"Throughout my career as an {summary_phrase}, I've prioritized building scalable solutions using {skills_phrase}. "
+        f"In my recent projects, I drove measurable improvements in reliability, performance, and developer velocity. "
+        f"I'm targeting this {clean_title} position because your team's mission aligns with how I like to work: tackling complex domain challenges while maintaining engineering excellence. "
+        f"I'm eager to bring that same rigor and velocity to help accelerate your milestones."
+    )
+
+    key_points = [
+        f"Direct alignment with {clean_title} technical requirements",
+        f"Core expertise in {skills_phrase}",
+        "Demonstrated ownership from architectural design to production monitoring"
+    ]
+
+    return {
+        "job_title": clean_title,
+        "pitch_30s": pitch_30s,
+        "pitch_60s": pitch_60s,
+        "key_selling_points": key_points,
+        "call_to_action": f"I'd love to learn more about the team's key priorities for the {clean_title} role this quarter."
+    }
+
+
+

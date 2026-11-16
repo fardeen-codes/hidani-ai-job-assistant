@@ -1526,6 +1526,25 @@ class JobFreshnessResponse(BaseModel):
     is_actively_hiring: bool
 
 
+class ElevatorPitchRequest(BaseModel):
+    """Request payload to generate tailored candidate elevator pitch."""
+    job_title: str = Field(..., description="Target job title")
+    target_skills: Optional[List[str]] = Field(default_factory=list, description="Target job skills")
+    candidate_summary: Optional[str] = Field(None, description="Candidate summary or background")
+    candidate_skills: Optional[List[str]] = Field(default_factory=list, description="Candidate key skills")
+    tone: Optional[str] = Field("confident", description="Tone: confident, conversational, or executive")
+
+
+class ElevatorPitchResponse(BaseModel):
+    """Response containing 30s and 60s elevator pitch summaries."""
+    job_title: str
+    pitch_30s: str
+    pitch_60s: str
+    key_selling_points: List[str]
+    call_to_action: str
+
+
+
 
 
 
