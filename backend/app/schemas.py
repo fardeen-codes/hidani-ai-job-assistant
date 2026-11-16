@@ -1656,6 +1656,29 @@ class TimezoneOverlapResponse(BaseModel):
     recommendation: str
 
 
+class OfferCounterProposalRequest(BaseModel):
+    """Request payload to generate a structured compensation counter-offer."""
+    base_salary_offered: float = Field(..., description="Offered annual base salary")
+    equity_offered: Optional[float] = Field(0.0, description="Offered annual or 4-year equity vesting value")
+    sign_on_offered: Optional[float] = Field(0.0, description="Offered sign-on bonus")
+    target_strategy: Optional[str] = Field("balanced", description="Strategy: 'aggressive', 'balanced', or 'equity_heavy'")
+
+
+class OfferCounterProposalResponse(BaseModel):
+    """Generated counter-proposal compensation breakdown and negotiation leverage points."""
+    status: str = Field(default="success")
+    job_id: str
+    original_base: float
+    recommended_counter_base: float
+    recommended_equity: float
+    recommended_sign_on: float
+    total_counter_comp_value: float
+    percentage_increase: float
+    negotiation_talking_points: List[str]
+    suggested_email_opening: str
+
+
+
 
 
 

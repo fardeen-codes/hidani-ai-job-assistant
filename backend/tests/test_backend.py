@@ -3354,6 +3354,26 @@ class BackendTestCase(unittest.TestCase):
         self.assertGreaterEqual(data["async_suitability_score"], 7.0)
         self.assertTrue(len(data["recommendation"]) > 0)
 
+    def test_offer_counter_proposal_calculator(self):
+        """Test generating data-backed compensation counter-offer packages."""
+        payload = {
+            "base_salary_offered": 150000.0,
+            "equity_offered": 40000.0,
+            "sign_on_offered": 10000.0,
+            "target_strategy": "balanced"
+        }
+        res = self.client.post(f"/api/applications/{self.test_job_id}/counter-offer", json=payload)
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "success")
+        self.assertEqual(data["job_id"], self.test_job_id)
+        self.assertEqual(data["original_base"], 150000.0)
+        self.assertGreater(data["recommended_counter_base"], 150000.0)
+        self.assertGreater(data["total_counter_comp_value"], 200000.0)
+        self.assertGreater(data["percentage_increase"], 0.0)
+        self.assertGreaterEqual(len(data["negotiation_talking_points"]), 2)
+        self.assertIn("Thank you", data["suggested_email_opening"])
+
 
 if __name__ == "__main__":
     unittest.main()

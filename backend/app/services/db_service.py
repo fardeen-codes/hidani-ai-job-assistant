@@ -5049,6 +5049,67 @@ def toggle_application_todo(
     return True, f"Checklist item updated successfully.", target_todo
 
 
+def calculate_offer_counter_proposal(
+    job_id: str,
+    base_offered: float,
+    equity_offered: float = 0.0,
+    sign_on_offered: float = 0.0,
+    strategy: str = "balanced"
+) -> Dict[str, Any]:
+    """
+    Generate data-backed counter-offer compensation package and tactical negotiation leverage points.
+    """
+    clean_id = (job_id or "").strip()
+    strat = (strategy or "balanced").strip().lower()
+
+    if strat == "aggressive":
+        base_multiplier = 1.15
+        equity_multiplier = 1.25
+        sign_on_bump = max(sign_on_offered * 1.5, 15000.0)
+    elif strat == "equity_heavy":
+        base_multiplier = 1.05
+        equity_multiplier = 1.35
+        sign_on_bump = sign_on_offered or 10000.0
+    else:  # balanced
+        base_multiplier = 1.10
+        equity_multiplier = 1.15
+        sign_on_bump = max(sign_on_offered * 1.25, 10000.0) if sign_on_offered > 0 else 10000.0
+
+    counter_base = round(base_offered * base_multiplier, -2)
+    counter_equity = round(equity_offered * equity_multiplier, -2) if equity_offered > 0 else 0.0
+    counter_sign_on = round(sign_on_bump, -2)
+
+    total_offered = base_offered + equity_offered + sign_on_offered
+    total_counter = counter_base + counter_equity + counter_sign_on
+    pct_increase = round(((total_counter - total_offered) / max(total_offered, 1.0)) * 100.0, 1)
+
+    points = [
+        f"Benchmark telemetry indicates median target band for this level begins at ${counter_base:,.0f} base.",
+        "Demonstrated technical contributions in high-scale systems justify compensation in the upper quartile.",
+        f"Requesting a sign-on bonus of ${counter_sign_on:,.0f} offsets unvested equity forfeit from current tenure."
+    ]
+
+    opening = (
+        f"Thank you so much for the offer to join the team! I am extremely excited about the role. "
+        f"After reviewing the overall compensation package and considering current market benchmarks, "
+        f"I would like to discuss whether we can reach a base salary of ${counter_base:,.0f} with a ${counter_sign_on:,.0f} signing bonus."
+    )
+
+    return {
+        "status": "success",
+        "job_id": clean_id,
+        "original_base": base_offered,
+        "recommended_counter_base": counter_base,
+        "recommended_equity": counter_equity,
+        "recommended_sign_on": counter_sign_on,
+        "total_counter_comp_value": total_counter,
+        "percentage_increase": pct_increase,
+        "negotiation_talking_points": points,
+        "suggested_email_opening": opening
+    }
+
+
+
 
 
 

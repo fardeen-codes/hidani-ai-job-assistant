@@ -170,6 +170,8 @@ from app.schemas import (
     LocationPreferenceUpdateRequest,
     OfferComparisonRequest,
     OfferComparisonResponse,
+    OfferCounterProposalRequest,
+    OfferCounterProposalResponse,
     PostInterviewThankYouRequest,
     PostInterviewThankYouResponse,
     ProfileCompletenessResponse,
@@ -236,6 +238,7 @@ from app.services.db_service import (
     bulk_remove_bookmarks,
     bulk_update_application_status,
     calculate_and_set_auto_followup,
+    calculate_offer_counter_proposal,
     calculate_profile_completeness,
     check_database_health,
     clear_search_history,
@@ -2612,6 +2615,24 @@ async def toggle_application_todo_endpoint(job_id: str, todo_id: str, payload: A
         "message": message,
         "todo": item
     }
+
+
+@app.post(
+    "/api/applications/{job_id}/counter-offer",
+    response_model=OfferCounterProposalResponse,
+    summary="Generate data-backed counter-offer compensation package",
+    tags=["Applications"]
+)
+async def calculate_counter_offer_endpoint(job_id: str, payload: OfferCounterProposalRequest):
+    """Calculate target counter-offer numbers, equity/sign-on offsets, and talking points."""
+    clean_id = (job_id or "").strip()
+    return calculate_offer_counter_proposal(
+        job_id=clean_id,
+        base_offered=payload.base_salary_offered,
+        equity_offered=payload.equity_offered or 0.0,
+        sign_on_offered=payload.sign_on_offered or 0.0,
+        strategy=payload.target_strategy or "balanced"
+    )
 
 
 @app.delete("/api/applications/{job_id}", summary="Withdraw an active job application", tags=["Applications"])
