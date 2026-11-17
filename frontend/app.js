@@ -846,6 +846,20 @@ function getTimezoneCompatibilityPill(job) {
   return '';
 }
 
+function getTechModernizationBadge(job) {
+  const skills = (job.skills || []).map(s => s.toLowerCase());
+  const cuttingEdge = ['rust', 'go', 'fastapi', 'next.js', 'kubernetes', 'k8s', 'pytorch', 'graphql', 'tailwind'];
+  const dated = ['jquery', 'svn', 'php 5', 'soap', 'jsp', 'coldfusion', 'perl'];
+  const hasCuttingEdge = skills.some(s => cuttingEdge.includes(s));
+  const hasDated = skills.some(s => dated.includes(s));
+  if (hasCuttingEdge) {
+    return '<span class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-emerald-500/15 text-emerald-300 border border-emerald-500/30" title="Cutting-edge modern engineering stack">🚀 Modern Stack</span>';
+  } else if (hasDated) {
+    return '<span class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-amber-500/15 text-amber-300 border border-amber-500/30" title="Contains legacy or dated technologies">📦 Legacy Stack</span>';
+  }
+  return '';
+}
+
 function appendUserMessage(text) {
   const msgEl = document.createElement('div');
   msgEl.className = 'flex justify-end message-appear';
@@ -949,6 +963,7 @@ function renderInteractiveJobCards(container, jobs) {
             ${getInterviewDifficultyPill(job)}
             ${getCompanyCultureBadge(job)}
             ${getTimezoneCompatibilityPill(job)}
+            ${getTechModernizationBadge(job)}
           </div>
           <p class="text-xs text-neutral-400 mt-0.5">${escapeHtml(job.company)} • <span class="text-neutral-300">${escapeHtml(job.location)}</span></p>
         </div>
@@ -1251,6 +1266,7 @@ async function fetchAndRenderJobsList(keyword = '') {
             ${getInterviewDifficultyPill(job)}
             ${getCompanyCultureBadge(job)}
             ${getTimezoneCompatibilityPill(job)}
+            ${getTechModernizationBadge(job)}
             <span class="text-[10px] font-mono px-1.5 py-0.2 rounded bg-neutral-800 text-neutral-400 border border-neutral-700">${escapeHtml(job.experience || 'All Levels')}</span>
           </div>
           <p class="text-xs text-neutral-400 mt-0.5">${escapeHtml(job.company)} • <span class="text-neutral-300">${escapeHtml(job.location)}</span></p>
