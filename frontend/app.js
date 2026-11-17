@@ -795,6 +795,43 @@ async function handleSendMessage() {
     }
   }
 
+  // Check for client-side /weakness slash command
+  if (text.toLowerCase().startsWith('/weakness')) {
+    const topic = text.substring(9).trim() || 'Delegation and letting go of initial code ownership';
+    setSending(true);
+    const typingIndicatorId = showTypingIndicator();
+    scrollToBottom();
+    try {
+      showToast(`Coaching weakness framing for ${topic}...`, 'info');
+      const res = await fetch(`${API_BASE}/chat/weakness-framing`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          weakness_topic: topic,
+          context_details: 'Transitioning from individual contributor to senior engineering lead'
+        })
+      });
+      removeTypingIndicator(typingIndicatorId);
+      if (res.ok) {
+        const data = await res.json();
+        const remedyList = (data.proactive_remedies_in_place || []).map(r => `- 🛠️ ${escapeHtml(r)}`).join('\n');
+        const pitfallList = (data.pitfalls_to_avoid || []).map(p => `- ⚠️ ${escapeHtml(p)}`).join('\n');
+        appendAssistantMessage(
+          `### 🌱 Constructive Weakness Framing: ${escapeHtml(data.weakness_topic)}\n\n` +
+          `#### 🎯 Why Interviewers Ask This\n${escapeHtml(data.why_interviewers_ask)}\n\n` +
+          `#### 🗣️ Recommended Interview Answer Script\n\`\`\`text\n${escapeHtml(data.constructive_script)}\n\`\`\`\n\n` +
+          `#### 🔧 Active Remedies & Habits Demonstrating Growth\n${remedyList}\n\n` +
+          `#### 🛑 Pitfalls to Avoid\n${pitfallList}`
+        );
+        showToast('Weakness framing coach ready!', 'success');
+        setSending(false);
+        return;
+      }
+    } catch (e) {
+      removeTypingIndicator(typingIndicatorId);
+    }
+  }
+
   setSending(true);
 
   // Show typing indicator
