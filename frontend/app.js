@@ -987,6 +987,18 @@ function getCompanyStageBadge(job) {
   return '<span class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-teal-500/15 text-teal-300 border border-teal-500/30" title="Growth / Scaling Stage">📈 Growth</span>';
 }
 
+function getJobClarityBadge(job) {
+  const desc = (job.description || '').toLowerCase();
+  const buzzwords = ['wear multiple hats', 'rockstar', 'ninja', 'fast-paced environment', 'other duties as assigned', 'work hard play hard'];
+  const hasBuzz = buzzwords.some(b => desc.includes(b));
+  if (hasBuzz) {
+    return '<span class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-amber-500/10 text-amber-400 border border-amber-500/20" title="Contains ambiguous job description buzzwords">⚠️ Ambiguous JD</span>';
+  } else if (desc.length > 200 && (desc.includes('responsibilities') || desc.includes('requirements'))) {
+    return '<span class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" title="Well-structured requirements with high clarity">✨ Clear JD</span>';
+  }
+  return '';
+}
+
 function appendUserMessage(text) {
   const msgEl = document.createElement('div');
   msgEl.className = 'flex justify-end message-appear';
@@ -1092,6 +1104,7 @@ function renderInteractiveJobCards(container, jobs) {
             ${getTimezoneCompatibilityPill(job)}
             ${getTechModernizationBadge(job)}
             ${getCompanyStageBadge(job)}
+            ${getJobClarityBadge(job)}
           </div>
           <p class="text-xs text-neutral-400 mt-0.5">${escapeHtml(job.company)} • <span class="text-neutral-300">${escapeHtml(job.location)}</span></p>
         </div>
@@ -1396,6 +1409,7 @@ async function fetchAndRenderJobsList(keyword = '') {
             ${getTimezoneCompatibilityPill(job)}
             ${getTechModernizationBadge(job)}
             ${getCompanyStageBadge(job)}
+            ${getJobClarityBadge(job)}
             <span class="text-[10px] font-mono px-1.5 py-0.2 rounded bg-neutral-800 text-neutral-400 border border-neutral-700">${escapeHtml(job.experience || 'All Levels')}</span>
           </div>
           <p class="text-xs text-neutral-400 mt-0.5">${escapeHtml(job.company)} • <span class="text-neutral-300">${escapeHtml(job.location)}</span></p>
