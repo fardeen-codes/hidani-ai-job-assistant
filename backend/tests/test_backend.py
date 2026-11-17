@@ -3559,6 +3559,25 @@ class BackendTestCase(unittest.TestCase):
         self.assertIn("ambiguous_phrases_found", data)
         self.assertGreaterEqual(len(data["recommended_questions_to_ask"]), 2)
 
+    def test_application_streak_counter(self):
+        """Test daily application streak counting and goal setting."""
+        # Update goal
+        goal_res = self.client.post("/api/applications/metrics/streak/goal", json={"daily_goal": 5})
+        self.assertEqual(goal_res.status_code, 200)
+        goal_data = goal_res.json()
+        self.assertEqual(goal_data["daily_goal"], 5)
+
+        # Get streak metrics
+        streak_res = self.client.get("/api/applications/metrics/streak")
+        self.assertEqual(streak_res.status_code, 200)
+        streak_data = streak_res.json()
+        self.assertEqual(streak_data["status"], "success")
+        self.assertEqual(streak_data["daily_goal"], 5)
+        self.assertIn("submitted_today", streak_data)
+        self.assertIn("current_streak_days", streak_data)
+        self.assertIn("longest_streak_days", streak_data)
+        self.assertIn("goal_met_today", streak_data)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1849,6 +1849,23 @@ class JobJDReadabilityResponse(BaseModel):
     recommended_questions_to_ask: List[str]
 
 
+class ApplicationGoalUpdateRequest(BaseModel):
+    """Candidate daily application target goal update request."""
+    daily_goal: int = Field(3, ge=1, le=50, description="Target applications to submit per day")
+
+
+class ApplicationStreakResponse(BaseModel):
+    """Candidate application submission daily activity, streak, and target metrics."""
+    status: str = "success"
+    daily_goal: int
+    submitted_today: int
+    current_streak_days: int
+    longest_streak_days: int
+    goal_met_today: bool
+    recent_activity_by_date: Dict[str, int]
+
+
+
 
 
 

@@ -5332,6 +5332,85 @@ def update_candidate_availability(
     }
 
 
+def get_application_streak_metrics() -> Dict[str, Any]:
+    """Calculate candidate application daily submission streaks, target goals, and activity."""
+    apps = load_applications()
+    prof = load_candidate_profile()
+    daily_goal = int(prof.get("daily_application_goal", 3))
+
+    date_counts: Dict[str, int] = {}
+    for a in apps:
+        app_date_str = a.get("applied_date")
+        if app_date_str:
+            try:
+                clean_date = str(app_date_str).replace("Z", "+00:00")
+                if "T" in clean_date:
+                    dt = datetime.fromisoformat(clean_date)
+                else:
+                    dt = datetime.strptime(clean_date.split()[0], "%Y-%m-%d").replace(tzinfo=timezone.utc)
+                d_str = dt.strftime("%Y-%m-%d")
+            except Exception:
+                d_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            date_counts[d_str] = date_counts.get(d_str, 0) + 1
+
+    now = datetime.now(timezone.utc)
+    today_str = now.strftime("%Y-%m-%d")
+    submitted_today = date_counts.get(today_str, 0)
+
+    current_streak = 0
+    if submitted_today > 0:
+        current_streak = 1
+        day_offset = 1
+        while True:
+            past_date = (now - timedelta(days=day_offset)).strftime("%Y-%m-%d")
+            if date_counts.get(past_date, 0) > 0:
+                current_streak += 1
+                day_offset += 1
+            else:
+                break
+    else:
+        yesterday_str = (now - timedelta(days=1)).strftime("%Y-%m-%d")
+        if date_counts.get(yesterday_str, 0) > 0:
+            current_streak = 1
+            day_offset = 2
+            while True:
+                past_date = (now - timedelta(days=day_offset)).strftime("%Y-%m-%d")
+                if date_counts.get(past_date, 0) > 0:
+                    current_streak += 1
+                    day_offset += 1
+                else:
+                    break
+
+    longest_streak = max(current_streak, int(prof.get("longest_streak_days", current_streak)))
+    if current_streak > int(prof.get("longest_streak_days", 0)):
+        prof["longest_streak_days"] = current_streak
+        save_candidate_profile(prof)
+
+    return {
+        "status": "success",
+        "daily_goal": daily_goal,
+        "submitted_today": submitted_today,
+        "current_streak_days": current_streak,
+        "longest_streak_days": longest_streak,
+        "goal_met_today": submitted_today >= daily_goal,
+        "recent_activity_by_date": date_counts
+    }
+
+
+def set_daily_application_goal(daily_goal: int) -> Dict[str, Any]:
+    """Persist candidate daily application submission goal."""
+    prof = load_candidate_profile()
+    goal = max(1, min(50, int(daily_goal or 3)))
+    prof["daily_application_goal"] = goal
+    save_candidate_profile(prof)
+    return {
+        "status": "success",
+        "message": f"Daily application goal set to {goal} applications.",
+        "daily_goal": goal
+    }
+
+
+
 
 
 

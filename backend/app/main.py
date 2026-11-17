@@ -76,6 +76,8 @@ from app.schemas import (
     ATSScoreRequest,
     ATSScoreResponse,
     ApplicationFunnelResponse,
+    ApplicationGoalUpdateRequest,
+    ApplicationStreakResponse,
     ApplicationInterviewCreateRequest,
     InterviewStageUpdateRequest,
     InterviewQuestionCreateRequest,
@@ -285,6 +287,7 @@ from app.services.db_service import (
     get_application_stage_durations,
     get_application_stats,
     get_application_status,
+    get_application_streak_metrics,
     get_application_timeline,
     get_application_todos,
     get_application_velocity_metrics,
@@ -342,6 +345,7 @@ from app.services.db_service import (
     save_candidate_profile,
     save_job_bookmark,
     search_jobs,
+    set_daily_application_goal,
     update_application_deadlines,
     update_application_interview,
     update_application_notes,
@@ -1991,6 +1995,28 @@ async def get_applications_funnel_endpoint():
 async def get_applications_velocity_endpoint():
     """Retrieve application submission rate across 7-day and 30-day windows."""
     return get_application_velocity_metrics()
+
+
+@app.get(
+    "/api/applications/metrics/streak",
+    response_model=ApplicationStreakResponse,
+    summary="Get candidate application submission streak and daily activity metrics",
+    tags=["Applications"]
+)
+async def get_application_streak_endpoint():
+    """Retrieve consecutive application streak days, daily submission target, and activity metrics."""
+    return get_application_streak_metrics()
+
+
+@app.post(
+    "/api/applications/metrics/streak/goal",
+    summary="Update daily application submission target goal",
+    tags=["Applications"]
+)
+async def update_daily_application_goal_endpoint(payload: ApplicationGoalUpdateRequest):
+    """Set candidate target number of job applications to submit per day."""
+    return set_daily_application_goal(payload.daily_goal)
+
 
 
 @app.get(
