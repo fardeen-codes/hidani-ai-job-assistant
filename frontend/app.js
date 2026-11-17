@@ -756,6 +756,45 @@ async function handleSendMessage() {
     }
   }
 
+  // Check for client-side /recruiterfaq slash command
+  if (text.toLowerCase().startsWith('/recruiterfaq')) {
+    const company = text.substring(13).trim() || 'Tech Company';
+    setSending(true);
+    const typingIndicatorId = showTypingIndicator();
+    scrollToBottom();
+    try {
+      showToast(`Generating recruiter phone screen guide for ${company}...`, 'info');
+      const res = await fetch(`${API_BASE}/chat/recruiter-faq`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          role_title: 'Software Engineer',
+          target_company: company,
+          candidate_experience_years: 4
+        })
+      });
+      removeTypingIndicator(typingIndicatorId);
+      if (res.ok) {
+        const data = await res.json();
+        const faqList = (data.core_faq_questions || []).map(q => 
+          `**Q: ${escapeHtml(q.question)}**\n*Evaluates*: ${escapeHtml(q.what_recruiter_evaluates)}\n*Suggested Answer*: ${escapeHtml(q.suggested_talking_points)}`
+        ).join('\n\n');
+        const askList = (data.questions_to_ask_recruiter || []).map(a => `- ❓ ${escapeHtml(a)}`).join('\n');
+        appendAssistantMessage(
+          `### 📞 Recruiter Phone Screen Prep: ${escapeHtml(data.target_company)} (${escapeHtml(data.role_title)})\n\n` +
+          `#### 🎯 Core Recruiter Questions & Response Strategies\n\n${faqList}\n\n` +
+          `#### 💬 Reverse Questions to Ask Recruiter\n${askList}\n\n` +
+          `#### 💰 Compensation Strategy\n${escapeHtml(data.salary_discussion_strategy)}`
+        );
+        showToast('Recruiter screen guide ready!', 'success');
+        setSending(false);
+        return;
+      }
+    } catch (e) {
+      removeTypingIndicator(typingIndicatorId);
+    }
+  }
+
   setSending(true);
 
   // Show typing indicator
