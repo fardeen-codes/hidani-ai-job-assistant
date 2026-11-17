@@ -27,6 +27,7 @@ from app.agents.matcher_agent import (
     calculate_weighted_skill_match,
     estimate_interview_difficulty,
     evaluate_skill_proficiency_gaps,
+    evaluate_tech_stack_modernization,
     generate_learning_roadmap,
     normalize_job_title_semantics,
     predict_company_interview_questions,
@@ -217,6 +218,7 @@ from app.schemas import (
     SystemHealthPingResponse,
     TechnicalCheatSheetRequest,
     TechnicalCheatSheetResponse,
+    TechStackModernizationResponse,
     TimezoneOverlapRequest,
     TimezoneOverlapResponse,
     TierSalaryInsightsResponse,
@@ -1689,7 +1691,20 @@ async def calculate_timezone_overlap_endpoint(payload: TimezoneOverlapRequest):
     )
 
 
-
+@app.get(
+    "/api/jobs/{job_id}/modernization",
+    response_model=TechStackModernizationResponse,
+    summary="Get job tech stack modernization rating and technical debt risk",
+    tags=["Jobs"]
+)
+async def get_job_modernization_endpoint(job_id: str):
+    """Evaluate whether job tech stack is modern and high-demand vs dated legacy infrastructure."""
+    clean_id = (job_id or "").strip()
+    job = get_job_by_id(clean_id)
+    if not job:
+        raise HTTPException(status_code=404, detail=f"Job with ID '{clean_id}' not found.")
+    skills = job.get("skills", [])
+    return evaluate_tech_stack_modernization(clean_id, skills)
 
 
 @app.get(

@@ -1185,6 +1185,58 @@ def calculate_timezone_overlap(
     }
 
 
+def evaluate_tech_stack_modernization(
+    job_id: str,
+    skills: List[str]
+) -> Dict[str, Any]:
+    """
+    Score a job's technology stack on modern industry adoption vs technical debt risk.
+    """
+    clean_id = (job_id or "").strip()
+    sk_list = [s.strip() for s in (skills or []) if s and s.strip()]
+
+    cutting_edge = {"rust", "go", "golang", "fastapi", "next.js", "kubernetes", "k8s", "graphql", "tailwind", "vector db", "rag", "pytorch", "llm"}
+    modern_standard = {"python", "typescript", "react", "docker", "postgresql", "postgres", "aws", "gcp", "redis", "node.js", "ci/cd", "rest api"}
+    dated_legacy = {"jquery", "svn", "subversion", "php 5", "soap", "jsp", "struts", "coldfusion", "perl", "visual basic", "cobol", "actionscript"}
+
+    modern_found = []
+    legacy_found = []
+
+    for s in sk_list:
+        s_low = s.lower()
+        if s_low in cutting_edge or s_low in modern_standard:
+            modern_found.append(s)
+        elif s_low in dated_legacy:
+            legacy_found.append(s)
+
+    if not sk_list:
+        base_score = 7.5
+    else:
+        mod_ratio = len(modern_found) / len(sk_list)
+        base_score = 6.0 + (mod_ratio * 3.5) - (len(legacy_found) * 1.5)
+        base_score = max(3.0, min(9.8, round(base_score, 1)))
+
+    if base_score >= 8.5:
+        tier = "Cutting Edge"
+        outlook = "Exceptionally high market relevance and long-term career value."
+    elif base_score >= 6.5:
+        tier = "Modern Standard"
+        outlook = "Mainstream production stack aligned with high-growth tech industry hiring."
+    else:
+        tier = "Legacy / Maintenance"
+        outlook = "Stack contains legacy dependencies; evaluate if role involves active modernization."
+
+    return {
+        "job_id": clean_id,
+        "modernization_score": base_score,
+        "modernization_tier": tier,
+        "modern_technologies": modern_found if modern_found else sk_list[:3],
+        "legacy_or_dated_technologies": legacy_found,
+        "market_demand_outlook": outlook
+    }
+
+
+
 
 
 

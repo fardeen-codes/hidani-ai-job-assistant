@@ -3412,6 +3412,17 @@ class BackendTestCase(unittest.TestCase):
         self.assertIn("Distributed consensus", data["skills_to_improve"])
         self.assertIn("etcd split-brain", data["reflection_notes"])
 
+    def test_tech_stack_modernization_rater(self):
+        """Test evaluating job tech stack modernization rating and legacy debt."""
+        res = self.client.get(f"/api/jobs/{self.test_job_id}/modernization")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["job_id"], self.test_job_id)
+        self.assertGreaterEqual(data["modernization_score"], 3.0)
+        self.assertIn(data["modernization_tier"], ["Cutting Edge", "Modern Standard", "Legacy / Maintenance"])
+        self.assertIsInstance(data["modern_technologies"], list)
+        self.assertTrue(len(data["market_demand_outlook"]) > 0)
+
 
 if __name__ == "__main__":
     unittest.main()

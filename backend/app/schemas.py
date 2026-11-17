@@ -1716,6 +1716,17 @@ class ApplicationDebriefReflectionResponse(BaseModel):
     recorded_at: str
 
 
+class TechStackModernizationResponse(BaseModel):
+    """Modernization evaluation of job required technologies and libraries."""
+    job_id: str
+    modernization_score: float = Field(description="Rating from 0.0 to 10.0 (10.0 = cutting edge)")
+    modernization_tier: str = Field(description="'Cutting Edge' (>=8.5), 'Modern Standard' (>=6.5), or 'Legacy / Maintenance' (<6.5)")
+    modern_technologies: List[str]
+    legacy_or_dated_technologies: List[str]
+    market_demand_outlook: str
+
+
+
 
 
 
