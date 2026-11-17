@@ -44,6 +44,7 @@ from app.agents.orchestrator import (
     generate_post_interview_thank_you_email,
     generate_project_talking_points,
     generate_recruiter_followup_cadence,
+    generate_resignation_letter,
     generate_salary_negotiation_script,
     generate_system_design_scenario,
     generate_technical_interview_cheatsheet,
@@ -191,6 +192,8 @@ from app.schemas import (
     RejectionReasonLogResponse,
     RemoteWorkBreakdownResponse,
     RemoteWorkPolicyMetric,
+    ResignationLetterRequest,
+    ResignationLetterResponse,
     SalaryInfo,
     SalaryNegotiationScriptRequest,
     SalaryNegotiationScriptResponse,
@@ -1062,6 +1065,25 @@ async def generate_system_design_endpoint(payload: SystemDesignScenarioRequest):
         scale_target=payload.scale_target or "100M Daily Active Users",
         seniority=payload.seniority or "Senior"
     )
+
+
+@app.post(
+    "/api/chat/resignation-letter",
+    response_model=ResignationLetterResponse,
+    summary="Generate professional resignation letter and transition checklist",
+    tags=["Chat"]
+)
+async def generate_resignation_letter_endpoint(payload: ResignationLetterRequest):
+    """Generate empathetic, professional resignation notice letter and transition offboarding checklist."""
+    return generate_resignation_letter(
+        company_name=payload.company_name,
+        manager_name=payload.manager_name,
+        last_working_day=payload.last_working_day,
+        tenure_years=payload.tenure_years,
+        tone=payload.tone,
+        handover_focus=payload.handover_focus
+    )
+
 
 
 @app.get(

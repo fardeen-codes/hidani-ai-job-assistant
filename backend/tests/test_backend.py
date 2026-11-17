@@ -3509,6 +3509,26 @@ class BackendTestCase(unittest.TestCase):
         self.assertEqual(get_data["notice_period_days"], 15)
         self.assertEqual(get_data["earliest_start_date"], "2026-12-15")
 
+    def test_resignation_letter_generator(self):
+        """Test generating professional resignation letter and transition checklist."""
+        res = self.client.post("/api/chat/resignation-letter", json={
+            "company_name": "Initech Corp",
+            "manager_name": "Peter",
+            "last_working_day": "December 31st",
+            "tenure_years": 3.0,
+            "tone": "Professional and Warm",
+            "handover_focus": "Kubernetes migration and mentoring"
+        })
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["company_name"], "Initech Corp")
+        self.assertIn("subject_line", data)
+        self.assertIn("letter_body", data)
+        self.assertIn("Initech Corp", data["letter_body"])
+        self.assertIn("December 31st", data["letter_body"])
+        self.assertGreaterEqual(len(data["transition_checklist"]), 3)
+        self.assertGreaterEqual(len(data["etiquette_tips"]), 2)
+
 
 if __name__ == "__main__":
     unittest.main()

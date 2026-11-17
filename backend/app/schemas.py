@@ -1804,6 +1804,28 @@ class CandidateAvailabilityResponse(BaseModel):
     message: Optional[str] = None
 
 
+class ResignationLetterRequest(BaseModel):
+    """Request payload to generate a tailored resignation letter."""
+    company_name: str = Field(..., description="Target company being departed")
+    manager_name: Optional[str] = Field("Manager", description="Direct supervisor or hiring manager name")
+    last_working_day: Optional[str] = Field("two weeks from today", description="Proposed last working day")
+    tenure_years: Optional[float] = Field(2.0, description="Approximate tenure at company in years")
+    tone: Optional[str] = Field("Professional and Warm", description="Tone (Professional and Warm, Formal / Direct, Executive)")
+    handover_focus: Optional[str] = Field("System documentation and knowledge transfer", description="Primary focus during notice period")
+
+
+class ResignationLetterResponse(BaseModel):
+    """Generated tailored resignation letter and transition checklist."""
+    company_name: str
+    manager_name: str
+    last_working_day: str
+    subject_line: str
+    letter_body: str
+    transition_checklist: List[str]
+    etiquette_tips: List[str]
+
+
+
 
 
 

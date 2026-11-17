@@ -1733,6 +1733,63 @@ def generate_system_design_scenario(
     }
 
 
+def generate_resignation_letter(
+    company_name: str,
+    manager_name: Optional[str] = "Manager",
+    last_working_day: Optional[str] = "two weeks from today",
+    tenure_years: Optional[float] = 2.0,
+    tone: Optional[str] = "Professional and Warm",
+    handover_focus: Optional[str] = "System documentation and knowledge transfer"
+) -> Dict[str, Any]:
+    """Generate a high-empathy, professional resignation letter and offboarding transition plan."""
+    company = (company_name or "the Company").strip()
+    mgr = (manager_name or "Manager").strip()
+    lwd = (last_working_day or "two weeks from today").strip()
+    tenure = float(tenure_years or 2.0)
+    focus = (handover_focus or "System documentation and knowledge transfer").strip()
+
+    subject = f"Resignation Notice - [Your Name] - Final Day: {lwd}"
+    tenure_text = f"over the past {int(tenure)} years" if tenure >= 1 else "during my tenure"
+
+    body = (
+        f"Dear {mgr},\n\n"
+        f"Please accept this letter as formal notification that I am resigning from my position at {company}. "
+        f"My proposed last working day will be {lwd}.\n\n"
+        f"I want to express my sincere gratitude for the opportunities I have had {tenure_text}. "
+        f"I have truly enjoyed collaborating with the team, tackling technical challenges, and contributing to our engineering milestones. "
+        f"Thank you for your guidance, mentorship, and support throughout my time here.\n\n"
+        f"During this notice window, my highest priority will be ensuring an orderly handover. Specifically, I will focus on {focus.lower()}, "
+        f"wrapping up active tickets, and transferring contextual knowledge to teammates to ensure uninterrupted delivery.\n\n"
+        f"I wish {company} and the entire team continued momentum and success. Please let me know how else I can assist during this transition.\n\n"
+        f"Warm regards,\n[Your Name]"
+    )
+
+    checklist = [
+        f"Schedule 1:1 conversation with {mgr} prior to sending formal written notice.",
+        "Prepare centralized handover document detailing services, runbooks, and credential locations.",
+        "Coordinate redistribution of on-call rotation schedules and Jira ticket backlogs.",
+        "Transfer admin permissions and document critical API tokens with team leads.",
+        "Archive personal documents from work workstation and review post-employment IP obligations."
+    ]
+
+    tips = [
+        "Deliver the resignation verbally first during a private sync before transmitting the written copy to HR.",
+        "Maintain positive neutrality regarding future endeavors and avoid venting legacy grievances.",
+        "Keep daily commit hygiene high through your final week to solidify your professional reputation."
+    ]
+
+    return {
+        "company_name": company,
+        "manager_name": mgr,
+        "last_working_day": lwd,
+        "subject_line": subject,
+        "letter_body": body,
+        "transition_checklist": checklist,
+        "etiquette_tips": tips
+    }
+
+
+
 
 
 
