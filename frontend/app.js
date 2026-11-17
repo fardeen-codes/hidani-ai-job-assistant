@@ -93,6 +93,8 @@ const elements = {
   drawerTeamSizeSelect: document.getElementById('drawerTeamSizeSelect'),
   drawerCompanyStageSelect: document.getElementById('drawerCompanyStageSelect'),
   saveTeamPrefsBtn: document.getElementById('saveTeamPrefsBtn'),
+  drawerNoticeBadge: document.getElementById('drawerNoticeBadge'),
+  drawerStartDate: document.getElementById('drawerStartDate'),
 
   // Notification Toast Container
   toastContainer: document.getElementById('toastContainer')
@@ -1717,6 +1719,19 @@ function openProfileDrawer() {
       }
       if (data && elements.drawerCompanyStageSelect) {
         elements.drawerCompanyStageSelect.value = data.preferred_company_stage || 'Growth';
+      }
+    })
+    .catch(() => {});
+
+  // Fetch Availability Preferences
+  fetch(`${API_BASE}/profile/availability`)
+    .then(r => r.ok ? r.json() : null)
+    .then(data => {
+      if (data && elements.drawerNoticeBadge) {
+        elements.drawerNoticeBadge.textContent = `${data.notice_period_days} Days Notice`;
+      }
+      if (data && elements.drawerStartDate) {
+        elements.drawerStartDate.textContent = data.earliest_start_date ? `Earliest: ${data.earliest_start_date}` : (data.is_immediately_available ? 'Available Immediately' : 'Flexible Start');
       }
     })
     .catch(() => {});
