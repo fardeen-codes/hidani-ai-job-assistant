@@ -1206,6 +1206,63 @@ def update_application_tags(
     return True, msg, updated_app
 
 
+def add_application_custom_tag(job_id: str, tag: str) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
+    """Append a single custom tag to an application without overwriting existing tags."""
+    clean_id = (job_id or "").strip()
+    norm_tag = (tag or "").strip()
+    if not clean_id or not norm_tag:
+        return False, "Job ID and tag must not be empty.", None
+
+    with _db_lock:
+        applications = load_applications()
+        updated_app = None
+        for app in applications:
+            if app.get("job_id", "").strip().lower() == clean_id.lower():
+                current_tags = list(app.get("tags") or [])
+                if not any(t.lower() == norm_tag.lower() for t in current_tags):
+                    current_tags.append(norm_tag)
+                    app["tags"] = current_tags
+                    app["updated_date"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+                    _record_app_event(app, "CUSTOM_TAG_ADDED", f"Custom tag added: {norm_tag}")
+                updated_app = app
+                break
+
+        if not updated_app:
+            return False, f"No existing application found for Job ID '{clean_id}'.", None
+
+        _save_applications(applications)
+
+    return True, f"Tag '{norm_tag}' added to application '{clean_id}'.", updated_app
+
+
+def remove_application_custom_tag(job_id: str, tag: str) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
+    """Remove a single custom tag from an application."""
+    clean_id = (job_id or "").strip()
+    norm_tag = (tag or "").strip()
+    if not clean_id or not norm_tag:
+        return False, "Job ID and tag must not be empty.", None
+
+    with _db_lock:
+        applications = load_applications()
+        updated_app = None
+        for app in applications:
+            if app.get("job_id", "").strip().lower() == clean_id.lower():
+                current_tags = [t for t in (app.get("tags") or []) if t.lower() != norm_tag.lower()]
+                app["tags"] = current_tags
+                app["updated_date"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+                _record_app_event(app, "CUSTOM_TAG_REMOVED", f"Custom tag removed: {norm_tag}")
+                updated_app = app
+                break
+
+        if not updated_app:
+            return False, f"No existing application found for Job ID '{clean_id}'.", None
+
+        _save_applications(applications)
+
+    return True, f"Tag '{norm_tag}' removed from application '{clean_id}'.", updated_app
+
+
+
 def add_application_interview(
     job_id: str,
     round_name: str,

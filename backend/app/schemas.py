@@ -1825,6 +1825,20 @@ class ResignationLetterResponse(BaseModel):
     etiquette_tips: List[str]
 
 
+class ApplicationCustomTagRequest(BaseModel):
+    """Request payload to add a single custom tag to an application."""
+    tag: str = Field(..., min_length=1, description="Custom label or category tag")
+
+
+class ApplicationCustomTagResponse(BaseModel):
+    """Response payload after modifying application custom tags."""
+    status: str = "success"
+    message: str
+    job_id: str
+    tags: List[str]
+
+
+
 
 
 

@@ -3529,6 +3529,24 @@ class BackendTestCase(unittest.TestCase):
         self.assertGreaterEqual(len(data["transition_checklist"]), 3)
         self.assertGreaterEqual(len(data["etiquette_tips"]), 2)
 
+    def test_application_custom_tags(self):
+        """Test adding and removing custom application tags."""
+        # Ensure application exists
+        self.client.post("/api/applications", json={"job_id": self.test_job_id})
+
+        # Add custom tag
+        add_res = self.client.post(f"/api/applications/{self.test_job_id}/tags/custom", json={"tag": "Dream Role"})
+        self.assertEqual(add_res.status_code, 200)
+        data = add_res.json()
+        self.assertEqual(data["status"], "success")
+        self.assertIn("Dream Role", data["tags"])
+
+        # Remove custom tag
+        del_res = self.client.delete(f"/api/applications/{self.test_job_id}/tags/custom/Dream Role")
+        self.assertEqual(del_res.status_code, 200)
+        del_data = del_res.json()
+        self.assertNotIn("Dream Role", del_data["tags"])
+
 
 if __name__ == "__main__":
     unittest.main()

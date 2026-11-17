@@ -96,6 +96,8 @@ from app.schemas import (
     ApplicationStatsResponse,
     ApplicationStatusUpdateRequest,
     ApplicationTagsUpdateRequest,
+    ApplicationCustomTagRequest,
+    ApplicationCustomTagResponse,
     ApplicationThankYouNoteResponse,
     ApplicationThankYouNoteUpdateRequest,
     ApplicationTimelineResponse,
@@ -245,6 +247,7 @@ from app.schemas import (
 )
 from app.services.db_service import (
     add_application_attachment,
+    add_application_custom_tag,
     add_application_interview,
     add_application_todo,
     add_candidate_certification,
@@ -328,6 +331,7 @@ from app.services.db_service import (
     record_interview_difficulty_feedback,
     prune_database_audit_log,
     record_search_query,
+    remove_application_custom_tag,
     remove_job_bookmark,
     repair_database_records,
     restore_database_backup,
@@ -2316,6 +2320,54 @@ async def update_application_tags_endpoint(job_id: str, payload: ApplicationTags
         "message": message,
         "application": updated_app
     }
+
+
+@app.post(
+    "/api/applications/{job_id}/tags/custom",
+    response_model=ApplicationCustomTagResponse,
+    summary="Add a custom tag to an application",
+    tags=["Applications"]
+)
+async def add_custom_tag_endpoint(job_id: str, payload: ApplicationCustomTagRequest):
+    """Add a custom label or category tag to an application."""
+    clean_id = (job_id or "").strip()
+    ok, msg, updated = add_application_custom_tag(clean_id, payload.tag)
+    if not ok:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND if "No existing" in msg else status.HTTP_400_BAD_REQUEST,
+            detail=msg
+        )
+    return ApplicationCustomTagResponse(
+        status="success",
+        message=msg,
+        job_id=clean_id,
+        tags=updated.get("tags", []) if updated else []
+    )
+
+
+@app.delete(
+    "/api/applications/{job_id}/tags/custom/{tag}",
+    response_model=ApplicationCustomTagResponse,
+    summary="Remove a custom tag from an application",
+    tags=["Applications"]
+)
+async def remove_custom_tag_endpoint(job_id: str, tag: str):
+    """Remove a custom label or category tag from an application."""
+    clean_id = (job_id or "").strip()
+    clean_tag = (tag or "").strip()
+    ok, msg, updated = remove_application_custom_tag(clean_id, clean_tag)
+    if not ok:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND if "No existing" in msg else status.HTTP_400_BAD_REQUEST,
+            detail=msg
+        )
+    return ApplicationCustomTagResponse(
+        status="success",
+        message=msg,
+        job_id=clean_id,
+        tags=updated.get("tags", []) if updated else []
+    )
+
 
 
 @app.patch(
