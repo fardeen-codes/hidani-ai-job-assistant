@@ -90,6 +90,9 @@ const elements = {
   drawerCompletenessBadge: document.getElementById('drawerCompletenessBadge'),
   drawerCompletenessBar: document.getElementById('drawerCompletenessBar'),
   drawerCompletenessHint: document.getElementById('drawerCompletenessHint'),
+  drawerTeamSizeSelect: document.getElementById('drawerTeamSizeSelect'),
+  drawerCompanyStageSelect: document.getElementById('drawerCompanyStageSelect'),
+  saveTeamPrefsBtn: document.getElementById('saveTeamPrefsBtn'),
 
   // Notification Toast Container
   toastContainer: document.getElementById('toastContainer')
@@ -345,6 +348,34 @@ function setupEventListeners() {
   elements.profileDrawer.addEventListener('click', (e) => {
     if (e.target === elements.profileDrawer) closeProfileDrawer();
   });
+  if (elements.saveTeamPrefsBtn) {
+    elements.saveTeamPrefsBtn.addEventListener('click', async () => {
+      try {
+        const teamSize = elements.drawerTeamSizeSelect ? elements.drawerTeamSizeSelect.value : '10-50';
+        const companyStage = elements.drawerCompanyStageSelect ? elements.drawerCompanyStageSelect.value : 'Growth';
+        elements.saveTeamPrefsBtn.disabled = true;
+        elements.saveTeamPrefsBtn.textContent = 'Saving...';
+        const res = await fetch(`${API_BASE}/profile/team-preferences`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            preferred_team_size: teamSize,
+            preferred_company_stage: companyStage
+          })
+        });
+        if (res.ok) {
+          showToast('Team & stage preferences saved!', 'success');
+        } else {
+          showToast('Failed to save team preferences.', 'error');
+        }
+      } catch (err) {
+        showToast(`Error: ${err.message}`, 'error');
+      } finally {
+        elements.saveTeamPrefsBtn.disabled = false;
+        elements.saveTeamPrefsBtn.textContent = 'Save Team Preferences';
+      }
+    });
+  }
 
   // Reset Session
   elements.resetChatBtn.addEventListener('click', () => resetSession());
@@ -1663,6 +1694,19 @@ function openProfileDrawer() {
 
   // Update Profile Completeness
   updateProfileCompletenessDrawer(p);
+
+  // Fetch Team and Stage Preferences
+  fetch(`${API_BASE}/profile/team-preferences`)
+    .then(r => r.ok ? r.json() : null)
+    .then(data => {
+      if (data && elements.drawerTeamSizeSelect) {
+        elements.drawerTeamSizeSelect.value = data.preferred_team_size || '10-50';
+      }
+      if (data && elements.drawerCompanyStageSelect) {
+        elements.drawerCompanyStageSelect.value = data.preferred_company_stage || 'Growth';
+      }
+    })
+    .catch(() => {});
 
   elements.profileDrawer.classList.remove('hidden');
 }

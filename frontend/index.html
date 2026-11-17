@@ -615,6 +615,35 @@
           </div>
         </div>
 
+        <!-- Engineering Team & Company Stage Preferences -->
+        <div class="bg-neutral-950 p-3 rounded-lg border border-neutral-800 space-y-2.5">
+          <label class="text-[11px] font-mono uppercase tracking-wider text-neutral-400 block">Engineering Team & Stage</label>
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            <div>
+              <label class="text-[10px] text-neutral-400 block mb-1">Team Size</label>
+              <select id="drawerTeamSizeSelect" class="w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1 text-xs text-neutral-200">
+                <option value="1-10">1-10 (Seed)</option>
+                <option value="10-50" selected>10-50 (Early)</option>
+                <option value="50-200">50-200 (Growth)</option>
+                <option value="200+">200+ (Scale)</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-[10px] text-neutral-400 block mb-1">Company Stage</label>
+              <select id="drawerCompanyStageSelect" class="w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1 text-xs text-neutral-200">
+                <option value="Early Startup">Early Startup</option>
+                <option value="Growth" selected>Growth</option>
+                <option value="Late Stage">Late Stage</option>
+                <option value="Enterprise">Enterprise</option>
+                <option value="Any">Any Stage</option>
+              </select>
+            </div>
+          </div>
+          <button id="saveTeamPrefsBtn" type="button" class="w-full py-1 text-[11px] font-medium bg-neutral-800 hover:bg-neutral-700 text-neutral-200 rounded border border-neutral-700 transition-colors">
+            Save Team Preferences
+          </button>
+        </div>
+
         <div>
           <label class="text-[11px] font-mono uppercase tracking-wider text-neutral-400">Portfolio & Project Links</label>
           <div id="drawerLinksList" class="mt-2 space-y-1.5">
