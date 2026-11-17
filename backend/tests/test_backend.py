@@ -3664,6 +3664,24 @@ class BackendTestCase(unittest.TestCase):
         self.assertGreaterEqual(len(data["proactive_remedies_in_place"]), 2)
         self.assertGreaterEqual(len(data["pitfalls_to_avoid"]), 2)
 
+    def test_candidate_benefits_preferences(self):
+        """Test retrieving and updating candidate must-have benefits preferences."""
+        update_res = self.client.put("/api/profile/benefits", json={
+            "must_have_benefits": ["Comprehensive Health", "401k 5% Match", "Remote Flexibility"],
+            "nice_to_have_benefits": ["$2000 Learning Budget", "Wellness Stipend"],
+            "notes": "Prefers premium health insurance with zero deductible"
+        })
+        self.assertEqual(update_res.status_code, 200)
+        data = update_res.json()
+        self.assertEqual(data["status"], "success")
+        self.assertIn("Comprehensive Health", data["must_have_benefits"])
+        self.assertIn("Wellness Stipend", data["nice_to_have_benefits"])
+
+        get_res = self.client.get("/api/profile/benefits")
+        self.assertEqual(get_res.status_code, 200)
+        get_data = get_res.json()
+        self.assertIn("Comprehensive Health", get_data["must_have_benefits"])
+
 
 if __name__ == "__main__":
     unittest.main()

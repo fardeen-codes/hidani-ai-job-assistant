@@ -1951,6 +1951,24 @@ class WeaknessFramingResponse(BaseModel):
     pitfalls_to_avoid: List[str]
 
 
+class CandidateBenefitsRequest(BaseModel):
+    """Candidate must-have and preferred employment benefits."""
+    must_have_benefits: List[str] = Field(default_factory=lambda: ["Health Insurance", "401k Match", "Remote Flexibility"], description="Non-negotiable required benefits")
+    nice_to_have_benefits: List[str] = Field(default_factory=lambda: ["Annual Learning Stipend", "Home Office Budget", "Parental Leave"], description="Preferred secondary benefits")
+    notes: Optional[str] = Field("", description="Specific coverage or equity preferences")
+
+
+class CandidateBenefitsResponse(BaseModel):
+    """Candidate benefit preferences and checklist status."""
+    status: str = "success"
+    must_have_benefits: List[str]
+    nice_to_have_benefits: List[str]
+    notes: Optional[str] = ""
+    updated_at: Optional[str] = None
+    message: Optional[str] = None
+
+
+
 
 
 

@@ -5519,6 +5519,45 @@ def set_daily_application_goal(daily_goal: int) -> Dict[str, Any]:
     }
 
 
+def get_candidate_benefits() -> Dict[str, Any]:
+    """Retrieve candidate must-have and secondary benefits preferences."""
+    prof = load_candidate_profile()
+    b = prof.get("benefits_preferences", {})
+    return {
+        "status": "success",
+        "must_have_benefits": b.get("must_have_benefits") or ["Health Insurance", "401k Match", "Remote Flexibility"],
+        "nice_to_have_benefits": b.get("nice_to_have_benefits") or ["Annual Learning Stipend", "Home Office Budget"],
+        "notes": b.get("notes", ""),
+        "updated_at": b.get("updated_at")
+    }
+
+
+def update_candidate_benefits(
+    must_have_benefits: Optional[List[str]] = None,
+    nice_to_have_benefits: Optional[List[str]] = None,
+    notes: Optional[str] = ""
+) -> Dict[str, Any]:
+    """Update and persist candidate target benefits preferences."""
+    prof = load_candidate_profile()
+    now_iso = datetime.now(timezone.utc).isoformat()
+    clean_must = [str(x).strip() for x in (must_have_benefits or []) if str(x).strip()]
+    clean_nice = [str(x).strip() for x in (nice_to_have_benefits or []) if str(x).strip()]
+    b_data = {
+        "must_have_benefits": clean_must,
+        "nice_to_have_benefits": clean_nice,
+        "notes": notes or "",
+        "updated_at": now_iso
+    }
+    prof["benefits_preferences"] = b_data
+    save_candidate_profile(prof)
+    return {
+        "status": "success",
+        "message": "Candidate benefits preferences updated successfully",
+        **b_data
+    }
+
+
+
 
 
 

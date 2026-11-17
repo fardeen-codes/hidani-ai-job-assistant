@@ -131,6 +131,8 @@ from app.schemas import (
     BulkBookmarkDeleteResponse,
     CandidateAvailabilityRequest,
     CandidateAvailabilityResponse,
+    CandidateBenefitsRequest,
+    CandidateBenefitsResponse,
     CandidateLanguageItem,
     CandidateLanguagesResponse,
     CandidateLanguagesUpdateRequest,
@@ -309,6 +311,7 @@ from app.services.db_service import (
     get_bookmark_categories,
     get_bookmarked_jobs,
     get_candidate_availability,
+    get_candidate_benefits,
     get_candidate_certifications,
     get_candidate_languages,
     get_candidate_location_preferences,
@@ -372,6 +375,7 @@ from app.services.db_service import (
     update_application_status,
     update_application_tags,
     update_candidate_availability,
+    update_candidate_benefits,
     update_candidate_languages,
     update_candidate_location_preferences,
     update_candidate_salary_preferences,
@@ -877,6 +881,35 @@ async def update_candidate_availability_endpoint(payload: CandidateAvailabilityR
         availability_notes=payload.availability_notes
     )
     return CandidateAvailabilityResponse(**res)
+
+
+@app.get(
+    "/api/profile/benefits",
+    response_model=CandidateBenefitsResponse,
+    summary="Get candidate target benefits and perks checklist",
+    tags=["Resume"]
+)
+async def get_candidate_benefits_endpoint():
+    """Retrieve candidate must-have and secondary benefits preferences."""
+    res = get_candidate_benefits()
+    return CandidateBenefitsResponse(**res)
+
+
+@app.put(
+    "/api/profile/benefits",
+    response_model=CandidateBenefitsResponse,
+    summary="Update candidate target benefits and perks checklist",
+    tags=["Resume"]
+)
+async def update_candidate_benefits_endpoint(payload: CandidateBenefitsRequest):
+    """Update candidate target employment benefits preferences."""
+    res = update_candidate_benefits(
+        must_have_benefits=payload.must_have_benefits,
+        nice_to_have_benefits=payload.nice_to_have_benefits,
+        notes=payload.notes
+    )
+    return CandidateBenefitsResponse(**res)
+
 
 
 
