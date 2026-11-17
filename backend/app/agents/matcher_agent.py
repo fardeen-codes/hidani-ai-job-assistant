@@ -1363,6 +1363,57 @@ def analyze_jd_readability_and_clarity(job_id: str, description: Optional[str] =
     }
 
 
+def calculate_company_promotion_velocity(company_name: str) -> Dict[str, Any]:
+    """Calculate company promotion velocity, leveling cycle frequency, and career ladder transparency."""
+    c_clean = (company_name or "Tech Company").strip()
+    c_lower = c_clean.lower()
+
+    if any(c in c_lower for c in ["startup", "labs", "seed", "scale"]):
+        score = 8.8
+        tier = "High Velocity (1-2 yrs)"
+        months = 16
+        transparency = "Moderate"
+        signals = [
+            "Rapid organizational headcount growth creating new leadership openings",
+            "Performance evaluations focused on immediate business impact and initiative",
+            "Shorter leveling cycles with flexible promotion committee reviews"
+        ]
+        advice = "Proactively take ownership of end-to-end critical features to demonstrate readiness for tech lead roles."
+    elif any(c in c_lower for c in ["google", "meta", "microsoft", "amazon", "apple", "stripe", "netflix"]):
+        score = 7.4
+        tier = "Steady Progression (2-3 yrs)"
+        months = 26
+        transparency = "High"
+        signals = [
+            "Formalized engineering levels (L3-L7) with transparent public leveling matrices",
+            "Twice-yearly calibration cycles with multi-peer review rubrics",
+            "Established mentor programs and explicit promotion packet standards"
+        ]
+        advice = "Focus on demonstrating sustained cross-team scope, technical strategy, and mentorship of junior engineers."
+    else:
+        score = 6.5
+        tier = "Standard Progression (2.5-3.5 yrs)"
+        months = 30
+        transparency = "Moderate"
+        signals = [
+            "Annual performance and compensation calibration reviews",
+            "Progression contingent on both individual merit and departmental budget allocation",
+            "Clear technical tracks alongside engineering management pathways"
+        ]
+        advice = "Align closely with your engineering manager on quarterly OKRs and milestone checklists."
+
+    return {
+        "company_name": c_clean,
+        "promotion_velocity_score": score,
+        "growth_trajectory_tier": tier,
+        "average_promotion_months": months,
+        "ladder_transparency": transparency,
+        "growth_signals": signals,
+        "career_advice": advice
+    }
+
+
+
 
 
 

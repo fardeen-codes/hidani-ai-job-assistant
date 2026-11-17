@@ -23,6 +23,7 @@ from app.agents.matcher_agent import (
     analyze_skill_gap,
     batch_score_jobs,
     calculate_company_culture_index,
+    calculate_company_promotion_velocity,
     calculate_company_stage_fit,
     calculate_salary_expectation_fit,
     calculate_timezone_overlap,
@@ -146,6 +147,7 @@ from app.schemas import (
     CompanyCultureIndexResponse,
     CompanyDirectoryResponse,
     CompanyInterviewPredictionResponse,
+    CompanyPromotionVelocityResponse,
     CompanyStageFitResponse,
     CompanyHiringSurgeItem,
     CompanyHiringSurgeResponse,
@@ -1333,6 +1335,20 @@ async def get_company_culture_endpoint(company_name: str):
     all_jobs = load_jobs()
     matching_jobs = [j for j in all_jobs if str(j.get("company", "")).strip().lower() == clean_name.lower()]
     return calculate_company_culture_index(clean_name, matching_jobs)
+
+
+@app.get(
+    "/api/companies/{company_name}/promotion-velocity",
+    response_model=CompanyPromotionVelocityResponse,
+    summary="Get company promotion velocity and career ladder progression score",
+    tags=["Companies"]
+)
+async def get_company_promotion_velocity_endpoint(company_name: str):
+    """Evaluate company promotion frequency, leveling transparency, and career velocity."""
+    clean_name = (company_name or "").strip()
+    if not clean_name:
+        raise HTTPException(status_code=400, detail="Company name cannot be empty.")
+    return calculate_company_promotion_velocity(clean_name)
 
 
 @app.get(

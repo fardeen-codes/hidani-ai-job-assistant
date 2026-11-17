@@ -3612,6 +3612,19 @@ class BackendTestCase(unittest.TestCase):
         self.assertEqual(data["referral"]["referral_status"], "Confirmed")
         self.assertEqual(data["referral"]["relationship"], "Former Tech Lead")
 
+    def test_company_promotion_velocity_score(self):
+        """Test calculating company promotion velocity and career ladder progression score."""
+        res = self.client.get("/api/companies/Google/promotion-velocity")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["company_name"], "Google")
+        self.assertIn("promotion_velocity_score", data)
+        self.assertIn("growth_trajectory_tier", data)
+        self.assertIn("average_promotion_months", data)
+        self.assertIn("ladder_transparency", data)
+        self.assertGreaterEqual(len(data["growth_signals"]), 2)
+        self.assertIn("career_advice", data)
+
 
 if __name__ == "__main__":
     unittest.main()

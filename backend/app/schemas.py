@@ -1898,6 +1898,18 @@ class ApplicationReferralResponse(BaseModel):
     referral: Dict[str, Any]
 
 
+class CompanyPromotionVelocityResponse(BaseModel):
+    """Company promotion velocity and engineering career ladder trajectory assessment."""
+    company_name: str
+    promotion_velocity_score: float
+    growth_trajectory_tier: str
+    average_promotion_months: int
+    ladder_transparency: str
+    growth_signals: List[str]
+    career_advice: str
+
+
+
 
 
 
