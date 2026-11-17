@@ -1839,6 +1839,47 @@ def generate_recruiter_screen_faq(
     }
 
 
+def frame_candidate_weakness(
+    weakness_topic: Optional[str] = "Delegation and letting go of initial code ownership",
+    context_details: Optional[str] = "Transitioning from individual contributor to senior engineer lead"
+) -> Dict[str, Any]:
+    """Frame candidate developmental weaknesses constructively using self-awareness, active remedies, and impact proof."""
+    topic = (weakness_topic or "Delegation and code ownership").strip()
+    ctx = (context_details or "General software engineering career growth").strip()
+
+    why_ask = "Interviewers ask this not to disqualify you for having flaws, but to test self-awareness, receptiveness to feedback, and proactive self-correction."
+
+    script = (
+        f"Early in my career and especially when {ctx.lower()}, my natural default was {topic.lower()}. "
+        f"I felt that writing the code myself was the fastest path to quality. However, as our systems scaled, "
+        f"I realized this created a bottleneck for the team and deprived junior teammates of ownership opportunities. "
+        f"To address this proactively, I implemented a structured delegation framework: creating detailed RFC design docs, "
+        f"pairing on initial architecture, and stepping back during PR reviews so others lead delivery. "
+        f"As a result, our team velocity increased and two engineers on my squad earned independent component ownership."
+    )
+
+    remedies = [
+        "Acknowledge the tendency openly with managers during bi-weekly 1:1 check-ins.",
+        "Establish explicit checklist criteria or automated guardrails before intervening in teammate PRs.",
+        "Request candid quarterly peer feedback specifically targeting this development area."
+    ]
+
+    pitfalls = [
+        "Avoid humblebrag clichés (e.g. 'I work too hard' or 'I am too much of a perfectionist').",
+        "Never mention an essential non-negotiable core skill of the target role (e.g. 'I struggle with basic git branching').",
+        "Never leave the weakness unaddressed without demonstrating an active mitigation habit."
+    ]
+
+    return {
+        "weakness_topic": topic,
+        "why_interviewers_ask": why_ask,
+        "constructive_script": script,
+        "proactive_remedies_in_place": remedies,
+        "pitfalls_to_avoid": pitfalls
+    }
+
+
+
 
 
 

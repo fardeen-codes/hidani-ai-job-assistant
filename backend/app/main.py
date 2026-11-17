@@ -41,6 +41,7 @@ from app.agents.orchestrator import (
     coach_star_behavioral_answer,
     evaluate_intent_confidence_and_clarification,
     export_session_transcript,
+    frame_candidate_weakness,
     generate_cold_outreach_message,
     generate_elevator_pitch,
     generate_post_interview_thank_you_email,
@@ -254,6 +255,8 @@ from app.schemas import (
     TitleNormalizationRequest,
     TitleNormalizationResponse,
     UploadResumeResponse,
+    WeaknessFramingRequest,
+    WeaknessFramingResponse,
     WeightedSkillScoreRequest,
     WeightedSkillScoreResponse,
     WorkPreferencesResponse,
@@ -1121,6 +1124,21 @@ async def generate_recruiter_faq_endpoint(payload: RecruiterScreenFAQRequest):
         target_company=payload.target_company,
         candidate_experience_years=payload.candidate_experience_years
     )
+
+
+@app.post(
+    "/api/chat/weakness-framing",
+    response_model=WeaknessFramingResponse,
+    summary="Constructively frame a candidate developmental weakness for interviews",
+    tags=["Chat"]
+)
+async def frame_candidate_weakness_endpoint(payload: WeaknessFramingRequest):
+    """Coach candidate on answering 'What is your greatest weakness?' with self-awareness and proactive remedies."""
+    return frame_candidate_weakness(
+        weakness_topic=payload.weakness_topic,
+        context_details=payload.context_details
+    )
+
 
 
 

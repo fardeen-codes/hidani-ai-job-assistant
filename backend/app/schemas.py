@@ -1936,6 +1936,22 @@ class ApplicationExpenseListResponse(BaseModel):
     expenses: List[ApplicationExpenseItem]
 
 
+class WeaknessFramingRequest(BaseModel):
+    """Request payload to coach and constructively frame a candidate weakness."""
+    weakness_topic: str = Field("Delegation and letting go of initial code ownership", description="Weakness topic e.g. delegation, public speaking, saying no")
+    context_details: Optional[str] = Field("Transitioning from individual contributor to senior engineer lead", description="Contextual career background")
+
+
+class WeaknessFramingResponse(BaseModel):
+    """Constructive weakness framing coach response with interview scripts and active remedies."""
+    weakness_topic: str
+    why_interviewers_ask: str
+    constructive_script: str
+    proactive_remedies_in_place: List[str]
+    pitfalls_to_avoid: List[str]
+
+
+
 
 
 

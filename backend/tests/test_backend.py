@@ -3650,6 +3650,20 @@ class BackendTestCase(unittest.TestCase):
         self.assertGreaterEqual(list_data["total_expenses"], 345.50)
         self.assertGreaterEqual(len(list_data["expenses"]), 1)
 
+    def test_candidate_weakness_framing(self):
+        """Test constructively framing candidate weaknesses for behavioral rounds."""
+        res = self.client.post("/api/chat/weakness-framing", json={
+            "weakness_topic": "Saying no to incoming ad-hoc requests",
+            "context_details": "Balancing high roadmap velocity with cross-team interruptions"
+        })
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["weakness_topic"], "Saying no to incoming ad-hoc requests")
+        self.assertIn("why_interviewers_ask", data)
+        self.assertIn("constructive_script", data)
+        self.assertGreaterEqual(len(data["proactive_remedies_in_place"]), 2)
+        self.assertGreaterEqual(len(data["pitfalls_to_avoid"]), 2)
+
 
 if __name__ == "__main__":
     unittest.main()
