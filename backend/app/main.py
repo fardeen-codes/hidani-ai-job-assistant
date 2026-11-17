@@ -45,6 +45,7 @@ from app.agents.orchestrator import (
     generate_post_interview_thank_you_email,
     generate_project_talking_points,
     generate_recruiter_followup_cadence,
+    generate_recruiter_screen_faq,
     generate_resignation_letter,
     generate_salary_negotiation_script,
     generate_system_design_scenario,
@@ -194,6 +195,8 @@ from app.schemas import (
     ProfileCompletenessResponse,
     ProjectTalkingPointsRequest,
     ProjectTalkingPointsResponse,
+    RecruiterScreenFAQRequest,
+    RecruiterScreenFAQResponse,
     RejectionReasonLogRequest,
     RejectionReasonLogResponse,
     RemoteWorkBreakdownResponse,
@@ -1093,6 +1096,22 @@ async def generate_resignation_letter_endpoint(payload: ResignationLetterRequest
         tone=payload.tone,
         handover_focus=payload.handover_focus
     )
+
+
+@app.post(
+    "/api/chat/recruiter-faq",
+    response_model=RecruiterScreenFAQResponse,
+    summary="Generate recruiter phone screen FAQ preparation guide",
+    tags=["Chat"]
+)
+async def generate_recruiter_faq_endpoint(payload: RecruiterScreenFAQRequest):
+    """Generate high-yield recruiter phone screen interview questions, suggested answers, and questions to ask."""
+    return generate_recruiter_screen_faq(
+        role_title=payload.role_title,
+        target_company=payload.target_company,
+        candidate_experience_years=payload.candidate_experience_years
+    )
+
 
 
 

@@ -1865,6 +1865,23 @@ class ApplicationStreakResponse(BaseModel):
     recent_activity_by_date: Dict[str, int]
 
 
+class RecruiterScreenFAQRequest(BaseModel):
+    """Request payload to generate recruiter phone screen FAQ preparation guide."""
+    role_title: Optional[str] = Field("Senior Software Engineer", description="Target role title")
+    target_company: Optional[str] = Field("Tech Company", description="Target company name")
+    candidate_experience_years: Optional[int] = Field(4, description="Years of relevant professional experience")
+
+
+class RecruiterScreenFAQResponse(BaseModel):
+    """Recruiter phone screen FAQ guide with questions, talking points, and reverse inquiries."""
+    role_title: str
+    target_company: str
+    core_faq_questions: List[Dict[str, str]]
+    questions_to_ask_recruiter: List[str]
+    salary_discussion_strategy: str
+
+
+
 
 
 

@@ -1789,6 +1789,57 @@ def generate_resignation_letter(
     }
 
 
+def generate_recruiter_screen_faq(
+    role_title: Optional[str] = "Senior Software Engineer",
+    target_company: Optional[str] = "Tech Company",
+    candidate_experience_years: Optional[int] = 4
+) -> Dict[str, Any]:
+    """Generate high-yield recruiter phone screen FAQ preparation guide and reverse inquiry playbook."""
+    role = (role_title or "Senior Software Engineer").strip()
+    company = (target_company or "Tech Company").strip()
+    exp = int(candidate_experience_years or 4)
+
+    faqs = [
+        {
+            "question": "Tell me about yourself and your background.",
+            "what_recruiter_evaluates": "Conciseness, narrative coherence, and immediate relevance to the open role.",
+            "suggested_talking_points": f"Deliver a 90-second arc: Started in core engineering, spent the last {exp} years specializing in scalable backend systems, and currently seeking new impact at {company}."
+        },
+        {
+            "question": f"Why are you interested in joining {company} specifically?",
+            "what_recruiter_evaluates": "Authentic company research and alignment with mission/product roadmap.",
+            "suggested_talking_points": f"Highlight a specific product challenge or technical initiative {company} is tackling and how your engineering background directly solves it."
+        },
+        {
+            "question": "Why are you looking to leave your current role?",
+            "what_recruiter_evaluates": "Professional maturity, absence of bitterness, and forward-looking motivation.",
+            "suggested_talking_points": "Frame departure positively: Seeking deeper ownership in modern cloud infrastructure and larger scale challenges."
+        },
+        {
+            "question": "What are your compensation expectations for this position?",
+            "what_recruiter_evaluates": "Budget fit and willingness to provide early salary anchoring.",
+            "suggested_talking_points": "Deflect smoothly: 'Right now my primary focus is evaluating fit and team scope. What is the approved budgeted band for this role?'"
+        }
+    ]
+
+    questions_to_ask = [
+        f"What is driving the headcount need for this {role} opening (team expansion vs backfill)?",
+        "How is the engineering team structured, and what does the interview pipeline timeline look like?",
+        "What are the top 1-2 traits that differentiate successful engineers in this organization?"
+    ]
+
+    strategy = "Keep the initial conversation friendly, collaborative, and focused on shared technical goals. Never anchor below market rate on the initial screening call."
+
+    return {
+        "role_title": role,
+        "target_company": company,
+        "core_faq_questions": faqs,
+        "questions_to_ask_recruiter": questions_to_ask,
+        "salary_discussion_strategy": strategy
+    }
+
+
+
 
 
 

@@ -3578,6 +3578,21 @@ class BackendTestCase(unittest.TestCase):
         self.assertIn("longest_streak_days", streak_data)
         self.assertIn("goal_met_today", streak_data)
 
+    def test_recruiter_screen_faq_generator(self):
+        """Test generating recruiter phone screen FAQs and reverse questions."""
+        res = self.client.post("/api/chat/recruiter-faq", json={
+            "role_title": "Senior Backend Engineer",
+            "target_company": "Stripe",
+            "candidate_experience_years": 5
+        })
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["role_title"], "Senior Backend Engineer")
+        self.assertEqual(data["target_company"], "Stripe")
+        self.assertGreaterEqual(len(data["core_faq_questions"]), 3)
+        self.assertGreaterEqual(len(data["questions_to_ask_recruiter"]), 2)
+        self.assertIn("salary_discussion_strategy", data)
+
 
 if __name__ == "__main__":
     unittest.main()
