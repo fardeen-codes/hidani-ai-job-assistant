@@ -1441,6 +1441,9 @@ async function fetchAndRenderApplicationsList() {
           ? `<button onclick="promptLogApplicationDebrief('${escapeHtml(app.job_id)}')" title="Debrief logged for ${escapeHtml(debriefInfo.stage_reached || 'stage')}. Click to update." class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-purple-500/15 text-purple-300 border border-purple-500/30 hover:bg-purple-500/25 transition-colors">📝 Debrief Logged</button>`
           : `<button onclick="promptLogApplicationDebrief('${escapeHtml(app.job_id)}')" title="Log lessons learned and reflection notes" class="px-1.5 py-0.5 rounded text-[9px] font-mono text-neutral-400 hover:text-purple-300 bg-neutral-900 border border-neutral-800 hover:border-neutral-700 transition-colors">📝 Add Debrief</button>`)
         : '';
+      const offerBadge = currentStatus === 'Offer'
+        ? `<span class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">🎉 Offer Received</span>`
+        : '';
       const statusOptions = statuses.map(s =>
         `<option value="${s}" ${s === currentStatus ? 'selected' : ''}>${s}</option>`
       ).join('');
@@ -1453,6 +1456,7 @@ async function fetchAndRenderApplicationsList() {
             ${questionBadge}
             ${difficultyBadge}
             ${thankYouBadge}
+            ${offerBadge}
             ${debriefBadge}
             ${todoBadge}
             ${addTodoBtn}
