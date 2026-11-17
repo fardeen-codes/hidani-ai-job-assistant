@@ -711,6 +711,47 @@ async function handleSendMessage() {
     }
   }
 
+  // Check for client-side /resign slash command
+  if (text.toLowerCase().startsWith('/resign')) {
+    const company = text.substring(7).trim() || 'Current Company';
+    setSending(true);
+    const typingIndicatorId = showTypingIndicator();
+    scrollToBottom();
+    try {
+      showToast(`Generating resignation notice for ${company}...`, 'info');
+      const res = await fetch(`${API_BASE}/chat/resignation-letter`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          company_name: company,
+          manager_name: 'Manager',
+          last_working_day: 'two weeks from today',
+          tenure_years: 2.0,
+          tone: 'Professional and Warm',
+          handover_focus: 'System documentation, project runbooks, and mentorship'
+        })
+      });
+      removeTypingIndicator(typingIndicatorId);
+      if (res.ok) {
+        const data = await res.json();
+        const checkList = (data.transition_checklist || []).map(c => `- ✅ ${escapeHtml(c)}`).join('\n');
+        const tipList = (data.etiquette_tips || []).map(t => `- 💡 ${escapeHtml(t)}`).join('\n');
+        appendAssistantMessage(
+          `### 📝 Formal Resignation Notice Draft: ${escapeHtml(data.company_name)}\n\n` +
+          `**Subject**: \`${escapeHtml(data.subject_line)}\`\n\n` +
+          `\`\`\`text\n${escapeHtml(data.letter_body)}\n\`\`\`\n\n` +
+          `#### 📋 Offboarding Handover Checklist\n${checkList}\n\n` +
+          `#### 🤝 Departure Etiquette Guidelines\n${tipList}`
+        );
+        showToast('Resignation letter ready!', 'success');
+        setSending(false);
+        return;
+      }
+    } catch (e) {
+      removeTypingIndicator(typingIndicatorId);
+    }
+  }
+
   setSending(true);
 
   // Show typing indicator
