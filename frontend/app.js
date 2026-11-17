@@ -597,6 +597,45 @@ async function handleSendMessage() {
     }
   }
 
+  // Check for client-side /project slash command
+  if (text.toLowerCase().startsWith('/project')) {
+    const proj = text.substring(8).trim() || 'Distributed Backend System';
+    setSending(true);
+    const typingIndicatorId = showTypingIndicator();
+    scrollToBottom();
+    try {
+      showToast(`Generating talking points for ${proj}...`, 'info');
+      const res = await fetch(`${API_BASE}/chat/project-talking-points`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          project_name: proj,
+          tech_stack: state.candidateProfile?.skills || ['Python', 'FastAPI', 'Distributed Systems'],
+          target_role: state.candidateProfile?.target_roles?.[0] || 'Senior Backend Engineer'
+        })
+      });
+      removeTypingIndicator(typingIndicatorId);
+      if (res.ok) {
+        const data = await res.json();
+        const archList = (data.architectural_highlights || []).map(h => `- ${escapeHtml(h)}`).join('\n');
+        const tradeoffsList = (data.technical_tradeoffs || []).map(t => `- ⚖️ ${escapeHtml(t)}`).join('\n');
+        const metricsList = (data.scale_and_performance_metrics || []).map(m => `- 📊 ${escapeHtml(m)}`).join('\n');
+        appendAssistantMessage(
+          `### 🛠️ Portfolio Deep-Dive: ${escapeHtml(data.project_name)} (${escapeHtml(data.target_role)})\n\n` +
+          `#### 🗣️ Suggested Opening Pitch\n> "${escapeHtml(data.suggested_opening_pitch)}"\n\n` +
+          `#### 🏗️ Key Architectural Decisions\n${archList}\n\n` +
+          `#### ⚖️ Engineering Tradeoffs & Nuance\n${tradeoffsList}\n\n` +
+          `#### 📈 Scale & Performance Highlights\n${metricsList}`
+        );
+        showToast('Project talking points generated!', 'success');
+        setSending(false);
+        return;
+      }
+    } catch (e) {
+      removeTypingIndicator(typingIndicatorId);
+    }
+  }
+
   setSending(true);
 
   // Show typing indicator
