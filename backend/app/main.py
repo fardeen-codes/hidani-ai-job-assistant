@@ -44,6 +44,7 @@ from app.agents.orchestrator import (
     generate_project_talking_points,
     generate_recruiter_followup_cadence,
     generate_salary_negotiation_script,
+    generate_system_design_scenario,
     generate_technical_interview_cheatsheet,
     get_session_metrics,
     get_session_preferences,
@@ -215,6 +216,8 @@ from app.schemas import (
     StarAnswerCoachRequest,
     StarAnswerCoachResponse,
     StorageSpeedBenchmark,
+    SystemDesignScenarioRequest,
+    SystemDesignScenarioResponse,
     SystemDiagnosticsResponse,
     SystemHealthPingResponse,
     TechnicalCheatSheetRequest,
@@ -974,6 +977,21 @@ async def generate_project_talking_points_endpoint(payload: ProjectTalkingPoints
         project_summary=payload.project_summary,
         challenges=payload.challenges_faced,
         target_role=payload.target_role or "Senior Backend Engineer"
+    )
+
+
+@app.post(
+    "/api/chat/system-design",
+    response_model=SystemDesignScenarioResponse,
+    summary="Generate tailored mock system design interview scenario",
+    tags=["Chat"]
+)
+async def generate_system_design_endpoint(payload: SystemDesignScenarioRequest):
+    """Generate system design requirements, back-of-envelope estimations, and architecture components."""
+    return generate_system_design_scenario(
+        topic=payload.topic or "Distributed Rate Limiter",
+        scale_target=payload.scale_target or "100M Daily Active Users",
+        seniority=payload.seniority or "Senior"
     )
 
 

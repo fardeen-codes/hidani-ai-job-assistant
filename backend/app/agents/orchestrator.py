@@ -1631,6 +1631,109 @@ def generate_project_talking_points(
     }
 
 
+def generate_system_design_scenario(
+    topic: Optional[str] = "Distributed Rate Limiter",
+    scale_target: Optional[str] = "100M Daily Active Users",
+    seniority: Optional[str] = "Senior"
+) -> Dict[str, Any]:
+    """
+    Generate high-yield mock system design interview problem with requirements, sizing, and architecture components.
+    """
+    clean_topic = (topic or "Distributed Rate Limiter").strip()
+    clean_scale = (scale_target or "100M Daily Active Users").strip()
+    clean_sen = (seniority or "Senior").strip()
+
+    t_lower = clean_topic.lower()
+
+    if "rate" in t_lower or "limit" in t_lower:
+        func = [
+            "Limit client requests based on IP, User ID, or API Token tier.",
+            "Return HTTP 429 Too Many Requests with Retry-After header when threshold exceeded.",
+            "Support configurable sliding window and token bucket policies per endpoint."
+        ]
+        non_func = [
+            "Ultra-low latency overhead (< 2ms per request evaluation).",
+            "High availability across global multi-region deployments (fail-open policy).",
+            "Accuracy within 99% under distributed concurrency spikes."
+        ]
+        sizing = [
+            "100M DAU * 50 requests/day = 5 Billion requests/day = ~58,000 QPS average, 120,000 QPS peak.",
+            "Token state memory: 100M keys * 32 bytes = 3.2 GB RAM (easily fits in Redis cluster)."
+        ]
+        components = [
+            "API Gateway / Reverse Proxy with embedded Envoy rate limiter filter",
+            "Distributed In-Memory Store (Redis Cluster running Lua scripts for atomic token evaluation)",
+            "Configuration Management Service (Dynamic rule propagation via ZooKeeper/Consul)"
+        ]
+        deep_dives = [
+            "Token Bucket vs Leaky Bucket vs Sliding Window Log algorithms",
+            "Handling race conditions between concurrent requests (Redis EVAL Lua script vs Redis Cell)",
+            "Local in-memory caching with batch sync to reduce Redis network roundtrips"
+        ]
+    elif "cache" in t_lower:
+        func = [
+            "Key-value storage with fast get(k) and set(k, v) operations.",
+            "Configurable TTL eviction and LRU / LFU cache eviction policies.",
+            "Persistence snapshotting (RDB / AOF equivalent)."
+        ]
+        non_func = [
+            "Sub-millisecond read/write latency.",
+            "Strong high availability with master-replica failover.",
+            "Horizontal sharding across memory nodes."
+        ]
+        sizing = [
+            "Read-heavy workload: 100:1 read-to-write ratio.",
+            "30TB total cached dataset across 100 nodes with 512GB RAM each."
+        ]
+        components = [
+            "Consistent Hashing client ring",
+            "In-memory storage engine with hash table + doubly linked list for LRU",
+            "Consensus coordinator for cluster membership"
+        ]
+        deep_dives = [
+            "Cache stampede (thundering herd) mitigation using singleflight mutexes",
+            "Consistent hashing with virtual nodes for uniform key distribution",
+            "Cache invalidation patterns (Write-through vs Write-behind vs Cache-aside)"
+        ]
+    else:
+        func = [
+            f"Core transactional workflows for {clean_topic}.",
+            "Idempotent API endpoints for state mutations.",
+            "Search and query retrieval capabilities."
+        ]
+        non_func = [
+            f"Scale handling for {clean_scale}.",
+            "P99 latency under 100ms under load.",
+            "99.99% uptime availability SLA."
+        ]
+        sizing = [
+            f"Estimated peak throughput: 50,000+ QPS to support {clean_scale}.",
+            "Data storage growth: 500GB - 2TB new transactional data per month."
+        ]
+        components = [
+            "Load Balancers (Layer 4 / Layer 7)",
+            "Stateless Microservice Replicas",
+            "Distributed Database (Primary-Replica with read replicas) + Caching Layer",
+            "Async Message Queue (Kafka/RabbitMQ) for deferred background tasks"
+        ]
+        deep_dives = [
+            "Database sharding and partition key selection strategies",
+            "Event-driven architecture and asynchronous decoupled processing",
+            "Zero-downtime database schema migration strategies"
+        ]
+
+    return {
+        "topic": clean_topic,
+        "seniority": clean_sen,
+        "functional_requirements": func,
+        "non_functional_requirements": non_func,
+        "back_of_envelope_calculations": sizing,
+        "key_architectural_components": components,
+        "deep_dive_topics": deep_dives
+    }
+
+
+
 
 
 

@@ -3437,6 +3437,24 @@ class BackendTestCase(unittest.TestCase):
         self.assertIn("evaluation_label", data)
         self.assertTrue(data["is_above_target"])
 
+    def test_system_design_scenario_generator(self):
+        """Test generating mock system design problem with calculations and deep-dive topics."""
+        payload = {
+            "topic": "Distributed Rate Limiter",
+            "scale_target": "100M DAU",
+            "seniority": "Staff"
+        }
+        res = self.client.post("/api/chat/system-design", json=payload)
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["topic"], "Distributed Rate Limiter")
+        self.assertEqual(data["seniority"], "Staff")
+        self.assertGreaterEqual(len(data["functional_requirements"]), 2)
+        self.assertGreaterEqual(len(data["non_functional_requirements"]), 2)
+        self.assertGreaterEqual(len(data["back_of_envelope_calculations"]), 1)
+        self.assertGreaterEqual(len(data["key_architectural_components"]), 2)
+        self.assertGreaterEqual(len(data["deep_dive_topics"]), 2)
+
 
 if __name__ == "__main__":
     unittest.main()

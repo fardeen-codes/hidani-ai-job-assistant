@@ -1738,6 +1738,25 @@ class OfferSalaryVarianceResponse(BaseModel):
     evaluation_label: str
 
 
+class SystemDesignScenarioRequest(BaseModel):
+    """Request payload to generate a tailored system design interview problem."""
+    topic: Optional[str] = Field("Distributed Rate Limiter", description="System design topic or architectural pattern")
+    scale_target: Optional[str] = Field("100M Daily Active Users", description="Traffic or data scale requirement")
+    seniority: Optional[str] = Field("Senior", description="Seniority level (Senior, Staff, Principal)")
+
+
+class SystemDesignScenarioResponse(BaseModel):
+    """Structured mock system design interview problem specification."""
+    topic: str
+    seniority: str
+    functional_requirements: List[str]
+    non_functional_requirements: List[str]
+    back_of_envelope_calculations: List[str]
+    key_architectural_components: List[str]
+    deep_dive_topics: List[str]
+
+
+
 
 
 
