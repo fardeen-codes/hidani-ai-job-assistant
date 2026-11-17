@@ -1643,6 +1643,13 @@ async function fetchAndRenderApplicationsList() {
       const referralBadge = refInfo
         ? `<button onclick="promptLogReferral('${escapeHtml(app.job_id)}')" title="Referred by ${escapeHtml(refInfo.referrer_name)} (${escapeHtml(refInfo.referral_status || 'Submitted')}). Click to edit." class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/25 transition-colors">🤝 Referred: ${escapeHtml(refInfo.referrer_name)}</button>`
         : `<button onclick="promptLogReferral('${escapeHtml(app.job_id)}')" title="Track employee referral contact" class="px-1.5 py-0.5 rounded text-[9px] font-mono text-neutral-400 hover:text-indigo-300 bg-neutral-900 border border-neutral-800 hover:border-neutral-700 transition-colors">🤝 + Referral</button>`;
+      const expenses = Array.isArray(app.expenses) ? app.expenses : [];
+      const totalExpense = expenses.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+      const expenseBadge = expenses.length > 0
+        ? `<button onclick="promptAddExpense('${escapeHtml(app.job_id)}')" title="${expenses.length} expense(s) logged: $${totalExpense.toFixed(2)}. Click to add more." class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-amber-500/15 text-amber-300 border border-amber-500/30 hover:bg-amber-500/25 transition-colors">💵 $${totalExpense.toFixed(0)} Expenses</button>`
+        : (['Interview', 'Offer'].includes(currentStatus)
+          ? `<button onclick="promptAddExpense('${escapeHtml(app.job_id)}')" title="Log interview travel, hotel, flight expenses" class="px-1.5 py-0.5 rounded text-[9px] font-mono text-neutral-400 hover:text-amber-300 bg-neutral-900 border border-neutral-800 hover:border-neutral-700 transition-colors">💵 + Expense</button>`
+          : '');
       const offerBadge = currentStatus === 'Offer'
         ? `<span class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">🎉 Offer Received</span>`
         : '';
@@ -1667,6 +1674,7 @@ async function fetchAndRenderApplicationsList() {
             ${questionBadge}
             ${difficultyBadge}
             ${referralBadge}
+            ${expenseBadge}
             ${thankYouBadge}
             ${offerBadge}
             ${debriefBadge}
@@ -2247,6 +2255,40 @@ window.promptLogReferral = async (jobId) => {
       throw new Error(err.detail || `Failed to log referral (${res.status})`);
     }
     showToast('Referral details saved!', 'success');
+    fetchAndRenderApplicationsList();
+  } catch (err) {
+    showToast(`Error: ${err.message}`, 'error');
+  }
+};
+
+window.promptAddExpense = async (jobId) => {
+  const item = prompt('Enter expense description (e.g. Flight to NYC Onsite, Hotel, Train):');
+  if (!item || !item.trim()) return;
+  const amountStr = prompt('Enter expense amount in USD (e.g. 250):', '150');
+  if (!amountStr) return;
+  const amount = parseFloat(amountStr.replace(/[^0-9.]/g, ''));
+  if (isNaN(amount) || amount <= 0) {
+    showToast('Invalid expense amount.', 'error');
+    return;
+  }
+  const category = prompt('Expense Category (Flight, Hotel, Meals, Transit, Equipment, Other):', 'Transit');
+
+  try {
+    const res = await fetch(`${API_BASE}/applications/${encodeURIComponent(jobId)}/expenses`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        item: item.trim(),
+        amount: amount,
+        category: category ? category.trim() : 'Transit',
+        currency: 'USD'
+      })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `Failed to log expense (${res.status})`);
+    }
+    showToast(`Expense of $${amount.toFixed(2)} logged!`, 'success');
     fetchAndRenderApplicationsList();
   } catch (err) {
     showToast(`Error: ${err.message}`, 'error');
