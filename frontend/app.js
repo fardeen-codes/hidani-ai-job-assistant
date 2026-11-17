@@ -1042,6 +1042,16 @@ function getJobClarityBadge(job) {
   return '';
 }
 
+function getCareerLadderBadge(job) {
+  const comp = (job.company || '').toLowerCase();
+  if (comp.includes('startup') || comp.includes('labs') || comp.includes('seed')) {
+    return '<span class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-cyan-500/15 text-cyan-300 border border-cyan-500/30" title="High Promotion Velocity (1-2 yrs typical leveling cycle)">⚡ Fast Ladder</span>';
+  } else if (comp.includes('google') || comp.includes('meta') || comp.includes('microsoft') || comp.includes('amazon') || comp.includes('stripe')) {
+    return '<span class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-indigo-500/15 text-indigo-300 border border-indigo-500/30" title="Transparent Leveling Rubric (L3-L7 with structured calibration)">🪜 Clear Ladder</span>';
+  }
+  return '';
+}
+
 function appendUserMessage(text) {
   const msgEl = document.createElement('div');
   msgEl.className = 'flex justify-end message-appear';
@@ -1148,6 +1158,7 @@ function renderInteractiveJobCards(container, jobs) {
             ${getTechModernizationBadge(job)}
             ${getCompanyStageBadge(job)}
             ${getJobClarityBadge(job)}
+            ${getCareerLadderBadge(job)}
           </div>
           <p class="text-xs text-neutral-400 mt-0.5">${escapeHtml(job.company)} • <span class="text-neutral-300">${escapeHtml(job.location)}</span></p>
         </div>
@@ -1453,6 +1464,7 @@ async function fetchAndRenderJobsList(keyword = '') {
             ${getTechModernizationBadge(job)}
             ${getCompanyStageBadge(job)}
             ${getJobClarityBadge(job)}
+            ${getCareerLadderBadge(job)}
             <span class="text-[10px] font-mono px-1.5 py-0.2 rounded bg-neutral-800 text-neutral-400 border border-neutral-700">${escapeHtml(job.experience || 'All Levels')}</span>
           </div>
           <p class="text-xs text-neutral-400 mt-0.5">${escapeHtml(job.company)} • <span class="text-neutral-300">${escapeHtml(job.location)}</span></p>
