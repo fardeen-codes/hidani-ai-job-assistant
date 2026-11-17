@@ -1305,6 +1305,71 @@ def update_application_referral(
     return True, f"Referral for '{name}' recorded successfully.", updated_app
 
 
+def add_application_expense(
+    job_id: str,
+    item: str,
+    amount: float,
+    category: Optional[str] = "Transit",
+    currency: Optional[str] = "USD"
+) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
+    """Log an interview travel or reimbursement expense against an application."""
+    clean_id = (job_id or "").strip()
+    clean_item = (item or "").strip()
+    if not clean_id or not clean_item:
+        return False, "Job ID and item description cannot be empty.", None
+
+    expense_id = f"exp_{int(time.time()*1000)}"
+    now_iso = datetime.now(timezone.utc).isoformat()
+    record = {
+        "id": expense_id,
+        "item": clean_item,
+        "amount": round(float(amount), 2),
+        "category": category or "Transit",
+        "currency": (currency or "USD").upper(),
+        "created_at": now_iso
+    }
+
+    with _db_lock:
+        applications = load_applications()
+        updated_app = None
+        for app in applications:
+            if app.get("job_id", "").strip().lower() == clean_id.lower():
+                exp_list = list(app.get("expenses") or [])
+                exp_list.append(record)
+                app["expenses"] = exp_list
+                app["updated_date"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+                _record_app_event(app, "EXPENSE_LOGGED", f"Expense logged: {clean_item} (${round(float(amount), 2)})")
+                updated_app = app
+                break
+
+        if not updated_app:
+            return False, f"No existing application found for Job ID '{clean_id}'.", None
+
+        _save_applications(applications)
+
+    return True, f"Expense '{clean_item}' logged successfully.", record
+
+
+def get_application_expenses(job_id: str) -> Dict[str, Any]:
+    """Retrieve all logged interview travel expenses and sum for an application."""
+    clean_id = (job_id or "").strip()
+    apps = get_application_status(clean_id)
+    if not apps:
+        return {"status": "error", "job_id": clean_id, "total_expenses": 0.0, "currency": "USD", "expenses": []}
+    app = apps[0]
+    expenses = app.get("expenses") or []
+    total = sum(float(e.get("amount", 0.0)) for e in expenses)
+    curr = expenses[0].get("currency", "USD") if expenses else "USD"
+    return {
+        "status": "success",
+        "job_id": clean_id,
+        "total_expenses": round(total, 2),
+        "currency": curr,
+        "expenses": expenses
+    }
+
+
+
 
 
 def add_application_interview(

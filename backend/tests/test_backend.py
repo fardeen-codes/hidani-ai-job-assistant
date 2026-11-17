@@ -3625,6 +3625,31 @@ class BackendTestCase(unittest.TestCase):
         self.assertGreaterEqual(len(data["growth_signals"]), 2)
         self.assertIn("career_advice", data)
 
+    def test_application_expense_tracker(self):
+        """Test logging and retrieving interview travel reimbursement expenses."""
+        # Ensure application exists
+        self.client.post("/api/applications", json={"job_id": self.test_job_id})
+
+        add_res = self.client.post(f"/api/applications/{self.test_job_id}/expenses", json={
+            "item": "Flight to Onsite Interview",
+            "amount": 345.50,
+            "category": "Flight",
+            "currency": "USD"
+        })
+        self.assertEqual(add_res.status_code, 200)
+        item_data = add_res.json()
+        self.assertEqual(item_data["item"], "Flight to Onsite Interview")
+        self.assertEqual(item_data["amount"], 345.50)
+        self.assertEqual(item_data["category"], "Flight")
+
+        list_res = self.client.get(f"/api/applications/{self.test_job_id}/expenses")
+        self.assertEqual(list_res.status_code, 200)
+        list_data = list_res.json()
+        self.assertEqual(list_data["status"], "success")
+        self.assertEqual(list_data["job_id"], self.test_job_id)
+        self.assertGreaterEqual(list_data["total_expenses"], 345.50)
+        self.assertGreaterEqual(len(list_data["expenses"]), 1)
+
 
 if __name__ == "__main__":
     unittest.main()

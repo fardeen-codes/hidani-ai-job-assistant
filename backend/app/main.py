@@ -75,6 +75,9 @@ from app.schemas import (
     ApplicationDeadlinesUpdateRequest,
     ApplicationDebriefReflectionRequest,
     ApplicationDebriefReflectionResponse,
+    ApplicationExpenseCreateRequest,
+    ApplicationExpenseItem,
+    ApplicationExpenseListResponse,
     ATSScoreRequest,
     ATSScoreResponse,
     ApplicationFunnelResponse,
@@ -259,6 +262,7 @@ from app.schemas import (
 from app.services.db_service import (
     add_application_attachment,
     add_application_custom_tag,
+    add_application_expense,
     add_application_interview,
     add_application_todo,
     add_candidate_certification,
@@ -290,6 +294,7 @@ from app.services.db_service import (
     generate_database_integrity_report,
     generate_followup_template,
     get_application_channel_analytics,
+    get_application_expenses,
     get_application_funnel_metrics,
     get_application_stage_durations,
     get_application_stats,
@@ -2479,6 +2484,43 @@ async def update_application_referral_endpoint(job_id: str, payload: Application
         job_id=clean_id,
         referral=updated.get("referral", {}) if updated else {}
     )
+
+
+@app.get(
+    "/api/applications/{job_id}/expenses",
+    response_model=ApplicationExpenseListResponse,
+    summary="Get interview travel and reimbursement expense log",
+    tags=["Applications"]
+)
+async def get_application_expenses_endpoint(job_id: str):
+    """Retrieve logged interview travel and equipment reimbursement expenses."""
+    clean_id = (job_id or "").strip()
+    return get_application_expenses(clean_id)
+
+
+@app.post(
+    "/api/applications/{job_id}/expenses",
+    response_model=ApplicationExpenseItem,
+    summary="Log an interview travel or reimbursement expense",
+    tags=["Applications"]
+)
+async def add_application_expense_endpoint(job_id: str, payload: ApplicationExpenseCreateRequest):
+    """Log an onsite interview travel, hotel, flight, or equipment reimbursement expense."""
+    clean_id = (job_id or "").strip()
+    ok, msg, record = add_application_expense(
+        job_id=clean_id,
+        item=payload.item,
+        amount=payload.amount,
+        category=payload.category,
+        currency=payload.currency
+    )
+    if not ok:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND if "No existing" in msg else status.HTTP_400_BAD_REQUEST,
+            detail=msg
+        )
+    return ApplicationExpenseItem(**record)
+
 
 
 

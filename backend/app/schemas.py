@@ -1909,6 +1909,34 @@ class CompanyPromotionVelocityResponse(BaseModel):
     career_advice: str
 
 
+class ApplicationExpenseItem(BaseModel):
+    """Single interview travel or equipment expense item."""
+    id: str
+    item: str
+    amount: float
+    category: str
+    currency: str = "USD"
+    created_at: str
+
+
+class ApplicationExpenseCreateRequest(BaseModel):
+    """Payload to log an interview travel or reimbursement expense."""
+    item: str = Field(..., min_length=1, description="Expense description e.g. Flight to NYC Onsite")
+    amount: float = Field(..., gt=0, description="Expense amount in currency")
+    category: Optional[str] = Field("Transit", description="Category: Flight, Hotel, Meals, Transit, Equipment, Other")
+    currency: Optional[str] = Field("USD", description="Currency code (USD, EUR, GBP, etc.)")
+
+
+class ApplicationExpenseListResponse(BaseModel):
+    """List of expenses and total reimbursement sum for an application."""
+    status: str = "success"
+    job_id: str
+    total_expenses: float
+    currency: str
+    expenses: List[ApplicationExpenseItem]
+
+
+
 
 
 
