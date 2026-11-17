@@ -1726,6 +1726,19 @@ class TechStackModernizationResponse(BaseModel):
     market_demand_outlook: str
 
 
+class OfferSalaryVarianceResponse(BaseModel):
+    """Variance analysis between candidate target salary and actual job offer."""
+    status: str = Field(default="success")
+    job_id: str
+    target_base: float
+    offered_base: float
+    delta_amount: float
+    variance_percentage: float
+    is_above_target: bool
+    evaluation_label: str
+
+
+
 
 
 

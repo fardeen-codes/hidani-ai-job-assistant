@@ -176,6 +176,7 @@ from app.schemas import (
     OfferComparisonResponse,
     OfferCounterProposalRequest,
     OfferCounterProposalResponse,
+    OfferSalaryVarianceResponse,
     PostInterviewThankYouRequest,
     PostInterviewThankYouResponse,
     ProfileCompletenessResponse,
@@ -290,6 +291,7 @@ from app.services.db_service import (
     get_job_freshness_details,
     get_job_stats,
     get_job_tag_cloud,
+    get_offer_salary_variance,
     get_prioritized_applications_queue,
     get_recent_searches,
     get_rejection_analytics,
@@ -2700,6 +2702,21 @@ async def record_application_debrief_endpoint(job_id: str, payload: ApplicationD
         "reflection_notes": debrief.get("reflection_notes"),
         "recorded_at": debrief["recorded_at"]
     }
+
+
+@app.get(
+    "/api/applications/{job_id}/salary-variance",
+    response_model=OfferSalaryVarianceResponse,
+    summary="Calculate salary variance between candidate target and offer",
+    tags=["Applications"]
+)
+async def get_offer_salary_variance_endpoint(
+    job_id: str,
+    offered_base: Optional[float] = Query(None, description="Optional explicit base salary offered")
+):
+    """Analyze variance delta and percentage between candidate target salary and job offer."""
+    clean_id = (job_id or "").strip()
+    return get_offer_salary_variance(clean_id, offered_base)
 
 
 @app.delete("/api/applications/{job_id}", summary="Withdraw an active job application", tags=["Applications"])

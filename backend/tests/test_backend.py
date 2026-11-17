@@ -3423,6 +3423,20 @@ class BackendTestCase(unittest.TestCase):
         self.assertIsInstance(data["modern_technologies"], list)
         self.assertTrue(len(data["market_demand_outlook"]) > 0)
 
+    def test_offer_salary_variance_analytics(self):
+        """Test calculating target vs offered base salary variance delta and percentage."""
+        self.client.post("/api/applications", json={"job_id": self.test_job_id})
+        res = self.client.get(f"/api/applications/{self.test_job_id}/salary-variance?offered_base=165000")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "success")
+        self.assertEqual(data["job_id"], self.test_job_id)
+        self.assertEqual(data["offered_base"], 165000.0)
+        self.assertIn("target_base", data)
+        self.assertIn("variance_percentage", data)
+        self.assertIn("evaluation_label", data)
+        self.assertTrue(data["is_above_target"])
+
 
 if __name__ == "__main__":
     unittest.main()

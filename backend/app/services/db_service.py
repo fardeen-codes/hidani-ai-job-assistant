@@ -5152,6 +5152,59 @@ def record_application_debrief(
     return True, f"Debrief reflection recorded for Job ID '{clean_id}'.", debrief
 
 
+def get_offer_salary_variance(
+    job_id: str,
+    offered_base: Optional[float] = None
+) -> Dict[str, Any]:
+    """
+    Compute compensation variance between candidate expectations and actual or estimated job offer.
+    """
+    clean_id = (job_id or "").strip()
+    profile = load_candidate_profile()
+    salary_prefs = profile.get("salary_preferences", {})
+    target_base = float(salary_prefs.get("target_salary") or salary_prefs.get("minimum_acceptable_salary") or 140000.0)
+
+    offered = None
+    if offered_base is not None and offered_base > 0:
+        offered = float(offered_base)
+    else:
+        apps = load_applications()
+        for a in apps:
+            if str(a.get("job_id", "")).strip().lower() == clean_id.lower():
+                offered = a.get("offer_base_salary") or a.get("salary_offered")
+                break
+        if not offered:
+            job = get_job_by_id(clean_id)
+            if job:
+                offered = job.get("salary_max") or job.get("salary_min")
+
+    offered = float(offered or target_base)
+    delta = offered - target_base
+    pct = round((delta / max(target_base, 1.0)) * 100.0, 1)
+    is_above = delta >= 0
+
+    if pct >= 15.0:
+        label = "Premium Offer (Exceeds Target by 15%+)"
+    elif pct >= 0.0:
+        label = "Target Aligned (At or Slightly Above Target)"
+    elif pct >= -10.0:
+        label = "Near Target (Viable for Negotiation)"
+    else:
+        label = "Below Target (Requires Counter-Proposal)"
+
+    return {
+        "status": "success",
+        "job_id": clean_id,
+        "target_base": round(target_base, 2),
+        "offered_base": round(offered, 2),
+        "delta_amount": round(delta, 2),
+        "variance_percentage": pct,
+        "is_above_target": is_above,
+        "evaluation_label": label
+    }
+
+
+
 
 
 
