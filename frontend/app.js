@@ -41,6 +41,9 @@ const elements = {
   navBrowseJobsBtn: document.getElementById('navBrowseJobsBtn'),
   navApplicationsBtn: document.getElementById('navApplicationsBtn'),
   navAppCountBadge: document.getElementById('navAppCountBadge'),
+  navStreakBadge: document.getElementById('navStreakBadge'),
+  navStreakCountText: document.getElementById('navStreakCountText'),
+  navDailyGoalText: document.getElementById('navDailyGoalText'),
   navProfileBtn: document.getElementById('navProfileBtn'),
   systemStatusBtn: document.getElementById('systemStatusBtn'),
   jobsCountLabel: document.getElementById('jobsCountLabel'),
@@ -106,6 +109,7 @@ document.addEventListener('DOMContentLoaded', () => {
   updateProfileUI();
   fetchSystemHealth();
   updateApplicationsBadge();
+  fetchAndUpdateStreakMetrics();
   elements.messageInput.focus();
 });
 
@@ -1665,6 +1669,25 @@ async function fetchAndRenderApplicationsList() {
   }
 }
 
+async function fetchAndUpdateStreakMetrics() {
+  try {
+    const res = await fetch(`${API_BASE}/applications/metrics/streak`);
+    if (!res.ok) return;
+    const data = await res.json();
+    if (elements.navStreakCountText) {
+      elements.navStreakCountText.textContent = `${data.current_streak_days}d streak`;
+    }
+    if (elements.navDailyGoalText) {
+      elements.navDailyGoalText.textContent = `${data.submitted_today}/${data.daily_goal} today`;
+      if (data.goal_met_today) {
+        elements.navDailyGoalText.className = 'text-emerald-400 font-semibold';
+      } else {
+        elements.navDailyGoalText.className = 'text-neutral-400';
+      }
+    }
+  } catch (e) {}
+}
+
 async function updateApplicationsBadge(knownCount = null) {
   try {
     let count = knownCount;
@@ -1685,6 +1708,7 @@ async function updateApplicationsBadge(knownCount = null) {
     } else {
       elements.navAppCountBadge.classList.add('hidden');
     }
+    fetchAndUpdateStreakMetrics();
   } catch (e) {
     // Silently ignore if offline
   }

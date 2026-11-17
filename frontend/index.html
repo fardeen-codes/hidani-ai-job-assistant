@@ -198,6 +198,15 @@
 
     <!-- Right Interactive Controls -->
     <div class="flex items-center gap-2">
+      <!-- Daily Application Streak Indicator -->
+      <div id="navStreakBadge" title="Application submission streak and daily target"
+        class="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded bg-neutral-800/60 border border-neutral-700/60 text-xs font-mono text-neutral-300">
+        <span class="text-amber-400">🔥</span>
+        <span id="navStreakCountText">0d streak</span>
+        <span class="text-neutral-500">•</span>
+        <span id="navDailyGoalText" class="text-neutral-400">0/3 today</span>
+      </div>
+
       <!-- Interactive System Status -->
       <button id="systemStatusBtn" title="Click to view system diagnostics"
         class="flex items-center gap-2 px-2.5 py-1.5 rounded bg-neutral-800/60 hover:bg-neutral-800 border border-neutral-700/60 hover:border-neutral-600 text-xs text-neutral-300 font-mono transition-colors">
