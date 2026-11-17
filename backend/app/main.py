@@ -91,6 +91,8 @@ from app.schemas import (
     ApplicationPriorityRankItem,
     ApplicationPriorityRankingResponse,
     ApplicationPriorityUpdateRequest,
+    ApplicationReferralRequest,
+    ApplicationReferralResponse,
     ApplicationRejectionAnalyticsResponse,
     ApplicationRollbackResponse,
     ApplicationReminderUpdateRequest,
@@ -354,6 +356,7 @@ from app.services.db_service import (
     update_application_notes,
     update_application_outcome,
     update_application_priority,
+    update_application_referral,
     update_application_reminder,
     update_application_source,
     update_application_status,
@@ -2430,6 +2433,37 @@ async def remove_custom_tag_endpoint(job_id: str, tag: str):
         job_id=clean_id,
         tags=updated.get("tags", []) if updated else []
     )
+
+
+@app.post(
+    "/api/applications/{job_id}/referral",
+    response_model=ApplicationReferralResponse,
+    summary="Record or update employee referral contact for an application",
+    tags=["Applications"]
+)
+async def update_application_referral_endpoint(job_id: str, payload: ApplicationReferralRequest):
+    """Record employee referral details, referrer email, relationship, and status."""
+    clean_id = (job_id or "").strip()
+    ok, msg, updated = update_application_referral(
+        job_id=clean_id,
+        referrer_name=payload.referrer_name,
+        referrer_email=payload.referrer_email,
+        referral_status=payload.referral_status or "Submitted",
+        relationship=payload.relationship or "Former Colleague",
+        notes=payload.notes or ""
+    )
+    if not ok:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND if "No existing" in msg else status.HTTP_400_BAD_REQUEST,
+            detail=msg
+        )
+    return ApplicationReferralResponse(
+        status="success",
+        message=msg,
+        job_id=clean_id,
+        referral=updated.get("referral", {}) if updated else {}
+    )
+
 
 
 

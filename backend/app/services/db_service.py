@@ -1262,6 +1262,50 @@ def remove_application_custom_tag(job_id: str, tag: str) -> Tuple[bool, str, Opt
     return True, f"Tag '{norm_tag}' removed from application '{clean_id}'.", updated_app
 
 
+def update_application_referral(
+    job_id: str,
+    referrer_name: str,
+    referrer_email: Optional[str] = None,
+    referral_status: str = "Submitted",
+    relationship: Optional[str] = "Former Colleague",
+    notes: Optional[str] = ""
+) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
+    """Record or update employee referral contact details and outreach status on an application."""
+    clean_id = (job_id or "").strip()
+    name = (referrer_name or "").strip()
+    if not clean_id or not name:
+        return False, "Job ID and referrer name must not be empty.", None
+
+    now_iso = datetime.now(timezone.utc).isoformat()
+    ref_data = {
+        "referrer_name": name,
+        "referrer_email": (referrer_email or "").strip(),
+        "referral_status": referral_status or "Submitted",
+        "relationship": relationship or "Former Colleague",
+        "notes": notes or "",
+        "updated_at": now_iso
+    }
+
+    with _db_lock:
+        applications = load_applications()
+        updated_app = None
+        for app in applications:
+            if app.get("job_id", "").strip().lower() == clean_id.lower():
+                app["referral"] = ref_data
+                app["updated_date"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+                _record_app_event(app, "REFERRAL_UPDATED", f"Referral updated: {name} ({referral_status})")
+                updated_app = app
+                break
+
+        if not updated_app:
+            return False, f"No existing application found for Job ID '{clean_id}'.", None
+
+        _save_applications(applications)
+
+    return True, f"Referral for '{name}' recorded successfully.", updated_app
+
+
+
 
 def add_application_interview(
     job_id: str,

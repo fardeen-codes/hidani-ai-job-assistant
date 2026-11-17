@@ -1881,6 +1881,24 @@ class RecruiterScreenFAQResponse(BaseModel):
     salary_discussion_strategy: str
 
 
+class ApplicationReferralRequest(BaseModel):
+    """Application employee referral contact and outreach tracking payload."""
+    referrer_name: str = Field(..., min_length=1, description="Name of the employee providing the referral")
+    referrer_email: Optional[str] = Field(None, description="Employee email address")
+    referral_status: Optional[str] = Field("Submitted", description="Referral status: Requested, Submitted, Confirmed, Declined")
+    relationship: Optional[str] = Field("Former Colleague", description="Professional relationship with referrer")
+    notes: Optional[str] = Field("", description="Outreach details, submission link, or notes")
+
+
+class ApplicationReferralResponse(BaseModel):
+    """Response payload after updating application referral details."""
+    status: str = "success"
+    message: str
+    job_id: str
+    referral: Dict[str, Any]
+
+
+
 
 
 

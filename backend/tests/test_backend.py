@@ -3593,6 +3593,25 @@ class BackendTestCase(unittest.TestCase):
         self.assertGreaterEqual(len(data["questions_to_ask_recruiter"]), 2)
         self.assertIn("salary_discussion_strategy", data)
 
+    def test_application_referral_tracker(self):
+        """Test recording and updating employee referral contact for an application."""
+        # Ensure application exists
+        self.client.post("/api/applications", json={"job_id": self.test_job_id})
+
+        res = self.client.post(f"/api/applications/{self.test_job_id}/referral", json={
+            "referrer_name": "Jane Doe",
+            "referrer_email": "jane@example.com",
+            "referral_status": "Confirmed",
+            "relationship": "Former Tech Lead",
+            "notes": "Direct submission to hiring manager"
+        })
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "success")
+        self.assertEqual(data["referral"]["referrer_name"], "Jane Doe")
+        self.assertEqual(data["referral"]["referral_status"], "Confirmed")
+        self.assertEqual(data["referral"]["relationship"], "Former Tech Lead")
+
 
 if __name__ == "__main__":
     unittest.main()
