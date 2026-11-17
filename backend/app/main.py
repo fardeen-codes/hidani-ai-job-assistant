@@ -22,6 +22,7 @@ from app.agents.matcher_agent import (
     analyze_skill_gap,
     batch_score_jobs,
     calculate_company_culture_index,
+    calculate_company_stage_fit,
     calculate_salary_expectation_fit,
     calculate_timezone_overlap,
     calculate_weighted_skill_match,
@@ -134,6 +135,7 @@ from app.schemas import (
     CompanyCultureIndexResponse,
     CompanyDirectoryResponse,
     CompanyInterviewPredictionResponse,
+    CompanyStageFitResponse,
     CompanyHiringSurgeItem,
     CompanyHiringSurgeResponse,
     CompanyProfile,
@@ -1758,6 +1760,25 @@ async def get_job_modernization_endpoint(job_id: str):
         raise HTTPException(status_code=404, detail=f"Job with ID '{clean_id}' not found.")
     skills = job.get("skills", [])
     return evaluate_tech_stack_modernization(clean_id, skills)
+
+
+@app.get(
+    "/api/jobs/{job_id}/stage-fit",
+    response_model=CompanyStageFitResponse,
+    summary="Get company maturity stage fit rating (Startup, Growth, Enterprise)",
+    tags=["Jobs"]
+)
+async def get_company_stage_fit_endpoint(
+    job_id: str,
+    preferred_stage: Optional[str] = Query("Growth", description="Candidate preferred company stage (Early Startup, Growth, Enterprise)")
+):
+    """Evaluate company organizational stage and compare alignment with candidate preferred stage."""
+    clean_id = (job_id or "").strip()
+    job = get_job_by_id(clean_id)
+    if not job:
+        raise HTTPException(status_code=404, detail=f"Job with ID '{clean_id}' not found.")
+    return calculate_company_stage_fit(clean_id, preferred_stage)
+
 
 
 @app.get(

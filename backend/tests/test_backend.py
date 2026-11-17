@@ -3475,6 +3475,19 @@ class BackendTestCase(unittest.TestCase):
         self.assertEqual(get_data["preferred_team_size"], "50-200")
         self.assertEqual(get_data["preferred_company_stage"], "Growth")
 
+    def test_company_stage_fit_rating(self):
+        """Test calculating company stage fit rating and alignment."""
+        res = self.client.get(f"/api/jobs/{self.test_job_id}/stage-fit?preferred_stage=Growth")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["job_id"], self.test_job_id)
+        self.assertIn("detected_stage", data)
+        self.assertEqual(data["preferred_stage"], "Growth")
+        self.assertIn("stage_fit_score", data)
+        self.assertIn("alignment_level", data)
+        self.assertGreaterEqual(len(data["stage_characteristics"]), 1)
+        self.assertIn("interview_focus_recommendation", data)
+
 
 if __name__ == "__main__":
     unittest.main()

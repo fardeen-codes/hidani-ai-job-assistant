@@ -1773,6 +1773,19 @@ class TeamSizePreferenceResponse(BaseModel):
     message: Optional[str] = None
 
 
+class CompanyStageFitResponse(BaseModel):
+    """Company stage alignment and engineering culture fit evaluation."""
+    job_id: str
+    company_name: str
+    detected_stage: str
+    preferred_stage: str
+    stage_fit_score: float
+    alignment_level: str
+    stage_characteristics: List[str]
+    interview_focus_recommendation: str
+
+
+
 
 
 

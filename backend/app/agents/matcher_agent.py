@@ -1236,6 +1236,76 @@ def evaluate_tech_stack_modernization(
     }
 
 
+def calculate_company_stage_fit(job_id: str, preferred_stage: Optional[str] = "Growth") -> Dict[str, Any]:
+    """Evaluate company maturity stage (Early Startup, Growth, Enterprise) and alignment with candidate preference."""
+    clean_id = (job_id or "").strip()
+    job = get_job_by_id(clean_id) if clean_id else None
+    
+    company = "Unknown"
+    description = ""
+    title = ""
+    if job:
+        company = job.get("company", "Unknown")
+        description = (job.get("description", "") or "").lower()
+        title = (job.get("title", "") or "").lower()
+
+    startup_keywords = ["startup", "seed", "series a", "founding", "early-stage", "ground floor", "0 to 1", "0-1"]
+    enterprise_keywords = ["enterprise", "fortune", "global", "conglomerate", "inc.", "corp", "corporation", "established", "multinational"]
+    
+    score_startup = sum(1 for kw in startup_keywords if kw in description or kw in title)
+    score_enterprise = sum(1 for kw in enterprise_keywords if kw in description or kw in title)
+    
+    if "startup" in company.lower() or "labs" in company.lower() or score_startup > score_enterprise:
+        detected_stage = "Early Startup"
+        characteristics = [
+            "High ambiguity and 0-to-1 greenfield feature velocity",
+            "Generalist ownership spanning full lifecycle and direct customer impact",
+            "Equity-heavy compensation package with rapid promotion trajectory"
+        ]
+        interview_focus = "Emphasize extreme resourcefulness, rapid prototyping, and comfort wearing multiple hats."
+    elif score_enterprise > 1 or any(c in company.lower() for c in ["google", "microsoft", "amazon", "apple", "meta", "oracle", "cisco", "ibm", "salesforce"]):
+        detected_stage = "Enterprise"
+        characteristics = [
+            "Rigorous cross-functional review processes and distributed consensus",
+            "High-scale operational stability, compliance, and multi-tier reliability",
+            "Structured career ladders with clear leveling rubrics and competitive base salaries"
+        ]
+        interview_focus = "Emphasize stakeholder alignment, scalable architectural design, and fault-tolerant production standards."
+    else:
+        detected_stage = "Growth"
+        characteristics = [
+            "Product-market fit validated with rapid team and revenue scaling",
+            "Transitioning from scrappy codebases to robust modular architecture",
+            "High opportunity for technical leadership and mentoring junior engineers"
+        ]
+        interview_focus = "Emphasize system refactoring, cross-team collaboration, and scaling infrastructure sustainably."
+
+    pref = (preferred_stage or "Growth").strip().lower()
+    det = detected_stage.lower()
+
+    if pref in det or det in pref or pref == "any" or pref == "any stage":
+        fit_score = 95.0
+        alignment_level = "Optimal Match"
+    elif ("startup" in pref and "growth" in det) or ("growth" in pref and ("startup" in det or "enterprise" in det)):
+        fit_score = 78.0
+        alignment_level = "Moderate Match"
+    else:
+        fit_score = 55.0
+        alignment_level = "Pivotal Shift"
+
+    return {
+        "job_id": clean_id,
+        "company_name": company,
+        "detected_stage": detected_stage,
+        "preferred_stage": preferred_stage or "Growth",
+        "stage_fit_score": fit_score,
+        "alignment_level": alignment_level,
+        "stage_characteristics": characteristics,
+        "interview_focus_recommendation": interview_focus
+    }
+
+
+
 
 
 
