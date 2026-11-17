@@ -1573,6 +1573,15 @@ async function fetchAndRenderApplicationsList() {
       const offerBadge = currentStatus === 'Offer'
         ? `<span class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">🎉 Offer Received</span>`
         : '';
+      const appTags = Array.isArray(app.tags) ? app.tags : [];
+      const tagChips = appTags.map(t =>
+        `<span class="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[9px] font-mono bg-neutral-900 text-neutral-300 border border-neutral-800">
+          <span>🏷️ ${escapeHtml(t)}</span>
+          <button onclick="removeAppCustomTag('${escapeHtml(app.job_id)}', '${escapeHtml(t)}')" class="hover:text-rose-400 font-bold ml-0.5" title="Remove tag">×</button>
+        </span>`
+      ).join(' ');
+      const addTagBtn = `<button onclick="promptAddAppCustomTag('${escapeHtml(app.job_id)}')" class="px-1.5 py-0.2 rounded text-[9px] font-mono text-neutral-400 hover:text-white bg-neutral-900 border border-neutral-800 hover:border-neutral-700 transition-colors">+ Tag</button>`;
+
       const statusOptions = statuses.map(s =>
         `<option value="${s}" ${s === currentStatus ? 'selected' : ''}>${s}</option>`
       ).join('');
@@ -1591,6 +1600,7 @@ async function fetchAndRenderApplicationsList() {
             ${addTodoBtn}
           </div>
           <p class="text-xs text-neutral-400 mt-0.5">${escapeHtml(app.company || 'Tech Company')} • <span class="text-neutral-300">${escapeHtml(app.location || 'Remote')}</span></p>
+          <div class="flex flex-wrap items-center gap-1 mt-1.5">${tagChips} ${addTagBtn}</div>
           <p class="text-[11px] font-mono text-neutral-500 mt-1">Submitted on ${escapeHtml(app.applied_date || 'Recent')}</p>
           ${todosHtml}
         </div>
@@ -2114,6 +2124,42 @@ window.promptLogApplicationDebrief = async (jobId) => {
       throw new Error(err.detail || `Failed to log debrief (${res.status})`);
     }
     showToast('Debrief reflection recorded!', 'success');
+    fetchAndRenderApplicationsList();
+  } catch (err) {
+    showToast(`Error: ${err.message}`, 'error');
+  }
+};
+
+window.promptAddAppCustomTag = async (jobId) => {
+  const tag = prompt('Enter a custom tag or category label for this application (e.g. Dream Job, Referred, High Priority):');
+  if (!tag || !tag.trim()) return;
+  try {
+    const res = await fetch(`${API_BASE}/applications/${encodeURIComponent(jobId)}/tags/custom`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tag: tag.trim() })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `Failed to add tag (${res.status})`);
+    }
+    showToast('Custom tag added!', 'success');
+    fetchAndRenderApplicationsList();
+  } catch (err) {
+    showToast(`Error: ${err.message}`, 'error');
+  }
+};
+
+window.removeAppCustomTag = async (jobId, tag) => {
+  try {
+    const res = await fetch(`${API_BASE}/applications/${encodeURIComponent(jobId)}/tags/custom/${encodeURIComponent(tag)}`, {
+      method: 'DELETE'
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `Failed to remove tag (${res.status})`);
+    }
+    showToast(`Tag '${tag}' removed`, 'info');
     fetchAndRenderApplicationsList();
   } catch (err) {
     showToast(`Error: ${err.message}`, 'error');
