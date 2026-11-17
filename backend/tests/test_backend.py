@@ -3374,6 +3374,25 @@ class BackendTestCase(unittest.TestCase):
         self.assertGreaterEqual(len(data["negotiation_talking_points"]), 2)
         self.assertIn("Thank you", data["suggested_email_opening"])
 
+    def test_project_talking_points_generator(self):
+        """Test generating structured portfolio project interview talking points."""
+        payload = {
+            "project_name": "Distributed Job Scheduler",
+            "tech_stack": ["Python", "FastAPI", "Redis", "PostgreSQL"],
+            "project_summary": "High-throughput asynchronous task scheduler handling 10k tasks/sec",
+            "challenges_faced": ["Race conditions during leader election"],
+            "target_role": "Staff Backend Engineer"
+        }
+        res = self.client.post("/api/chat/project-talking-points", json=payload)
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["project_name"], "Distributed Job Scheduler")
+        self.assertEqual(data["target_role"], "Staff Backend Engineer")
+        self.assertGreaterEqual(len(data["architectural_highlights"]), 2)
+        self.assertGreaterEqual(len(data["technical_tradeoffs"]), 2)
+        self.assertGreaterEqual(len(data["scale_and_performance_metrics"]), 2)
+        self.assertIn("Distributed Job Scheduler", data["suggested_opening_pitch"])
+
 
 if __name__ == "__main__":
     unittest.main()

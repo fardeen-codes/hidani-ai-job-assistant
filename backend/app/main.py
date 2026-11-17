@@ -40,6 +40,7 @@ from app.agents.orchestrator import (
     generate_cold_outreach_message,
     generate_elevator_pitch,
     generate_post_interview_thank_you_email,
+    generate_project_talking_points,
     generate_recruiter_followup_cadence,
     generate_salary_negotiation_script,
     generate_technical_interview_cheatsheet,
@@ -175,6 +176,8 @@ from app.schemas import (
     PostInterviewThankYouRequest,
     PostInterviewThankYouResponse,
     ProfileCompletenessResponse,
+    ProjectTalkingPointsRequest,
+    ProjectTalkingPointsResponse,
     RejectionReasonLogRequest,
     RejectionReasonLogResponse,
     RemoteWorkBreakdownResponse,
@@ -947,6 +950,23 @@ async def generate_cheatsheet_endpoint(payload: TechnicalCheatSheetRequest):
         technology=payload.technology,
         seniority=payload.seniority or "Senior",
         focus_areas=payload.focus_areas
+    )
+
+
+@app.post(
+    "/api/chat/project-talking-points",
+    response_model=ProjectTalkingPointsResponse,
+    summary="Generate technical portfolio project interview talking points",
+    tags=["Chat"]
+)
+async def generate_project_talking_points_endpoint(payload: ProjectTalkingPointsRequest):
+    """Generate architecture highlights, technical tradeoffs, and opening pitch for a portfolio project."""
+    return generate_project_talking_points(
+        project_name=payload.project_name,
+        tech_stack=payload.tech_stack,
+        project_summary=payload.project_summary,
+        challenges=payload.challenges_faced,
+        target_role=payload.target_role or "Senior Backend Engineer"
     )
 
 

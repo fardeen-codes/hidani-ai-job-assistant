@@ -1678,6 +1678,26 @@ class OfferCounterProposalResponse(BaseModel):
     suggested_email_opening: str
 
 
+class ProjectTalkingPointsRequest(BaseModel):
+    """Request payload to generate deep-dive talking points for a technical portfolio project."""
+    project_name: str = Field(..., description="Name of portfolio project or repository")
+    tech_stack: Optional[List[str]] = Field(default_factory=list, description="Technologies and libraries utilized")
+    project_summary: Optional[str] = Field(None, description="Brief synopsis of project functionality")
+    challenges_faced: Optional[List[str]] = Field(default_factory=list, description="Obstacles or architectural bottlenecks")
+    target_role: Optional[str] = Field("Senior Backend Engineer", description="Target role evaluated against")
+
+
+class ProjectTalkingPointsResponse(BaseModel):
+    """Structured portfolio project interview deep-dive talking points."""
+    project_name: str
+    target_role: str
+    architectural_highlights: List[str]
+    technical_tradeoffs: List[str]
+    scale_and_performance_metrics: List[str]
+    suggested_opening_pitch: str
+
+
+
 
 
 

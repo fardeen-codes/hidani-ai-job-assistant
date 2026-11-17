@@ -1581,5 +1581,56 @@ def generate_technical_interview_cheatsheet(
     }
 
 
+def generate_project_talking_points(
+    project_name: str,
+    tech_stack: Optional[List[str]] = None,
+    project_summary: Optional[str] = None,
+    challenges: Optional[List[str]] = None,
+    target_role: Optional[str] = "Senior Backend Engineer"
+) -> Dict[str, Any]:
+    """
+    Generate structured, high-impact interview talking points for technical portfolio projects.
+    """
+    p_name = (project_name or "Architecture Showcase").strip()
+    role = (target_role or "Senior Backend Engineer").strip()
+    stack = [s.strip() for s in (tech_stack or []) if s and s.strip()]
+    stack_phrase = ", ".join(stack) if stack else "modern distributed backend services"
+    summary = (project_summary or f"A high-throughput application designed with {stack_phrase}").strip()
+
+    highlights = [
+        f"Designed core architecture of {p_name} utilizing {stack_phrase}.",
+        "Emphasized modular service decoupling, explicit API boundaries, and low latency.",
+        "Implemented end-to-end telemetry and automated regression test harnesses."
+    ]
+
+    tradeoffs = [
+        f"Selected {stack[0] if stack else 'current framework'} for developer ergonomics and concurrency model over lower-level alternatives.",
+        "Prioritized eventual consistency across service replicas to maximize write availability under peak load.",
+        "Favor explicit data schemas and strict validation over dynamic schema-less serialization."
+    ]
+
+    metrics = [
+        "Maintained sub-50ms p99 response times under simulated concurrency spikes.",
+        "Reduced resource saturation by 35% via intelligent connection pooling and in-memory caching.",
+        "Zero data corruption or state divergence during simulated node failures."
+    ]
+
+    opening = (
+        f"In my project {p_name}, I set out to solve {summary.lower() if summary.lower().startswith('a ') else summary}. "
+        f"Leveraging {stack_phrase}, I led the architectural decisions from initial schema design to production hardening, "
+        f"with a keen focus on the scalability requirements relevant to this {role} role."
+    )
+
+    return {
+        "project_name": p_name,
+        "target_role": role,
+        "architectural_highlights": highlights,
+        "technical_tradeoffs": tradeoffs,
+        "scale_and_performance_metrics": metrics,
+        "suggested_opening_pitch": opening
+    }
+
+
+
 
 
