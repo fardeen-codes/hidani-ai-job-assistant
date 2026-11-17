@@ -636,6 +636,48 @@ async function handleSendMessage() {
     }
   }
 
+  // Check for client-side /sysdesign slash command
+  if (text.toLowerCase().startsWith('/sysdesign')) {
+    const topic = text.substring(10).trim() || 'Distributed Rate Limiter';
+    setSending(true);
+    const typingIndicatorId = showTypingIndicator();
+    scrollToBottom();
+    try {
+      showToast(`Generating system design scenario for ${topic}...`, 'info');
+      const res = await fetch(`${API_BASE}/chat/system-design`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          topic: topic,
+          scale_target: '100M Daily Active Users',
+          seniority: 'Senior'
+        })
+      });
+      removeTypingIndicator(typingIndicatorId);
+      if (res.ok) {
+        const data = await res.json();
+        const funcList = (data.functional_requirements || []).map(f => `- ${escapeHtml(f)}`).join('\n');
+        const nonFuncList = (data.non_functional_requirements || []).map(n => `- ${escapeHtml(n)}`).join('\n');
+        const sizingList = (data.back_of_envelope_calculations || []).map(b => `- 📐 ${escapeHtml(b)}`).join('\n');
+        const compList = (data.key_architectural_components || []).map(c => `- 🧩 ${escapeHtml(c)}`).join('\n');
+        const deepList = (data.deep_dive_topics || []).map(d => `- 🔍 ${escapeHtml(d)}`).join('\n');
+        appendAssistantMessage(
+          `### 📐 System Design Mock: ${escapeHtml(data.topic)} (${escapeHtml(data.seniority)})\n\n` +
+          `#### 📋 Functional Requirements\n${funcList}\n\n` +
+          `#### ⚡ Non-Functional Requirements\n${nonFuncList}\n\n` +
+          `#### 🧮 Back-of-the-Envelope Estimation\n${sizingList}\n\n` +
+          `#### 🏛️ Core Architectural Components\n${compList}\n\n` +
+          `#### 🔬 Interviewer Deep-Dive Topics\n${deepList}`
+        );
+        showToast('System design scenario ready!', 'success');
+        setSending(false);
+        return;
+      }
+    } catch (e) {
+      removeTypingIndicator(typingIndicatorId);
+    }
+  }
+
   setSending(true);
 
   // Show typing indicator
