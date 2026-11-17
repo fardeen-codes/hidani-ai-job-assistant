@@ -1785,6 +1785,26 @@ class CompanyStageFitResponse(BaseModel):
     interview_focus_recommendation: str
 
 
+class CandidateAvailabilityRequest(BaseModel):
+    """Candidate availability and notice period preference request."""
+    notice_period_days: Optional[int] = Field(30, ge=0, le=180, description="Notice period in calendar days (0 = immediate)")
+    earliest_start_date: Optional[str] = Field(None, description="Earliest viable start date (YYYY-MM-DD)")
+    is_immediately_available: Optional[bool] = Field(False, description="Whether candidate can start immediately")
+    availability_notes: Optional[str] = Field("", description="Notice period constraints or transition flexibility")
+
+
+class CandidateAvailabilityResponse(BaseModel):
+    """Candidate availability and notice period status."""
+    status: str = "success"
+    notice_period_days: int = 30
+    earliest_start_date: Optional[str] = None
+    is_immediately_available: bool = False
+    availability_notes: Optional[str] = ""
+    updated_at: Optional[str] = None
+    message: Optional[str] = None
+
+
+
 
 
 

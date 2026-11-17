@@ -115,6 +115,8 @@ from app.schemas import (
     BulkApplicationStatusUpdateResponse,
     BulkBookmarkDeleteRequest,
     BulkBookmarkDeleteResponse,
+    CandidateAvailabilityRequest,
+    CandidateAvailabilityResponse,
     CandidateLanguageItem,
     CandidateLanguagesResponse,
     CandidateLanguagesUpdateRequest,
@@ -280,6 +282,7 @@ from app.services.db_service import (
     get_application_velocity_metrics,
     get_bookmark_categories,
     get_bookmarked_jobs,
+    get_candidate_availability,
     get_candidate_certifications,
     get_candidate_languages,
     get_candidate_location_preferences,
@@ -339,6 +342,7 @@ from app.services.db_service import (
     update_application_source,
     update_application_status,
     update_application_tags,
+    update_candidate_availability,
     update_candidate_languages,
     update_candidate_location_preferences,
     update_candidate_salary_preferences,
@@ -815,6 +819,36 @@ async def update_team_preferences_endpoint(payload: TeamSizePreferenceRequest):
         notes=payload.notes
     )
     return TeamSizePreferenceResponse(**res)
+
+
+@app.get(
+    "/api/profile/availability",
+    response_model=CandidateAvailabilityResponse,
+    summary="Get candidate target notice period and earliest start date",
+    tags=["Resume"]
+)
+async def get_candidate_availability_endpoint():
+    """Retrieve candidate target notice period and earliest start date."""
+    res = get_candidate_availability()
+    return CandidateAvailabilityResponse(**res)
+
+
+@app.put(
+    "/api/profile/availability",
+    response_model=CandidateAvailabilityResponse,
+    summary="Update candidate target notice period and earliest start date",
+    tags=["Resume"]
+)
+async def update_candidate_availability_endpoint(payload: CandidateAvailabilityRequest):
+    """Update candidate target notice period and earliest start date."""
+    res = update_candidate_availability(
+        notice_period_days=payload.notice_period_days,
+        earliest_start_date=payload.earliest_start_date,
+        is_immediately_available=payload.is_immediately_available,
+        availability_notes=payload.availability_notes
+    )
+    return CandidateAvailabilityResponse(**res)
+
 
 
 

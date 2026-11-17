@@ -3488,6 +3488,27 @@ class BackendTestCase(unittest.TestCase):
         self.assertGreaterEqual(len(data["stage_characteristics"]), 1)
         self.assertIn("interview_focus_recommendation", data)
 
+    def test_candidate_availability_tracker(self):
+        """Test retrieving and updating candidate availability and notice period."""
+        update_res = self.client.put("/api/profile/availability", json={
+            "notice_period_days": 15,
+            "earliest_start_date": "2026-12-15",
+            "is_immediately_available": False,
+            "availability_notes": "Two weeks handover notice"
+        })
+        self.assertEqual(update_res.status_code, 200)
+        data = update_res.json()
+        self.assertEqual(data["status"], "success")
+        self.assertEqual(data["notice_period_days"], 15)
+        self.assertEqual(data["earliest_start_date"], "2026-12-15")
+        self.assertFalse(data["is_immediately_available"])
+
+        get_res = self.client.get("/api/profile/availability")
+        self.assertEqual(get_res.status_code, 200)
+        get_data = get_res.json()
+        self.assertEqual(get_data["notice_period_days"], 15)
+        self.assertEqual(get_data["earliest_start_date"], "2026-12-15")
+
 
 if __name__ == "__main__":
     unittest.main()

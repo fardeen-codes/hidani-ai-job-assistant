@@ -5236,6 +5236,46 @@ def update_candidate_team_preferences(preferred_team_size: Optional[str] = "10-5
     }
 
 
+def get_candidate_availability() -> Dict[str, Any]:
+    """Retrieve candidate target notice period and earliest start date."""
+    prof = load_candidate_profile()
+    avail = prof.get("availability", {})
+    return {
+        "status": "success",
+        "notice_period_days": int(avail.get("notice_period_days", 30)),
+        "earliest_start_date": avail.get("earliest_start_date"),
+        "is_immediately_available": bool(avail.get("is_immediately_available", False)),
+        "availability_notes": avail.get("availability_notes", ""),
+        "updated_at": avail.get("updated_at")
+    }
+
+
+def update_candidate_availability(
+    notice_period_days: Optional[int] = 30,
+    earliest_start_date: Optional[str] = None,
+    is_immediately_available: Optional[bool] = False,
+    availability_notes: Optional[str] = ""
+) -> Dict[str, Any]:
+    """Update candidate target notice period and earliest start date."""
+    prof = load_candidate_profile()
+    now_iso = datetime.now(timezone.utc).isoformat()
+    avail_data = {
+        "notice_period_days": int(notice_period_days if notice_period_days is not None else 30),
+        "earliest_start_date": earliest_start_date,
+        "is_immediately_available": bool(is_immediately_available),
+        "availability_notes": availability_notes or "",
+        "updated_at": now_iso
+    }
+    prof["availability"] = avail_data
+    save_candidate_profile(prof)
+    return {
+        "status": "success",
+        "message": "Candidate availability preferences updated successfully",
+        **avail_data
+    }
+
+
+
 
 
 
