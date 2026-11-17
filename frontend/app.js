@@ -98,6 +98,7 @@ const elements = {
   saveTeamPrefsBtn: document.getElementById('saveTeamPrefsBtn'),
   drawerNoticeBadge: document.getElementById('drawerNoticeBadge'),
   drawerStartDate: document.getElementById('drawerStartDate'),
+  drawerBenefitsList: document.getElementById('drawerBenefitsList'),
 
   // Notification Toast Container
   toastContainer: document.getElementById('toastContainer')
@@ -1922,6 +1923,21 @@ function openProfileDrawer() {
       }
       if (data && elements.drawerStartDate) {
         elements.drawerStartDate.textContent = data.earliest_start_date ? `Earliest: ${data.earliest_start_date}` : (data.is_immediately_available ? 'Available Immediately' : 'Flexible Start');
+      }
+    })
+    .catch(() => {});
+
+  // Fetch Benefits Preferences
+  fetch(`${API_BASE}/profile/benefits`)
+    .then(r => r.ok ? r.json() : null)
+    .then(data => {
+      if (data && elements.drawerBenefitsList) {
+        const mustHaves = data.must_have_benefits || [];
+        elements.drawerBenefitsList.innerHTML = mustHaves.map(b =>
+          `<span class="px-2 py-0.5 rounded bg-neutral-800 text-[10px] text-emerald-300 font-mono border border-emerald-900/60 flex items-center gap-1">
+            <span>✨</span> ${escapeHtml(b)}
+          </span>`
+        ).join('');
       }
     })
     .catch(() => {});
