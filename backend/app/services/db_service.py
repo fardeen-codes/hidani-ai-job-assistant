@@ -5204,6 +5204,39 @@ def get_offer_salary_variance(
     }
 
 
+def get_candidate_team_preferences() -> Dict[str, Any]:
+    """Retrieve candidate preferred engineering team size and company stage."""
+    prof = load_candidate_profile()
+    prefs = prof.get("team_preferences", {})
+    return {
+        "status": "success",
+        "preferred_team_size": prefs.get("preferred_team_size", "10-50"),
+        "preferred_company_stage": prefs.get("preferred_company_stage", "Growth"),
+        "notes": prefs.get("notes", ""),
+        "updated_at": prefs.get("updated_at")
+    }
+
+
+def update_candidate_team_preferences(preferred_team_size: Optional[str] = "10-50", preferred_company_stage: Optional[str] = "Growth", notes: Optional[str] = "") -> Dict[str, Any]:
+    """Update candidate preferred engineering team size and company stage in profile."""
+    prof = load_candidate_profile()
+    now_iso = datetime.now(timezone.utc).isoformat()
+    team_prefs = {
+        "preferred_team_size": preferred_team_size or "10-50",
+        "preferred_company_stage": preferred_company_stage or "Growth",
+        "notes": notes or "",
+        "updated_at": now_iso
+    }
+    prof["team_preferences"] = team_prefs
+    save_candidate_profile(prof)
+    return {
+        "status": "success",
+        "message": "Team and stage preferences updated successfully",
+        **team_prefs
+    }
+
+
+
 
 
 

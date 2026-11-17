@@ -3455,6 +3455,26 @@ class BackendTestCase(unittest.TestCase):
         self.assertGreaterEqual(len(data["key_architectural_components"]), 2)
         self.assertGreaterEqual(len(data["deep_dive_topics"]), 2)
 
+    def test_candidate_team_size_preferences(self):
+        """Test getting and updating candidate engineering team size and company stage preferences."""
+        update_res = self.client.put("/api/profile/team-preferences", json={
+            "preferred_team_size": "50-200",
+            "preferred_company_stage": "Growth",
+            "notes": "Prefers cross-functional platform engineering teams"
+        })
+        self.assertEqual(update_res.status_code, 200)
+        data = update_res.json()
+        self.assertEqual(data["status"], "success")
+        self.assertEqual(data["preferred_team_size"], "50-200")
+        self.assertEqual(data["preferred_company_stage"], "Growth")
+        self.assertIn("notes", data)
+
+        get_res = self.client.get("/api/profile/team-preferences")
+        self.assertEqual(get_res.status_code, 200)
+        get_data = get_res.json()
+        self.assertEqual(get_data["preferred_team_size"], "50-200")
+        self.assertEqual(get_data["preferred_company_stage"], "Growth")
+
 
 if __name__ == "__main__":
     unittest.main()

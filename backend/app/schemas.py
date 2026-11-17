@@ -1756,6 +1756,24 @@ class SystemDesignScenarioResponse(BaseModel):
     deep_dive_topics: List[str]
 
 
+class TeamSizePreferenceRequest(BaseModel):
+    """Candidate engineering team size and company stage preference request."""
+    preferred_team_size: Optional[str] = Field("10-50", description="Preferred engineering team size (1-10, 10-50, 50-200, 200+)")
+    preferred_company_stage: Optional[str] = Field("Growth", description="Preferred company stage (Early Startup, Growth, Late Stage, Enterprise, Any)")
+    notes: Optional[str] = Field("", description="Optional contextual notes regarding team preferences")
+
+
+class TeamSizePreferenceResponse(BaseModel):
+    """Candidate engineering team size and stage preference details."""
+    status: str = "success"
+    preferred_team_size: str
+    preferred_company_stage: str
+    notes: Optional[str] = ""
+    updated_at: Optional[str] = None
+    message: Optional[str] = None
+
+
+
 
 
 

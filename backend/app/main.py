@@ -218,6 +218,8 @@ from app.schemas import (
     StorageSpeedBenchmark,
     SystemDesignScenarioRequest,
     SystemDesignScenarioResponse,
+    TeamSizePreferenceRequest,
+    TeamSizePreferenceResponse,
     SystemDiagnosticsResponse,
     SystemHealthPingResponse,
     TechnicalCheatSheetRequest,
@@ -282,6 +284,7 @@ from app.services.db_service import (
     get_candidate_portfolio_links,
     get_candidate_salary_preferences,
     get_candidate_soft_skills,
+    get_candidate_team_preferences,
     get_candidate_work_preferences,
     get_company_hiring_surges,
     get_company_profile,
@@ -338,6 +341,7 @@ from app.services.db_service import (
     update_candidate_location_preferences,
     update_candidate_salary_preferences,
     update_candidate_soft_skills,
+    update_candidate_team_preferences,
     update_candidate_work_preferences,
     update_application_thank_you_status,
     toggle_application_todo,
@@ -781,6 +785,35 @@ async def update_soft_skills_endpoint(payload: SoftSkillsUpdateRequest):
     """Update and persist candidate interpersonal and leadership strengths."""
     res = update_candidate_soft_skills(payload.soft_skills)
     return SoftSkillsResponse(**res)
+
+
+@app.get(
+    "/api/profile/team-preferences",
+    response_model=TeamSizePreferenceResponse,
+    summary="Get candidate engineering team size and company stage preferences",
+    tags=["Resume"]
+)
+async def get_team_preferences_endpoint():
+    """Retrieve candidate preferred engineering team size and company stage."""
+    prefs = get_candidate_team_preferences()
+    return TeamSizePreferenceResponse(**prefs)
+
+
+@app.put(
+    "/api/profile/team-preferences",
+    response_model=TeamSizePreferenceResponse,
+    summary="Update candidate engineering team size and company stage preferences",
+    tags=["Resume"]
+)
+async def update_team_preferences_endpoint(payload: TeamSizePreferenceRequest):
+    """Update candidate preferred engineering team size and company stage."""
+    res = update_candidate_team_preferences(
+        preferred_team_size=payload.preferred_team_size,
+        preferred_company_stage=payload.preferred_company_stage,
+        notes=payload.notes
+    )
+    return TeamSizePreferenceResponse(**res)
+
 
 
 
