@@ -1419,6 +1419,12 @@ async function fetchAndRenderApplicationsList() {
         todosHtml = `<div class="mt-2 pt-2 border-t border-neutral-900 space-y-1">${todoItems}</div>`;
       }
 
+      const debriefInfo = app.debrief_reflection;
+      const debriefBadge = currentStatus === 'Rejected'
+        ? (debriefInfo
+          ? `<button onclick="promptLogApplicationDebrief('${escapeHtml(app.job_id)}')" title="Debrief logged for ${escapeHtml(debriefInfo.stage_reached || 'stage')}. Click to update." class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-purple-500/15 text-purple-300 border border-purple-500/30 hover:bg-purple-500/25 transition-colors">📝 Debrief Logged</button>`
+          : `<button onclick="promptLogApplicationDebrief('${escapeHtml(app.job_id)}')" title="Log lessons learned and reflection notes" class="px-1.5 py-0.5 rounded text-[9px] font-mono text-neutral-400 hover:text-purple-300 bg-neutral-900 border border-neutral-800 hover:border-neutral-700 transition-colors">📝 Add Debrief</button>`)
+        : '';
       const statusOptions = statuses.map(s =>
         `<option value="${s}" ${s === currentStatus ? 'selected' : ''}>${s}</option>`
       ).join('');
@@ -1431,6 +1437,7 @@ async function fetchAndRenderApplicationsList() {
             ${questionBadge}
             ${difficultyBadge}
             ${thankYouBadge}
+            ${debriefBadge}
             ${todoBadge}
             ${addTodoBtn}
           </div>
@@ -1905,6 +1912,34 @@ window.openCounterOfferCalculator = async (jobId, company, role) => {
     } else {
       showToast('Failed to generate counter-proposal', 'error');
     }
+  } catch (err) {
+    showToast(`Error: ${err.message}`, 'error');
+  }
+};
+
+window.promptLogApplicationDebrief = async (jobId) => {
+  const stage = prompt('Furthest interview stage reached (e.g. Phone Screen, Technical Screen, System Design, Onsite):', 'Technical Screen');
+  if (!stage) return;
+  const lessons = prompt('Key lessons learned / things to improve next time (comma separated):', 'Clarify performance constraints earlier, Practice distributed caching');
+  if (!lessons) return;
+  const notes = prompt('Any interviewer feedback or personal reflection notes:', '');
+
+  try {
+    const res = await fetch(`${API_BASE}/applications/${encodeURIComponent(jobId)}/debrief`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        stage_reached: stage.trim(),
+        lessons_learned: lessons.split(',').map(s => s.trim()).filter(Boolean),
+        reflection_notes: notes ? notes.trim() : null
+      })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `Failed to log debrief (${res.status})`);
+    }
+    showToast('Debrief reflection recorded!', 'success');
+    fetchAndRenderApplicationsList();
   } catch (err) {
     showToast(`Error: ${err.message}`, 'error');
   }
