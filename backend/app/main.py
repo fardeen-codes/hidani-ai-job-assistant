@@ -66,6 +66,8 @@ from app.schemas import (
     ApplicationChannelMetric,
     ApplicationCreateRequest,
     ApplicationDeadlinesUpdateRequest,
+    ApplicationDebriefReflectionRequest,
+    ApplicationDebriefReflectionResponse,
     ATSScoreRequest,
     ATSScoreResponse,
     ApplicationFunnelResponse,
@@ -304,6 +306,7 @@ from app.services.db_service import (
     load_candidate_profile,
     load_jobs,
     load_saved_searches,
+    record_application_debrief,
     record_interview_difficulty_feedback,
     prune_database_audit_log,
     record_search_query,
@@ -2653,6 +2656,35 @@ async def calculate_counter_offer_endpoint(job_id: str, payload: OfferCounterPro
         sign_on_offered=payload.sign_on_offered or 0.0,
         strategy=payload.target_strategy or "balanced"
     )
+
+
+@app.post(
+    "/api/applications/{job_id}/debrief",
+    response_model=ApplicationDebriefReflectionResponse,
+    summary="Record post-rejection self-reflection debrief notes",
+    tags=["Applications"]
+)
+async def record_application_debrief_endpoint(job_id: str, payload: ApplicationDebriefReflectionRequest):
+    """Record qualitative candidate lessons learned and skill areas to improve after rejection."""
+    clean_id = (job_id or "").strip()
+    success, message, debrief = record_application_debrief(
+        job_id=clean_id,
+        lessons_learned=payload.lessons_learned,
+        skills_to_improve=payload.skills_to_improve,
+        stage_reached=payload.stage_reached,
+        notes=payload.reflection_notes
+    )
+    if not success or not debrief:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=message)
+    return {
+        "status": "success",
+        "job_id": clean_id,
+        "stage_reached": debrief["stage_reached"],
+        "lessons_learned": debrief["lessons_learned"],
+        "skills_to_improve": debrief["skills_to_improve"],
+        "reflection_notes": debrief.get("reflection_notes"),
+        "recorded_at": debrief["recorded_at"]
+    }
 
 
 @app.delete("/api/applications/{job_id}", summary="Withdraw an active job application", tags=["Applications"])

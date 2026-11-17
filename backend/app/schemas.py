@@ -1697,6 +1697,26 @@ class ProjectTalkingPointsResponse(BaseModel):
     suggested_opening_pitch: str
 
 
+class ApplicationDebriefReflectionRequest(BaseModel):
+    """Payload to log candidate self-reflection and lessons learned following a rejection."""
+    lessons_learned: Optional[List[str]] = Field(default_factory=list, description="Key insights gained")
+    skills_to_improve: Optional[List[str]] = Field(default_factory=list, description="Target technical areas to strengthen")
+    stage_reached: Optional[str] = Field("Phone Screen", description="Furthest interview milestone reached")
+    reflection_notes: Optional[str] = Field(None, description="Freeform qualitative candidate notes")
+
+
+class ApplicationDebriefReflectionResponse(BaseModel):
+    """Debrief self-reflection record for an application."""
+    status: str = Field(default="success")
+    job_id: str
+    stage_reached: str
+    lessons_learned: List[str]
+    skills_to_improve: List[str]
+    reflection_notes: Optional[str] = None
+    recorded_at: str
+
+
+
 
 
 

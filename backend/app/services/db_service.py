@@ -5109,6 +5109,50 @@ def calculate_offer_counter_proposal(
     }
 
 
+def record_application_debrief(
+    job_id: str,
+    lessons_learned: Optional[List[str]] = None,
+    skills_to_improve: Optional[List[str]] = None,
+    stage_reached: Optional[str] = None,
+    notes: Optional[str] = None
+) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
+    """
+    Record post-interview or post-rejection self-reflection debrief data for an application.
+    Returns: (success: bool, message: str, debrief_data: Optional[dict])
+    """
+    clean_id = (job_id or "").strip()
+    if not clean_id:
+        return False, "Job ID cannot be empty.", None
+
+    now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    debrief = {
+        "job_id": clean_id,
+        "stage_reached": stage_reached or "Phone Screen",
+        "lessons_learned": [l.strip() for l in (lessons_learned or []) if l and l.strip()],
+        "skills_to_improve": [s.strip() for s in (skills_to_improve or []) if s and s.strip()],
+        "reflection_notes": notes.strip() if notes and notes.strip() else None,
+        "recorded_at": now_str
+    }
+
+    with _db_lock:
+        apps = load_applications()
+        target_app = None
+        for app in apps:
+            if str(app.get("job_id", "")).strip().lower() == clean_id.lower():
+                app["debrief_reflection"] = debrief
+                target_app = app
+                break
+
+        if not target_app:
+            return False, f"No application found for Job ID '{clean_id}'.", None
+
+        _save_applications(apps)
+
+    logger.info(f"Recorded debrief reflection for job {clean_id}")
+    return True, f"Debrief reflection recorded for Job ID '{clean_id}'.", debrief
+
+
+
 
 
 

@@ -3393,6 +3393,25 @@ class BackendTestCase(unittest.TestCase):
         self.assertGreaterEqual(len(data["scale_and_performance_metrics"]), 2)
         self.assertIn("Distributed Job Scheduler", data["suggested_opening_pitch"])
 
+    def test_application_debrief_reflection_tracker(self):
+        """Test recording post-interview rejection self-reflection debrief notes."""
+        self.client.post("/api/applications", json={"job_id": self.test_job_id})
+        payload = {
+            "stage_reached": "System Design Round",
+            "lessons_learned": ["Clarify non-functional throughput constraints earlier"],
+            "skills_to_improve": ["Distributed consensus", "Raft protocol"],
+            "reflection_notes": "Interviewer probed deeply on etcd split-brain recovery."
+        }
+        res = self.client.post(f"/api/applications/{self.test_job_id}/debrief", json=payload)
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "success")
+        self.assertEqual(data["job_id"], self.test_job_id)
+        self.assertEqual(data["stage_reached"], "System Design Round")
+        self.assertIn("throughput", data["lessons_learned"][0])
+        self.assertIn("Distributed consensus", data["skills_to_improve"])
+        self.assertIn("etcd split-brain", data["reflection_notes"])
+
 
 if __name__ == "__main__":
     unittest.main()
