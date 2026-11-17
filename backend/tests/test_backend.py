@@ -3547,6 +3547,18 @@ class BackendTestCase(unittest.TestCase):
         del_data = del_res.json()
         self.assertNotIn("Dream Role", del_data["tags"])
 
+    def test_job_jd_clarity_rater(self):
+        """Test analyzing job description readability, clarity tier, and ambiguity score."""
+        res = self.client.get(f"/api/jobs/{self.test_job_id}/jd-clarity")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["job_id"], self.test_job_id)
+        self.assertIn("clarity_score", data)
+        self.assertIn("clarity_tier", data)
+        self.assertIn("word_count", data)
+        self.assertIn("ambiguous_phrases_found", data)
+        self.assertGreaterEqual(len(data["recommended_questions_to_ask"]), 2)
+
 
 if __name__ == "__main__":
     unittest.main()

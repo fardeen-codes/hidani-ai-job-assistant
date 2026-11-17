@@ -19,6 +19,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 
 from app.agents.matcher_agent import (
+    analyze_jd_readability_and_clarity,
     analyze_skill_gap,
     batch_score_jobs,
     calculate_company_culture_index,
@@ -176,6 +177,7 @@ from app.schemas import (
     LearningRoadmapResponse,
     JobBookmark,
     JobFreshnessResponse,
+    JobJDReadabilityResponse,
     JobStatsResponse,
     JobTagCloudResponse,
     LocationPreferenceResponse,
@@ -1838,6 +1840,22 @@ async def get_company_stage_fit_endpoint(
     if not job:
         raise HTTPException(status_code=404, detail=f"Job with ID '{clean_id}' not found.")
     return calculate_company_stage_fit(clean_id, preferred_stage)
+
+
+@app.get(
+    "/api/jobs/{job_id}/jd-clarity",
+    response_model=JobJDReadabilityResponse,
+    summary="Get job requirements readability and ambiguity index",
+    tags=["Jobs"]
+)
+async def get_job_jd_clarity_endpoint(job_id: str):
+    """Evaluate job description readability, structural completeness, and ambiguity index."""
+    clean_id = (job_id or "").strip()
+    job = get_job_by_id(clean_id)
+    if not job:
+        raise HTTPException(status_code=404, detail=f"Job with ID '{clean_id}' not found.")
+    return analyze_jd_readability_and_clarity(clean_id, job.get("description", ""))
+
 
 
 

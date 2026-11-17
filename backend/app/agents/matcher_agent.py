@@ -1305,6 +1305,65 @@ def calculate_company_stage_fit(job_id: str, preferred_stage: Optional[str] = "G
     }
 
 
+def analyze_jd_readability_and_clarity(job_id: str, description: Optional[str] = None) -> Dict[str, Any]:
+    """Evaluate job description requirements readability, structural completeness, and ambiguity index."""
+    clean_id = (job_id or "").strip()
+    job = get_job_by_id(clean_id) if clean_id else None
+    
+    desc = (description if description is not None else (job.get("description", "") if job else "")).strip()
+    word_count = len(desc.split()) if desc else 0
+    desc_lower = desc.lower()
+
+    buzzwords = [
+        "wear multiple hats",
+        "rockstar",
+        "ninja",
+        "fast-paced environment",
+        "other duties as assigned",
+        "hit the ground running",
+        "self-starter",
+        "work hard play hard",
+        "heavy lifting",
+        "guru"
+    ]
+    ambiguities = [phrase for phrase in buzzwords if phrase in desc_lower]
+
+    section_markers = ["responsibilities", "requirements", "qualifications", "what you will do", "what we offer", "benefits", "about us"]
+    sections_found = sum(1 for sec in section_markers if sec in desc_lower)
+
+    score = 7.0
+    if word_count > 150:
+        score += 1.0
+    if sections_found >= 2:
+        score += 1.5
+    score -= len(ambiguities) * 0.8
+    score = max(2.5, min(9.9, round(score, 1)))
+
+    if score >= 8.0:
+        tier = "Crystal Clear"
+    elif score >= 6.0:
+        tier = "Moderate Clarity"
+    else:
+        tier = "Vague / Ambiguous"
+
+    questions = [
+        "What does day-to-day success look like in the first 90 days?",
+        "How is engineering technical debt prioritized relative to new product features?",
+        "What is the expected on-call cadence and incident management workflow?"
+    ]
+
+    return {
+        "job_id": clean_id,
+        "clarity_score": score,
+        "clarity_tier": tier,
+        "word_count": word_count,
+        "structured_sections_count": sections_found,
+        "ambiguous_phrases_found": ambiguities,
+        "recommended_questions_to_ask": questions
+    }
+
+
+
 
 
 

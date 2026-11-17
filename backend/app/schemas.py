@@ -1838,6 +1838,18 @@ class ApplicationCustomTagResponse(BaseModel):
     tags: List[str]
 
 
+class JobJDReadabilityResponse(BaseModel):
+    """Job description readability, structural completeness, and ambiguity index evaluation."""
+    job_id: str
+    clarity_score: float
+    clarity_tier: str
+    word_count: int
+    structured_sections_count: int
+    ambiguous_phrases_found: List[str]
+    recommended_questions_to_ask: List[str]
+
+
+
 
 
 
