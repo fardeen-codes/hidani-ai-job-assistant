@@ -946,6 +946,60 @@ async function handleSendMessage() {
     }
   }
 
+  if (text.toLowerCase().startsWith('/reference')) {
+    const rawArgs = text.substring(10).trim();
+    const parts = rawArgs.split(/\s+/).filter(Boolean);
+    let peerName = 'Alex Johnson';
+    let roleTitle = 'Staff Software Engineer';
+    let targetCompany = 'Tech Company';
+
+    if (parts.length >= 3) {
+      peerName = parts[0];
+      targetCompany = parts[parts.length - 1];
+      roleTitle = parts.slice(1, -1).join(' ');
+    } else if (parts.length === 2) {
+      peerName = parts[0];
+      targetCompany = parts[1];
+    } else if (parts.length === 1) {
+      peerName = parts[0];
+    }
+
+    setSending(true);
+    const typingIndicatorId = showTypingIndicator();
+    scrollToBottom();
+    try {
+      showToast(`Generating reference outreach draft for ${peerName}...`, 'info');
+      const res = await fetch(`${API_BASE}/chat/reference-request`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          peer_name: peerName,
+          relationship: 'Former Colleague',
+          target_company: targetCompany,
+          role_title: roleTitle
+        })
+      });
+      removeTypingIndicator(typingIndicatorId);
+      if (res.ok) {
+        const data = await res.json();
+        const pointsList = (data.talking_points_for_peer || []).map(p => `- 🎯 ${escapeHtml(p)}`).join('\n');
+        appendAssistantMessage(
+          `### 🤝 Peer Reference Request Outreach: ${escapeHtml(data.peer_name)}\n\n` +
+          `**Subject:** \`${escapeHtml(data.outreach_subject)}\`\n\n` +
+          `#### ✉️ Outreach Email Draft\n` +
+          `\`\`\`text\n${escapeHtml(data.outreach_body)}\n\`\`\`\n\n` +
+          `#### 🗣️ Key Talking Points to Provide Your Reference\n${pointsList}\n\n` +
+          `#### ⏱️ Friendly Follow-Up Reminder Snippet\n> "${escapeHtml(data.followup_reminder_snippet)}"`
+        );
+        showToast('Reference request draft generated!', 'success');
+        setSending(false);
+        return;
+      }
+    } catch (e) {
+      removeTypingIndicator(typingIndicatorId);
+    }
+  }
+
   setSending(true);
 
   // Show typing indicator
