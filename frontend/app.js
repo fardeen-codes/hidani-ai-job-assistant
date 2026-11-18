@@ -1671,6 +1671,34 @@ async function fetchAndRenderApplicationsList() {
         todosHtml = `<div class="mt-2 pt-2 border-t border-neutral-900 space-y-1">${todoItems}</div>`;
       }
 
+      const interviews = Array.isArray(app.interviews) ? app.interviews : [];
+      const addInterviewBtn = `<button onclick="promptScheduleInterviewRound('${escapeHtml(app.job_id)}')" title="Log or schedule an interview round" class="px-1.5 py-0.5 rounded text-[9px] font-mono text-neutral-400 hover:text-sky-300 bg-neutral-900 border border-neutral-800 hover:border-neutral-700 transition-colors">+ Interview</button>`;
+
+      let interviewsHtml = '';
+      if (interviews.length > 0) {
+        const interviewItems = interviews.map(s => {
+          const isCancelled = (s.status || '').toLowerCase() === 'cancelled';
+          const isCompleted = (s.status || '').toLowerCase() === 'completed';
+          const statusBadge = isCompleted
+            ? `<span class="px-1 py-0.2 rounded text-[8px] font-mono bg-emerald-500/20 text-emerald-300">✓ Done</span>`
+            : (isCancelled
+              ? `<span class="px-1 py-0.2 rounded text-[8px] font-mono bg-rose-500/20 text-rose-300">✕ Cancelled</span>`
+              : `<span class="px-1 py-0.2 rounded text-[8px] font-mono bg-sky-500/20 text-sky-300">⏱ ${escapeHtml(s.status || 'Scheduled')}</span>`);
+          return `
+            <div class="flex items-center justify-between text-[11px] text-neutral-300 py-0.5 px-1.5 rounded bg-neutral-900/60 border border-neutral-800/60">
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <span class="font-medium ${isCancelled ? 'line-through text-neutral-500' : 'text-neutral-200'}">🎙️ ${escapeHtml(s.round_name || 'Interview')}</span>
+                ${statusBadge}
+                ${s.scheduled_at ? `<span class="text-[10px] text-neutral-400 font-mono">📅 ${escapeHtml(s.scheduled_at)}</span>` : ''}
+                ${s.interviewer ? `<span class="text-[10px] text-neutral-400 font-mono">👤 ${escapeHtml(s.interviewer)}</span>` : ''}
+              </div>
+              <button onclick="window.deleteApplicationInterviewStage('${escapeHtml(app.job_id)}', '${escapeHtml(s.stage_id)}')" title="Cancel and remove interview round" class="text-neutral-500 hover:text-rose-400 font-bold ml-2 text-xs transition-colors">✕</button>
+            </div>
+          `;
+        }).join('');
+        interviewsHtml = `<div class="mt-2 pt-2 border-t border-neutral-900 space-y-1"><div class="text-[10px] uppercase font-mono tracking-wider text-neutral-500 mb-1">Interview Rounds (${interviews.length})</div>${interviewItems}</div>`;
+      }
+
       const debriefInfo = app.debrief_reflection;
       const debriefBadge = currentStatus === 'Rejected'
         ? (debriefInfo
@@ -1718,11 +1746,13 @@ async function fetchAndRenderApplicationsList() {
             ${debriefBadge}
             ${todoBadge}
             ${addTodoBtn}
+            ${addInterviewBtn}
           </div>
           <p class="text-xs text-neutral-400 mt-0.5">${escapeHtml(app.company || 'Tech Company')} • <span class="text-neutral-300">${escapeHtml(app.location || 'Remote')}</span></p>
           <div class="flex flex-wrap items-center gap-1 mt-1.5">${tagChips} ${addTagBtn}</div>
           <p class="text-[11px] font-mono text-neutral-500 mt-1">Submitted on ${escapeHtml(app.applied_date || 'Recent')}</p>
           ${todosHtml}
+          ${interviewsHtml}
         </div>
         <div class="text-right flex-shrink-0 flex flex-col items-end gap-2">
           <select
@@ -2218,6 +2248,50 @@ window.toggleApplicationTodoItem = async (jobId, todoId, completed) => {
       throw new Error(err.detail || `Failed to update task (${res.status})`);
     }
     showToast(completed ? 'Task completed' : 'Task pending', 'info');
+    fetchAndRenderApplicationsList();
+  } catch (err) {
+    showToast(`Error: ${err.message}`, 'error');
+  }
+};
+
+window.promptScheduleInterviewRound = async (jobId) => {
+  const roundName = prompt('Enter interview round name (e.g. Recruiter Screen, Technical Interview, System Design, Team Fit):', 'Technical Interview');
+  if (!roundName || !roundName.trim()) return;
+  const scheduledAt = prompt('Scheduled date/time (e.g. 2026-12-05 15:00 UTC, or Tomorrow 2 PM):', '');
+  const interviewer = prompt('Interviewer name / title (optional):', '');
+
+  try {
+    const res = await fetch(`${API_BASE}/applications/${encodeURIComponent(jobId)}/interviews`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        round_name: roundName.trim(),
+        scheduled_at: scheduledAt ? scheduledAt.trim() : null,
+        interviewer: interviewer ? interviewer.trim() : null
+      })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `Failed to schedule interview (${res.status})`);
+    }
+    showToast('Interview round scheduled!', 'success');
+    fetchAndRenderApplicationsList();
+  } catch (err) {
+    showToast(`Error: ${err.message}`, 'error');
+  }
+};
+
+window.deleteApplicationInterviewStage = async (jobId, stageId) => {
+  if (!confirm('Are you sure you want to cancel and remove this interview round?')) return;
+  try {
+    const res = await fetch(`${API_BASE}/applications/${encodeURIComponent(jobId)}/interviews/${encodeURIComponent(stageId)}`, {
+      method: 'DELETE'
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `Failed to delete interview round (${res.status})`);
+    }
+    showToast('Interview round removed', 'info');
     fetchAndRenderApplicationsList();
   } catch (err) {
     showToast(`Error: ${err.message}`, 'error');
