@@ -99,6 +99,12 @@ const elements = {
   drawerNoticeBadge: document.getElementById('drawerNoticeBadge'),
   drawerStartDate: document.getElementById('drawerStartDate'),
   drawerBenefitsList: document.getElementById('drawerBenefitsList'),
+  meetingFocusPercentInput: document.getElementById('meetingFocusPercentInput'),
+  meetingFocusPercentVal: document.getElementById('meetingFocusPercentVal'),
+  meetingMaxDailyInput: document.getElementById('meetingMaxDailyInput'),
+  meetingAsyncStandupCheckbox: document.getElementById('meetingAsyncStandupCheckbox'),
+  meetingStyleBadge: document.getElementById('meetingStyleBadge'),
+  saveMeetingPrefsBtn: document.getElementById('saveMeetingPrefsBtn'),
 
   // Notification Toast Container
   toastContainer: document.getElementById('toastContainer')
@@ -380,6 +386,50 @@ function setupEventListeners() {
       } finally {
         elements.saveTeamPrefsBtn.disabled = false;
         elements.saveTeamPrefsBtn.textContent = 'Save Team Preferences';
+      }
+    });
+  }
+
+  if (elements.meetingFocusPercentInput && elements.meetingFocusPercentVal) {
+    elements.meetingFocusPercentInput.addEventListener('input', (e) => {
+      const val = parseInt(e.target.value, 10);
+      const hrs = (8.0 * val / 100).toFixed(1);
+      elements.meetingFocusPercentVal.textContent = `${val}% (${hrs} hrs)`;
+    });
+  }
+
+  if (elements.saveMeetingPrefsBtn) {
+    elements.saveMeetingPrefsBtn.addEventListener('click', async () => {
+      try {
+        const focusVal = elements.meetingFocusPercentInput ? parseInt(elements.meetingFocusPercentInput.value, 10) : 70;
+        const maxMeetings = elements.meetingMaxDailyInput ? parseInt(elements.meetingMaxDailyInput.value, 10) : 3;
+        const asyncStandup = elements.meetingAsyncStandupCheckbox ? elements.meetingAsyncStandupCheckbox.checked : true;
+
+        elements.saveMeetingPrefsBtn.disabled = true;
+        elements.saveMeetingPrefsBtn.textContent = 'Saving...';
+        const res = await fetch(`${API_BASE}/profile/meeting-preferences`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            preferred_focus_time_percent: focusVal,
+            max_meetings_per_day: maxMeetings,
+            async_standup_preferred: asyncStandup
+          })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (elements.meetingStyleBadge) {
+            elements.meetingStyleBadge.textContent = data.workplace_style_label;
+          }
+          showToast('Focus & meeting preferences saved!', 'success');
+        } else {
+          showToast('Failed to save meeting preferences.', 'error');
+        }
+      } catch (err) {
+        showToast(`Error: ${err.message}`, 'error');
+      } finally {
+        elements.saveMeetingPrefsBtn.disabled = false;
+        elements.saveMeetingPrefsBtn.textContent = 'Save Focus & Meeting Preferences';
       }
     });
   }
@@ -2044,6 +2094,20 @@ function openProfileDrawer() {
             <span>✨</span> ${escapeHtml(b)}
           </span>`
         ).join('');
+      }
+    })
+    .catch(() => {});
+
+  // Fetch Meeting and Focus Time Preferences
+  fetch(`${API_BASE}/profile/meeting-preferences`)
+    .then(r => r.ok ? r.json() : null)
+    .then(data => {
+      if (data) {
+        if (elements.meetingFocusPercentInput) elements.meetingFocusPercentInput.value = data.preferred_focus_time_percent;
+        if (elements.meetingFocusPercentVal) elements.meetingFocusPercentVal.textContent = `${data.preferred_focus_time_percent}% (${data.focus_hours_per_day} hrs)`;
+        if (elements.meetingMaxDailyInput) elements.meetingMaxDailyInput.value = data.max_meetings_per_day;
+        if (elements.meetingAsyncStandupCheckbox) elements.meetingAsyncStandupCheckbox.checked = Boolean(data.async_standup_preferred);
+        if (elements.meetingStyleBadge) elements.meetingStyleBadge.textContent = data.workplace_style_label;
       }
     })
     .catch(() => {});
