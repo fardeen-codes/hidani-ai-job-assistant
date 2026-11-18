@@ -1879,6 +1879,65 @@ def frame_candidate_weakness(
     }
 
 
+def generate_reference_request(
+    peer_name: str,
+    relationship: str,
+    target_company: str,
+    role_title: str,
+    shared_project_context: Optional[str] = None,
+    urgency: str = "Normal"
+) -> Dict[str, Any]:
+    """Generate professional reference outreach draft and context summary for employment background checks."""
+    p_name = (peer_name or "Colleague").strip()
+    rel = (relationship or "Former Teammate").strip()
+    company = (target_company or "Target Company").strip()
+    role = (role_title or "Software Engineer").strip()
+    proj = (shared_project_context or "our previous engineering initiatives together").strip()
+    urg = (urgency or "Normal").strip()
+
+    subject = f"Quick question / Reference check for {role} role at {company}"
+    if "urgent" in urg.lower() or "final" in urg.lower():
+        subject = f"Time-sensitive: Reference request for {role} at {company}"
+
+    body = (
+        f"Hi {p_name},\n\n"
+        f"I hope you're doing well! I'm reaching out because I've advanced to the final offer stage for a "
+        f"{role} position at {company}.\n\n"
+        f"The hiring team would love to speak with a {rel.lower()} who knows my work firsthand. "
+        f"Given our strong collaboration on {proj}, I was wondering if you would feel comfortable serving as a professional reference for me?\n\n"
+        f"It would likely be a brief 10–15 minute phone or video chat with the hiring manager, or a quick online questionnaire. "
+        f"I'm happy to share my current resume, the job description, and a few high-level bullet points from our time working together "
+        f"to make this as seamless and low-effort as possible for you.\n\n"
+        f"Please let me know if you're open to this and the best email/phone number to share with their recruiter.\n\n"
+        f"Thank you so much for your support,\n"
+        f"Best regards"
+    )
+
+    reminder = (
+        f"Hi {p_name}, just following up briefly! The recruiter at {company} will be kicking off reference outreach "
+        f"later this week. Please let me know if you have any questions or if you'd prefer I connect them with another contact. "
+        f"Thanks again for your time!"
+    )
+
+    talking_points = [
+        f"Technical depth & execution velocity demonstrated during collaboration on {proj}",
+        "Communication clarity, proactive cross-functional alignment, and reliability under production deadlines",
+        "Team mentorship, code review rigor, and constructive problem-solving in challenging situations",
+        f"Strong culture fit and anticipated high impact as a {role} at {company}"
+    ]
+
+    return {
+        "peer_name": p_name,
+        "relationship": rel,
+        "target_company": company,
+        "role_title": role,
+        "outreach_subject": subject,
+        "outreach_body": body,
+        "followup_reminder_snippet": reminder,
+        "talking_points_for_peer": talking_points
+    }
+
+
 
 
 

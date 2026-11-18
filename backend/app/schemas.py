@@ -2034,6 +2034,28 @@ class MeetingLoadPreferenceResponse(BaseModel):
     message: Optional[str] = None
 
 
+class ReferenceRequestDraftRequest(BaseModel):
+    """Request to generate professional peer reference outreach draft."""
+    peer_name: str = Field(..., min_length=1)
+    relationship: str = Field("Former Teammate", description="e.g. Former Manager, Tech Lead, Senior Peer")
+    target_company: str = Field(..., min_length=1)
+    role_title: str = Field(..., min_length=1)
+    shared_project_context: Optional[str] = None
+    urgency: str = "Normal"
+
+
+class ReferenceRequestDraftResponse(BaseModel):
+    """Generated professional peer reference outreach email and talking points."""
+    peer_name: str
+    relationship: str
+    target_company: str
+    role_title: str
+    outreach_subject: str
+    outreach_body: str
+    followup_reminder_snippet: str
+    talking_points_for_peer: List[str]
+
+
 
 
 

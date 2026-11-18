@@ -3782,6 +3782,28 @@ class BackendTestCase(unittest.TestCase):
         self.assertEqual(put_data["workplace_style_label"], "Maker-Heavy (Deep Focus)")
         self.assertAlmostEqual(put_data["focus_hours_per_day"], 6.8, places=1)
 
+    def test_reference_request_generator(self):
+        """Test peer reference request outreach generator for background checks."""
+        res = self.client.post("/api/chat/reference-request", json={
+            "peer_name": "Sarah Connor",
+            "relationship": "Former Tech Lead",
+            "target_company": "Stripe",
+            "role_title": "Staff Infrastructure Engineer",
+            "shared_project_context": "our cloud event streaming migration",
+            "urgency": "Urgent - Final Round"
+        })
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["peer_name"], "Sarah Connor")
+        self.assertEqual(data["relationship"], "Former Tech Lead")
+        self.assertEqual(data["target_company"], "Stripe")
+        self.assertEqual(data["role_title"], "Staff Infrastructure Engineer")
+        self.assertIn("Time-sensitive", data["outreach_subject"])
+        self.assertIn("Sarah Connor", data["outreach_body"])
+        self.assertIn("cloud event streaming migration", data["outreach_body"])
+        self.assertIn("Stripe", data["outreach_body"])
+        self.assertGreater(len(data["talking_points_for_peer"]), 0)
+
 
 if __name__ == "__main__":
     unittest.main()

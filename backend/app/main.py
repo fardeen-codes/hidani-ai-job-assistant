@@ -49,6 +49,7 @@ from app.agents.orchestrator import (
     generate_project_talking_points,
     generate_recruiter_followup_cadence,
     generate_recruiter_screen_faq,
+    generate_reference_request,
     generate_resignation_letter,
     generate_salary_negotiation_script,
     generate_system_design_scenario,
@@ -213,6 +214,8 @@ from app.schemas import (
     ProjectTalkingPointsResponse,
     RecruiterScreenFAQRequest,
     RecruiterScreenFAQResponse,
+    ReferenceRequestDraftRequest,
+    ReferenceRequestDraftResponse,
     RejectionReasonLogRequest,
     RejectionReasonLogResponse,
     RemoteWorkBreakdownResponse,
@@ -1236,6 +1239,24 @@ async def frame_candidate_weakness_endpoint(payload: WeaknessFramingRequest):
     return frame_candidate_weakness(
         weakness_topic=payload.weakness_topic,
         context_details=payload.context_details
+    )
+
+
+@app.post(
+    "/api/chat/reference-request",
+    response_model=ReferenceRequestDraftResponse,
+    summary="Generate professional peer reference request draft and context",
+    tags=["Chat"]
+)
+async def generate_reference_request_endpoint(payload: ReferenceRequestDraftRequest):
+    """Generate professional reference outreach draft and context summary for employment background checks."""
+    return generate_reference_request(
+        peer_name=payload.peer_name,
+        relationship=payload.relationship,
+        target_company=payload.target_company,
+        role_title=payload.role_title,
+        shared_project_context=payload.shared_project_context,
+        urgency=payload.urgency
     )
 
 
