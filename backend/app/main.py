@@ -29,6 +29,7 @@ from app.agents.matcher_agent import (
     calculate_timezone_overlap,
     calculate_weighted_skill_match,
     estimate_interview_difficulty,
+    evaluate_equity_grant_liquidity,
     evaluate_skill_proficiency_gaps,
     evaluate_tech_stack_modernization,
     generate_learning_roadmap,
@@ -86,6 +87,8 @@ from app.schemas import (
     ApplicationStreakResponse,
     ApplicationInterviewCreateRequest,
     InterviewRoundDeleteResponse,
+    EquityValuationRequest,
+    EquityValuationResponse,
     InterviewStageUpdateRequest,
     InterviewQuestionCreateRequest,
     InterviewQuestionEntry,
@@ -1984,6 +1987,22 @@ async def get_job_jd_clarity_endpoint(job_id: str):
     return analyze_jd_readability_and_clarity(clean_id, job.get("description", ""))
 
 
+@app.post(
+    "/api/jobs/equity/evaluate",
+    response_model=EquityValuationResponse,
+    summary="Evaluate startup equity grant value and liquidity risk tier",
+    tags=["Matcher", "Compensation"]
+)
+async def evaluate_equity_grant_endpoint(payload: EquityValuationRequest):
+    """Evaluate equity grant valuation spread, annualized vest value, and liquidity risk."""
+    return evaluate_equity_grant_liquidity(
+        company_stage=payload.company_stage,
+        grant_shares=payload.grant_shares,
+        strike_price=payload.strike_price,
+        estimated_price_per_share=payload.estimated_price_per_share,
+        vesting_years=payload.vesting_years,
+        cliff_months=payload.cliff_months
+    )
 
 
 @app.get(

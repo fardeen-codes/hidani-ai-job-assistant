@@ -1413,6 +1413,100 @@ def calculate_company_promotion_velocity(company_name: str) -> Dict[str, Any]:
     }
 
 
+def evaluate_equity_grant_liquidity(
+    company_stage: str = "Growth",
+    grant_shares: int = 10000,
+    strike_price: float = 0.0,
+    estimated_price_per_share: Optional[float] = None,
+    vesting_years: float = 4.0,
+    cliff_months: int = 12
+) -> Dict[str, Any]:
+    """
+    Evaluate startup or tech equity grant valuation, liquidity risk, and vesting structure.
+    """
+    stage_lower = (company_stage or "growth").strip().lower()
+    
+    # Benchmarks by stage
+    if "seed" in stage_lower or "early" in stage_lower:
+        default_pps = 0.75
+        risk_tier = "Very High"
+        risk_score = 1
+        mult_low = 0.2
+        mult_high = 2.5
+        canonical_stage = "Seed / Early Stage"
+    elif "series a" in stage_lower:
+        default_pps = 2.50
+        risk_tier = "High"
+        risk_score = 2
+        mult_low = 0.4
+        mult_high = 3.0
+        canonical_stage = "Series A"
+    elif "series b" in stage_lower:
+        default_pps = 6.00
+        risk_tier = "High"
+        risk_score = 2
+        mult_low = 0.5
+        mult_high = 2.8
+        canonical_stage = "Series B"
+    elif "series c" in stage_lower or "series d" in stage_lower:
+        default_pps = 15.00
+        risk_tier = "Moderate"
+        risk_score = 3
+        mult_low = 0.7
+        mult_high = 2.2
+        canonical_stage = "Series C/D"
+    elif "public" in stage_lower or "listed" in stage_lower or "nasdaq" in stage_lower or "nyse" in stage_lower:
+        default_pps = 85.00
+        risk_tier = "Minimal"
+        risk_score = 5
+        mult_low = 0.95
+        mult_high = 1.25
+        canonical_stage = "Public"
+    else:  # Growth / Pre-IPO / Late Stage
+        default_pps = 28.00
+        risk_tier = "Moderate"
+        risk_score = 4
+        mult_low = 0.8
+        mult_high = 1.8
+        canonical_stage = "Growth / Pre-IPO"
+
+    effective_pps = float(estimated_price_per_share) if estimated_price_per_share is not None and estimated_price_per_share > 0 else default_pps
+    per_share_spread = max(0.0, effective_pps - float(strike_price))
+    base_gross_val = round(float(grant_shares) * per_share_spread, 2)
+    val_low = round(base_gross_val * mult_low, 2)
+    val_high = round(base_gross_val * mult_high, 2)
+    v_years = max(1.0, float(vesting_years))
+    annual_val = round(base_gross_val / v_years, 2)
+
+    cliff_percent = round((cliff_months / (v_years * 12.0)) * 100.0, 1) if v_years > 0 else 25.0
+    vesting_summary = f"{v_years:.1f}-year vesting with {cliff_months}-month cliff (~{cliff_percent}% unlocks at cliff, remainder monthly)."
+
+    recs = []
+    if risk_score <= 2:
+        recs.append("File an IRS Section 83(b) election within 30 days of grant to lock in early exercise tax basis.")
+        recs.append("Discount paper equity value by at least 60-80% when comparing against guaranteed base salary cash.")
+    elif risk_score in (3, 4):
+        recs.append("Inquire about company secondary tender offers or liquidity programs for employee tenure.")
+        recs.append("Verify Qualified Small Business Stock (QSBS) eligibility to explore capital gains tax exclusion.")
+    else:
+        recs.append("Establish a 10b5-1 trading plan or scheduled dollar-cost-averaging sell strategy post-vest.")
+        recs.append("Account for standard federal and state supplemental withholding tax rates on RSU vesting.")
+
+    return {
+        "company_stage": canonical_stage,
+        "grant_shares": int(grant_shares),
+        "strike_price": round(float(strike_price), 2),
+        "estimated_price_per_share": round(effective_pps, 2),
+        "estimated_valuation_low": val_low,
+        "estimated_valuation_high": val_high,
+        "annual_vested_value": annual_val,
+        "liquidity_risk_tier": risk_tier,
+        "liquidity_risk_score": risk_score,
+        "vesting_schedule_analysis": vesting_summary,
+        "recommendations": recs
+    }
+
+
 
 
 

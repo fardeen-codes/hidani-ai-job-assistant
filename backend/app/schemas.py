@@ -1986,6 +1986,31 @@ class InterviewRoundDeleteResponse(BaseModel):
     stage_id: str
 
 
+class EquityValuationRequest(BaseModel):
+    """Request payload for startup or private equity grant valuation."""
+    company_stage: str = "Growth"
+    grant_shares: int = Field(10000, ge=1)
+    strike_price: float = Field(0.0, ge=0.0)
+    estimated_price_per_share: Optional[float] = Field(None, ge=0.0)
+    vesting_years: float = Field(4.0, gt=0.0)
+    cliff_months: int = Field(12, ge=0)
+
+
+class EquityValuationResponse(BaseModel):
+    """Response payload analyzing equity grant value and liquidity risk tier."""
+    company_stage: str
+    grant_shares: int
+    strike_price: float
+    estimated_price_per_share: float
+    estimated_valuation_low: float
+    estimated_valuation_high: float
+    annual_vested_value: float
+    liquidity_risk_tier: str
+    liquidity_risk_score: int
+    vesting_schedule_analysis: str
+    recommendations: List[str]
+
+
 
 
 

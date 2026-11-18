@@ -3717,6 +3717,44 @@ class BackendTestCase(unittest.TestCase):
         self.assertEqual(del_data["status"], "success")
         self.assertEqual(del_data["stage_id"], stage_id)
 
+    def test_equity_grant_liquidity_rater(self):
+        """Test startup and tech equity grant valuation and liquidity risk rater."""
+        # 1. Test with custom estimated price per share and Series B stage
+        res = self.client.post("/api/jobs/equity/evaluate", json={
+            "company_stage": "Series B",
+            "grant_shares": 10000,
+            "strike_price": 2.0,
+            "estimated_price_per_share": 10.0,
+            "vesting_years": 4.0,
+            "cliff_months": 12
+        })
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["company_stage"], "Series B")
+        self.assertEqual(data["grant_shares"], 10000)
+        self.assertEqual(data["strike_price"], 2.0)
+        self.assertEqual(data["estimated_price_per_share"], 10.0)
+        # Gross spread = 10000 * (10 - 2) = 80000
+        # low mult 0.5 -> 40000, high mult 2.8 -> 224000, annual -> 20000
+        self.assertEqual(data["estimated_valuation_low"], 40000.0)
+        self.assertEqual(data["estimated_valuation_high"], 224000.0)
+        self.assertEqual(data["annual_vested_value"], 20000.0)
+        self.assertEqual(data["liquidity_risk_tier"], "High")
+        self.assertIn("Section 83(b)", " ".join(data["recommendations"]))
+
+        # 2. Test default estimation for Public company
+        res_public = self.client.post("/api/jobs/equity/evaluate", json={
+            "company_stage": "Public",
+            "grant_shares": 1000,
+            "strike_price": 0.0
+        })
+        self.assertEqual(res_public.status_code, 200)
+        pub_data = res_public.json()
+        self.assertEqual(pub_data["company_stage"], "Public")
+        self.assertEqual(pub_data["liquidity_risk_tier"], "Minimal")
+        self.assertGreater(pub_data["estimated_price_per_share"], 0)
+        self.assertIn("10b5-1", " ".join(pub_data["recommendations"]))
+
 
 if __name__ == "__main__":
     unittest.main()
