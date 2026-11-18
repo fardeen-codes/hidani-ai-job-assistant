@@ -833,6 +833,69 @@ async function handleSendMessage() {
     }
   }
 
+  if (text.toLowerCase().startsWith('/equity')) {
+    const rawArgs = text.substring(7).trim();
+    const parts = rawArgs.split(/\s+/).filter(Boolean);
+    let shares = 10000;
+    let stage = 'Growth';
+    let strike = 0.0;
+
+    if (parts.length > 0) {
+      if (!isNaN(parseInt(parts[0], 10))) {
+        shares = parseInt(parts[0], 10);
+        if (parts.length > 1) {
+          const lastPart = parts[parts.length - 1];
+          if (parts.length > 2 && !isNaN(parseFloat(lastPart))) {
+            strike = parseFloat(lastPart);
+            stage = parts.slice(1, -1).join(' ');
+          } else {
+            stage = parts.slice(1).join(' ');
+          }
+        }
+      } else {
+        stage = parts.join(' ');
+      }
+    }
+
+    setSending(true);
+    const typingIndicatorId = showTypingIndicator();
+    scrollToBottom();
+    try {
+      showToast(`Evaluating equity grant (${shares.toLocaleString()} shares, ${stage})...`, 'info');
+      const res = await fetch(`${API_BASE}/jobs/equity/evaluate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          company_stage: stage,
+          grant_shares: shares,
+          strike_price: strike
+        })
+      });
+      removeTypingIndicator(typingIndicatorId);
+      if (res.ok) {
+        const data = await res.json();
+        const recList = (data.recommendations || []).map(r => `- 💡 ${escapeHtml(r)}`).join('\n');
+        appendAssistantMessage(
+          `### 📊 Equity Grant Valuation & Liquidity Analysis: ${escapeHtml(data.company_stage)}\n\n` +
+          `| Grant Metric | Valued Metric |\n` +
+          `|---|---|\n` +
+          `| **Shares Granted** | **${data.grant_shares.toLocaleString()}** shares |\n` +
+          `| **Estimated Share Price** | **$${data.estimated_price_per_share.toFixed(2)}** (Strike: $${data.strike_price.toFixed(2)}) |\n` +
+          `| **Annualized Vest Value** | **$${data.annual_vested_value.toLocaleString()}** / year |\n` +
+          `| **Est. Valuation Spread** | **$${data.estimated_valuation_low.toLocaleString()}** – **$${data.estimated_valuation_high.toLocaleString()}** |\n` +
+          `| **Liquidity Risk Tier** | **${escapeHtml(data.liquidity_risk_tier)}** (${data.liquidity_risk_score}/5 risk score) |\n` +
+          `| **Vesting Structure** | ${escapeHtml(data.vesting_schedule_analysis)} |\n\n` +
+          `#### 🛡️ Strategic Equity Recommendations\n${recList}`
+        );
+        showToast('Equity grant valuation generated!', 'success');
+        setSending(false);
+        return;
+      }
+    } catch (e) {
+      removeTypingIndicator(typingIndicatorId);
+    }
+  }
+
   setSending(true);
 
   // Show typing indicator
