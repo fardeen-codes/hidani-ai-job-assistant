@@ -248,6 +248,7 @@ from app.schemas import (
     TeamSizePreferenceResponse,
     SystemDiagnosticsResponse,
     SystemHealthPingResponse,
+    SystemMemoryTelemetry,
     TechnicalCheatSheetRequest,
     TechnicalCheatSheetResponse,
     TechStackModernizationResponse,
@@ -442,6 +443,9 @@ async def health_check():
 )
 async def system_ping_endpoint():
     """Retrieve operational health ping, active uptime duration, and loaded record telemetry."""
+    import gc
+    import resource
+
     now = time.time()
     uptime_sec = round(max(0.0, now - _SERVER_START_TIME), 2)
     mins = int(uptime_sec // 60)
@@ -453,14 +457,37 @@ async def system_ping_endpoint():
     else:
         human_uptime = f"{uptime_sec:.1f}s"
 
+    rss_mb = round(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024.0, 2)
+
     return {
         "status": "ok",
         "uptime_seconds": uptime_sec,
         "uptime_human": human_uptime,
         "server_time": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
         "total_jobs": len(load_jobs()),
-        "total_applications": len(load_applications())
+        "total_applications": len(load_applications()),
+        "memory_rss_mb": rss_mb,
+        "python_gc_counts": list(gc.get_count())
     }
+
+
+@app.get(
+    "/api/system/memory",
+    response_model=SystemMemoryTelemetry,
+    summary="Get process memory RSS usage and garbage collector stats",
+    tags=["System"]
+)
+async def system_memory_endpoint():
+    """Retrieve process memory consumption and Python garbage collector generation counts."""
+    import gc
+    import resource
+    rss_mb = round(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024.0, 2)
+    return SystemMemoryTelemetry(
+        memory_rss_mb=rss_mb,
+        python_gc_counts=list(gc.get_count()),
+        gc_thresholds=list(gc.get_threshold())
+    )
+
 
 
 @app.post(

@@ -1428,6 +1428,16 @@ class SystemHealthPingResponse(BaseModel):
     server_time: str = Field(description="Current server UTC timestamp")
     total_jobs: int = Field(description="Total loaded jobs in database")
     total_applications: int = Field(description="Total submitted applications")
+    memory_rss_mb: Optional[float] = Field(default=None, description="Resident Set Size memory consumption in MB")
+    python_gc_counts: Optional[List[int]] = Field(default=None, description="Python garbage collection generation counts")
+
+
+class SystemMemoryTelemetry(BaseModel):
+    """Real-time process resident memory usage and garbage collector generation counters."""
+    memory_rss_mb: float
+    python_gc_counts: List[int]
+    gc_thresholds: List[int]
+
 
 
 class CandidateLanguageItem(BaseModel):

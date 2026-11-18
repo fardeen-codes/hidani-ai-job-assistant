@@ -3682,6 +3682,23 @@ class BackendTestCase(unittest.TestCase):
         get_data = get_res.json()
         self.assertIn("Comprehensive Health", get_data["must_have_benefits"])
 
+    def test_system_memory_telemetry(self):
+        """Test process RSS memory and garbage collector telemetry."""
+        ping_res = self.client.get("/api/system/ping")
+        self.assertEqual(ping_res.status_code, 200)
+        ping_data = ping_res.json()
+        self.assertIn("memory_rss_mb", ping_data)
+        self.assertGreater(ping_data["memory_rss_mb"], 0)
+        self.assertIn("python_gc_counts", ping_data)
+        self.assertEqual(len(ping_data["python_gc_counts"]), 3)
+
+        mem_res = self.client.get("/api/system/memory")
+        self.assertEqual(mem_res.status_code, 200)
+        mem_data = mem_res.json()
+        self.assertIn("memory_rss_mb", mem_data)
+        self.assertIn("python_gc_counts", mem_data)
+        self.assertIn("gc_thresholds", mem_data)
+
 
 if __name__ == "__main__":
     unittest.main()
