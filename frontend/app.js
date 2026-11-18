@@ -1811,6 +1811,12 @@ async function fetchAndRenderApplicationsList() {
       const difficultyBadge = app.interview_difficulty_tier
         ? `<span class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-amber-500/15 text-amber-300 border border-amber-500/30">${escapeHtml(app.interview_difficulty_tier)} (${app.interview_difficulty_score || 3}/5)</span>`
         : '';
+      const conf = app.interview_confidence;
+      const confBadge = conf
+        ? `<button onclick="promptUpdateInterviewConfidence('${escapeHtml(app.job_id)}')" title="Confidence: ${conf.confidence_score}/5 (${escapeHtml(conf.confidence_tier)}). Focus: ${(conf.focus_areas || []).join(', ') || 'General'}. Click to update." class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/25 transition-colors">🎯 ${'★'.repeat(conf.confidence_score)}${'☆'.repeat(5 - conf.confidence_score)} ${escapeHtml(conf.confidence_tier)}</button>`
+        : (['Interview', 'Under Review', 'Offer'].includes(currentStatus)
+          ? `<button onclick="promptUpdateInterviewConfidence('${escapeHtml(app.job_id)}')" title="Rate your interview prep confidence (1-5)" class="px-1.5 py-0.5 rounded text-[9px] font-mono text-neutral-400 hover:text-indigo-300 bg-neutral-900 border border-neutral-800 hover:border-neutral-700 transition-colors">🎯 Rate Prep</button>`
+          : '');
       const thankYouBadge = app.thank_you_sent
         ? `<button onclick="toggleThankYouStatus('${escapeHtml(app.job_id)}', false)" title="Thank-you note recorded. Click to mark pending." class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/25 transition-colors">✉️ Thank-You Sent</button>`
         : (['Interview', 'Offer', 'Under Review'].includes(currentStatus)
@@ -1906,6 +1912,7 @@ async function fetchAndRenderApplicationsList() {
             ${urgencyBadge}
             ${questionBadge}
             ${difficultyBadge}
+            ${confBadge}
             ${referralBadge}
             ${expenseBadge}
             ${thankYouBadge}
@@ -2473,6 +2480,39 @@ window.deleteApplicationInterviewStage = async (jobId, stageId) => {
       throw new Error(err.detail || `Failed to delete interview round (${res.status})`);
     }
     showToast('Interview round removed', 'info');
+    fetchAndRenderApplicationsList();
+  } catch (err) {
+    showToast(`Error: ${err.message}`, 'error');
+  }
+};
+
+window.promptUpdateInterviewConfidence = async (jobId) => {
+  const scoreInput = prompt('Rate your interview readiness confidence (1 to 5, where 5 is peak ready):', '4');
+  if (!scoreInput) return;
+  const score = parseInt(scoreInput.replace(/[^0-9]/g, ''), 10);
+  if (isNaN(score) || score < 1 || score > 5) {
+    showToast('Please enter a valid rating between 1 and 5', 'error');
+    return;
+  }
+  const focusInput = prompt('Target focus or polish topics (comma-separated, e.g. System Design, Concurrency, Behavioral):', 'System Design');
+  const areas = focusInput ? focusInput.split(',').map(s => s.trim()).filter(Boolean) : [];
+  const notesInput = prompt('Personal reflection or prep plan notes (optional):', '');
+
+  try {
+    const res = await fetch(`${API_BASE}/applications/${encodeURIComponent(jobId)}/confidence`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        confidence_score: score,
+        focus_areas: areas,
+        notes: notesInput ? notesInput.trim() : null
+      })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `Failed to update interview confidence (${res.status})`);
+    }
+    showToast(`Interview confidence recorded: ${score}/5 stars!`, 'success');
     fetchAndRenderApplicationsList();
   } catch (err) {
     showToast(`Error: ${err.message}`, 'error');
