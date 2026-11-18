@@ -1499,6 +1499,46 @@ def update_application_interview(
     return True, f"Interview stage '{clean_stage}' updated successfully.", target_stage
 
 
+def delete_application_interview(
+    job_id: str,
+    stage_id: str
+) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
+    """Delete or cancel a scheduled interview stage from an application."""
+    clean_id = (job_id or "").strip()
+    clean_stage = (stage_id or "").strip()
+    if not clean_id or not clean_stage:
+        return False, "Job ID and Stage ID cannot be empty.", None
+
+    now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    removed_stage = None
+
+    with _db_lock:
+        applications = load_applications()
+        matched = False
+        for app in applications:
+            if app.get("job_id", "").strip().lower() == clean_id.lower():
+                matched = True
+                stages = list(app.get("interviews") or [])
+                rem = [s for s in stages if s.get("stage_id", "").strip().lower() == clean_stage.lower()]
+                if rem:
+                    removed_stage = rem[0]
+                    app["interviews"] = [s for s in stages if s.get("stage_id", "").strip().lower() != clean_stage.lower()]
+                    app["updated_date"] = now_str
+                    _record_app_event(app, "INTERVIEW_CANCELLED", f"Interview '{removed_stage.get('round_name', clean_stage)}' removed/cancelled")
+                break
+
+        if not matched:
+            return False, f"No existing application found for Job ID '{clean_id}'.", None
+        if not removed_stage:
+            return False, f"Interview stage with ID '{clean_stage}' was not found.", None
+
+        _save_applications(applications)
+
+    logger.info(f"Deleted interview stage {clean_stage} from application {clean_id}")
+    return True, f"Interview stage '{clean_stage}' deleted successfully.", removed_stage
+
+
+
 def add_interview_question(
     job_id: str,
     question: str,

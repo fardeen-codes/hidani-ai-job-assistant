@@ -3699,6 +3699,24 @@ class BackendTestCase(unittest.TestCase):
         self.assertIn("python_gc_counts", mem_data)
         self.assertIn("gc_thresholds", mem_data)
 
+    def test_delete_application_interview_round(self):
+        """Test scheduling and subsequently deleting an interview stage round."""
+        self.client.post("/api/applications", json={"job_id": self.test_job_id})
+
+        add_res = self.client.post(f"/api/applications/{self.test_job_id}/interviews", json={
+            "round_name": "Technical Deep Dive Screen",
+            "scheduled_at": "2026-12-01 14:00 UTC",
+            "interviewer": "Engineering Lead"
+        })
+        self.assertEqual(add_res.status_code, 201)
+        stage_id = add_res.json()["interview"]["stage_id"]
+
+        del_res = self.client.delete(f"/api/applications/{self.test_job_id}/interviews/{stage_id}")
+        self.assertEqual(del_res.status_code, 200)
+        del_data = del_res.json()
+        self.assertEqual(del_data["status"], "success")
+        self.assertEqual(del_data["stage_id"], stage_id)
+
 
 if __name__ == "__main__":
     unittest.main()

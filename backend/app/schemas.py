@@ -1978,6 +1978,15 @@ class CandidateBenefitsResponse(BaseModel):
     message: Optional[str] = None
 
 
+class InterviewRoundDeleteResponse(BaseModel):
+    """Response payload when deleting/cancelling an interview stage."""
+    status: str = "success"
+    message: str
+    job_id: str
+    stage_id: str
+
+
+
 
 
 

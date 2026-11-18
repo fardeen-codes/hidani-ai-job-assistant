@@ -85,6 +85,7 @@ from app.schemas import (
     ApplicationGoalUpdateRequest,
     ApplicationStreakResponse,
     ApplicationInterviewCreateRequest,
+    InterviewRoundDeleteResponse,
     InterviewStageUpdateRequest,
     InterviewQuestionCreateRequest,
     InterviewQuestionEntry,
@@ -291,6 +292,7 @@ from app.services.db_service import (
     compute_database_checksums,
     create_database_backup,
     create_saved_search,
+    delete_application_interview,
     delete_candidate_certification,
     delete_candidate_portfolio_link,
     delete_saved_search,
@@ -2693,6 +2695,30 @@ async def update_application_interview_endpoint(
         "message": message,
         "interview": stage_entry
     }
+
+
+@app.delete(
+    "/api/applications/{job_id}/interviews/{stage_id}",
+    response_model=InterviewRoundDeleteResponse,
+    summary="Delete or cancel a scheduled interview round",
+    tags=["Applications"]
+)
+async def delete_application_interview_endpoint(job_id: str, stage_id: str):
+    """Delete or cancel an interview stage from an existing application."""
+    clean_id = (job_id or "").strip()
+    clean_stage = (stage_id or "").strip()
+    if not clean_id or not clean_stage:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Job ID and Stage ID cannot be empty.")
+    success, message, _ = delete_application_interview(clean_id, clean_stage)
+    if not success:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=message)
+    return InterviewRoundDeleteResponse(
+        status="success",
+        message=message,
+        job_id=clean_id,
+        stage_id=clean_stage
+    )
+
 
 
 @app.post(
