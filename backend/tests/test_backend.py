@@ -3804,6 +3804,32 @@ class BackendTestCase(unittest.TestCase):
         self.assertIn("Stripe", data["outreach_body"])
         self.assertGreater(len(data["talking_points_for_peer"]), 0)
 
+    def test_application_interview_confidence(self):
+        """Test recording interview preparation confidence score and focus areas."""
+        self.client.post("/api/applications", json={"job_id": self.test_job_id})
+
+        # Test invalid job id -> 404
+        bad_res = self.client.post("/api/applications/non_existent_job_123/confidence", json={
+            "confidence_score": 4,
+            "focus_areas": ["System Design"]
+        })
+        self.assertEqual(bad_res.status_code, 404)
+
+        # Test successful confidence rating
+        res = self.client.post(f"/api/applications/{self.test_job_id}/confidence", json={
+            "confidence_score": 4,
+            "focus_areas": ["Distributed Transactions", "Concurrency"],
+            "notes": "Reviewed idempotency patterns"
+        })
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "success")
+        self.assertEqual(data["job_id"], self.test_job_id)
+        self.assertEqual(data["confidence_score"], 4)
+        self.assertEqual(data["confidence_tier"], "Confident")
+        self.assertEqual(data["focus_areas"], ["Distributed Transactions", "Concurrency"])
+        self.assertEqual(data["notes"], "Reviewed idempotency patterns")
+
 
 if __name__ == "__main__":
     unittest.main()

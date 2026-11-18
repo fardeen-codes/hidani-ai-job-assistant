@@ -1917,6 +1917,69 @@ def update_application_outcome(
     return True, f"Outcome '{clean_outcome}' recorded for Job ID '{clean_id}'.", target_app
 
 
+def set_application_interview_confidence(
+    job_id: str,
+    confidence_score: int,
+    focus_areas: Optional[List[str]] = None,
+    notes: Optional[str] = None
+) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
+    """
+    Record or update candidate self-assessed interview readiness confidence rating (1-5) for an application.
+    """
+    clean_id = (job_id or "").strip()
+    if not clean_id:
+        return False, "Job ID cannot be empty.", None
+
+    score = max(1, min(5, int(confidence_score)))
+    tier_map = {
+        5: "Peak Ready",
+        4: "Confident",
+        3: "Moderate",
+        2: "Needs Polish",
+        1: "Critical Review"
+    }
+    tier = tier_map.get(score, "Moderate")
+    clean_focus = [str(f).strip() for f in (focus_areas or []) if str(f).strip()]
+    now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+
+    confidence_record = {
+        "confidence_score": score,
+        "confidence_tier": tier,
+        "focus_areas": clean_focus,
+        "notes": (notes or "").strip() or None,
+        "updated_at": now_str
+    }
+
+    with _db_lock:
+        applications = load_applications()
+        target_app = None
+        for app in applications:
+            if app.get("job_id", "").strip().lower() == clean_id.lower():
+                app["interview_confidence"] = confidence_record
+                app["updated_date"] = now_str
+                _record_app_event(
+                    app,
+                    "INTERVIEW_CONFIDENCE_UPDATED",
+                    f"Interview confidence rated {score}/5 ({tier})"
+                )
+                _log_db_audit_entry(
+                    "CONFIDENCE_UPDATE",
+                    "application",
+                    clean_id,
+                    f"Rated {score}/5 ({tier})"
+                )
+                target_app = app
+                break
+
+        if not target_app:
+            return False, f"No existing application found for Job ID '{clean_id}'.", None
+
+        _save_applications(applications)
+
+    logger.info(f"Recorded interview confidence {score}/5 ({tier}) for application {clean_id}")
+    return True, f"Interview confidence rated {score}/5 ({tier}).", confidence_record
+
+
 def get_upcoming_reminders() -> List[Dict[str, Any]]:
     """Retrieve all submitted applications that have pending follow-up reminders, sorted chronologically."""
     apps = load_applications()

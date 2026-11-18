@@ -88,6 +88,8 @@ from app.schemas import (
     ApplicationStreakResponse,
     ApplicationInterviewCreateRequest,
     InterviewRoundDeleteResponse,
+    InterviewConfidenceRequest,
+    InterviewConfidenceResponse,
     EquityValuationRequest,
     EquityValuationResponse,
     MeetingLoadPreferenceRequest,
@@ -375,6 +377,7 @@ from app.services.db_service import (
     save_candidate_profile,
     save_job_bookmark,
     search_jobs,
+    set_application_interview_confidence,
     set_daily_application_goal,
     update_application_deadlines,
     update_application_interview,
@@ -2791,6 +2794,40 @@ async def delete_application_interview_endpoint(job_id: str, stage_id: str):
         message=message,
         job_id=clean_id,
         stage_id=clean_stage
+    )
+
+
+@app.post(
+    "/api/applications/{job_id}/confidence",
+    response_model=InterviewConfidenceResponse,
+    summary="Set candidate self-assessed interview readiness confidence score",
+    tags=["Applications"]
+)
+async def set_application_interview_confidence_endpoint(
+    job_id: str,
+    payload: InterviewConfidenceRequest
+):
+    """Record candidate self-assessed interview preparation confidence score (1-5) and focus areas."""
+    clean_id = (job_id or "").strip()
+    if not clean_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Job ID cannot be empty.")
+    success, message, record = set_application_interview_confidence(
+        job_id=clean_id,
+        confidence_score=payload.confidence_score,
+        focus_areas=payload.focus_areas,
+        notes=payload.notes
+    )
+    if not success:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=message)
+    return InterviewConfidenceResponse(
+        status="success",
+        message=message,
+        job_id=clean_id,
+        confidence_score=record["confidence_score"],
+        confidence_tier=record["confidence_tier"],
+        focus_areas=record["focus_areas"],
+        notes=record["notes"],
+        updated_at=record["updated_at"]
     )
 
 

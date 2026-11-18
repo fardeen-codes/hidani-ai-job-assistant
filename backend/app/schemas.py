@@ -2056,6 +2056,25 @@ class ReferenceRequestDraftResponse(BaseModel):
     talking_points_for_peer: List[str]
 
 
+class InterviewConfidenceRequest(BaseModel):
+    """Request to update candidate self-assessed interview preparation confidence."""
+    confidence_score: int = Field(..., ge=1, le=5, description="Confidence score from 1 (low) to 5 (high)")
+    focus_areas: Optional[List[str]] = Field(default_factory=list)
+    notes: Optional[str] = None
+
+
+class InterviewConfidenceResponse(BaseModel):
+    """Response payload for interview confidence assessment."""
+    status: str = "success"
+    message: str
+    job_id: str
+    confidence_score: int
+    confidence_tier: str
+    focus_areas: List[str]
+    notes: Optional[str] = None
+    updated_at: str
+
+
 
 
 
