@@ -1827,6 +1827,19 @@ async function openDiagnosticsModal() {
 
   const diskSpeedEl = document.getElementById('diagDiskReadSpeed');
   const integrityEl = document.getElementById('diagDbIntegrity');
+  const memEl = document.getElementById('diagMemoryRss');
+  const gcEl = document.getElementById('diagGcCounts');
+
+  fetch(`${API_BASE}/system/ping`)
+    .then(r => r.ok ? r.json() : null)
+    .then(p => {
+      if (p) {
+        if (memEl && p.memory_rss_mb) memEl.innerText = `${p.memory_rss_mb} MB`;
+        if (gcEl && p.python_gc_counts) gcEl.innerText = `${p.python_gc_counts.join(' / ')} (Gen 0/1/2)`;
+      }
+    })
+    .catch(() => {});
+
   try {
     const res = await fetch(`${API_BASE}/db/diagnostics`);
     if (res.ok) {
