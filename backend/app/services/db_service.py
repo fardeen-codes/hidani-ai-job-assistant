@@ -5597,6 +5597,81 @@ def update_candidate_benefits(
     }
 
 
+def get_candidate_meeting_preferences() -> Dict[str, Any]:
+    """Retrieve candidate focus time, daily meeting limits, and async standup preferences."""
+    prof = load_candidate_profile()
+    m = prof.get("meeting_preferences", {})
+    focus_percent = int(m.get("preferred_focus_time_percent", 70))
+    max_meetings = int(m.get("max_meetings_per_day", 3))
+    async_standup = bool(m.get("async_standup_preferred", True))
+    no_meeting_days = m.get("no_meeting_days") or ["Wednesday", "Friday"]
+    notes = m.get("notes") or ""
+    updated_at = m.get("updated_at")
+
+    focus_hours = round(8.0 * (focus_percent / 100.0), 1)
+    if focus_percent >= 80 or max_meetings <= 2:
+        style_label = "Maker-Heavy (Deep Focus)"
+    elif focus_percent >= 60:
+        style_label = "Balanced Collaborative"
+    else:
+        style_label = "Sync-Intensive / Cross-Functional"
+
+    return {
+        "status": "success",
+        "preferred_focus_time_percent": focus_percent,
+        "max_meetings_per_day": max_meetings,
+        "async_standup_preferred": async_standup,
+        "no_meeting_days": no_meeting_days,
+        "notes": notes,
+        "focus_hours_per_day": focus_hours,
+        "workplace_style_label": style_label,
+        "updated_at": updated_at,
+        "message": "Meeting preferences retrieved successfully"
+    }
+
+
+def update_candidate_meeting_preferences(
+    preferred_focus_time_percent: int = 70,
+    max_meetings_per_day: int = 3,
+    async_standup_preferred: bool = True,
+    no_meeting_days: Optional[List[str]] = None,
+    notes: Optional[str] = None
+) -> Dict[str, Any]:
+    """Update and persist candidate focus time, daily meeting limits, and async standup preferences."""
+    prof = load_candidate_profile()
+    now_iso = datetime.now(timezone.utc).isoformat()
+    clean_days = [str(d).strip() for d in (no_meeting_days or []) if str(d).strip()]
+    focus_pct = max(10, min(100, int(preferred_focus_time_percent)))
+    max_mtg = max(0, min(15, int(max_meetings_per_day)))
+
+    m_data = {
+        "preferred_focus_time_percent": focus_pct,
+        "max_meetings_per_day": max_mtg,
+        "async_standup_preferred": bool(async_standup_preferred),
+        "no_meeting_days": clean_days,
+        "notes": notes or "",
+        "updated_at": now_iso
+    }
+    prof["meeting_preferences"] = m_data
+    save_candidate_profile(prof)
+
+    focus_hours = round(8.0 * (focus_pct / 100.0), 1)
+    if focus_pct >= 80 or max_mtg <= 2:
+        style_label = "Maker-Heavy (Deep Focus)"
+    elif focus_pct >= 60:
+        style_label = "Balanced Collaborative"
+    else:
+        style_label = "Sync-Intensive / Cross-Functional"
+
+    return {
+        "status": "success",
+        "message": "Candidate meeting preferences updated successfully",
+        **m_data,
+        "focus_hours_per_day": focus_hours,
+        "workplace_style_label": style_label
+    }
+
+
 
 
 

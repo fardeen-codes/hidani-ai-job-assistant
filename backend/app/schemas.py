@@ -2011,6 +2011,29 @@ class EquityValuationResponse(BaseModel):
     recommendations: List[str]
 
 
+class MeetingLoadPreferenceRequest(BaseModel):
+    """Request to update candidate meeting tolerance and focus time preferences."""
+    preferred_focus_time_percent: int = Field(70, ge=10, le=100)
+    max_meetings_per_day: int = Field(3, ge=0, le=15)
+    async_standup_preferred: bool = True
+    no_meeting_days: List[str] = Field(default_factory=lambda: ["Wednesday", "Friday"])
+    notes: Optional[str] = None
+
+
+class MeetingLoadPreferenceResponse(BaseModel):
+    """Candidate meeting tolerance and focus time preferences response."""
+    status: str = "success"
+    preferred_focus_time_percent: int
+    max_meetings_per_day: int
+    async_standup_preferred: bool
+    no_meeting_days: List[str]
+    notes: Optional[str] = None
+    focus_hours_per_day: float
+    workplace_style_label: str
+    updated_at: Optional[str] = None
+    message: Optional[str] = None
+
+
 
 
 

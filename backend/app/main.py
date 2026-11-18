@@ -89,6 +89,8 @@ from app.schemas import (
     InterviewRoundDeleteResponse,
     EquityValuationRequest,
     EquityValuationResponse,
+    MeetingLoadPreferenceRequest,
+    MeetingLoadPreferenceResponse,
     InterviewStageUpdateRequest,
     InterviewQuestionCreateRequest,
     InterviewQuestionEntry,
@@ -321,6 +323,7 @@ from app.services.db_service import (
     get_candidate_certifications,
     get_candidate_languages,
     get_candidate_location_preferences,
+    get_candidate_meeting_preferences,
     get_candidate_portfolio_links,
     get_candidate_salary_preferences,
     get_candidate_soft_skills,
@@ -384,6 +387,7 @@ from app.services.db_service import (
     update_candidate_benefits,
     update_candidate_languages,
     update_candidate_location_preferences,
+    update_candidate_meeting_preferences,
     update_candidate_salary_preferences,
     update_candidate_soft_skills,
     update_candidate_team_preferences,
@@ -941,6 +945,36 @@ async def update_candidate_benefits_endpoint(payload: CandidateBenefitsRequest):
         notes=payload.notes
     )
     return CandidateBenefitsResponse(**res)
+
+
+@app.get(
+    "/api/profile/meeting-preferences",
+    response_model=MeetingLoadPreferenceResponse,
+    summary="Get candidate focus time and meeting preferences",
+    tags=["Resume"]
+)
+async def get_candidate_meeting_preferences_endpoint():
+    """Retrieve candidate target focus time percentage, meeting limits, and async standup preferences."""
+    res = get_candidate_meeting_preferences()
+    return MeetingLoadPreferenceResponse(**res)
+
+
+@app.put(
+    "/api/profile/meeting-preferences",
+    response_model=MeetingLoadPreferenceResponse,
+    summary="Update candidate focus time and meeting preferences",
+    tags=["Resume"]
+)
+async def update_candidate_meeting_preferences_endpoint(payload: MeetingLoadPreferenceRequest):
+    """Persist candidate focus time percent, daily meeting limits, and no-meeting day preferences."""
+    res = update_candidate_meeting_preferences(
+        preferred_focus_time_percent=payload.preferred_focus_time_percent,
+        max_meetings_per_day=payload.max_meetings_per_day,
+        async_standup_preferred=payload.async_standup_preferred,
+        no_meeting_days=payload.no_meeting_days,
+        notes=payload.notes
+    )
+    return MeetingLoadPreferenceResponse(**res)
 
 
 

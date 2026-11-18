@@ -3755,6 +3755,33 @@ class BackendTestCase(unittest.TestCase):
         self.assertGreater(pub_data["estimated_price_per_share"], 0)
         self.assertIn("10b5-1", " ".join(pub_data["recommendations"]))
 
+    def test_candidate_meeting_preferences(self):
+        """Test retrieving and updating candidate focus time and meeting preferences."""
+        # 1. GET initial/default
+        get_res = self.client.get("/api/profile/meeting-preferences")
+        self.assertEqual(get_res.status_code, 200)
+        data = get_res.json()
+        self.assertEqual(data["status"], "success")
+        self.assertIn("preferred_focus_time_percent", data)
+        self.assertIn("workplace_style_label", data)
+
+        # 2. PUT custom update
+        put_res = self.client.put("/api/profile/meeting-preferences", json={
+            "preferred_focus_time_percent": 85,
+            "max_meetings_per_day": 2,
+            "async_standup_preferred": True,
+            "no_meeting_days": ["Wednesday", "Thursday"],
+            "notes": "Deep focus blocks in mornings"
+        })
+        self.assertEqual(put_res.status_code, 200)
+        put_data = put_res.json()
+        self.assertEqual(put_data["preferred_focus_time_percent"], 85)
+        self.assertEqual(put_data["max_meetings_per_day"], 2)
+        self.assertTrue(put_data["async_standup_preferred"])
+        self.assertEqual(put_data["no_meeting_days"], ["Wednesday", "Thursday"])
+        self.assertEqual(put_data["workplace_style_label"], "Maker-Heavy (Deep Focus)")
+        self.assertAlmostEqual(put_data["focus_hours_per_day"], 6.8, places=1)
+
 
 if __name__ == "__main__":
     unittest.main()
